@@ -23,6 +23,15 @@ func NewServer(client *github.Client) *server.MCPServer {
 		server.WithResourceCapabilities(true, true),
 		server.WithLogging())
 
+	// Add GitHub Resources
+	defaultTemplate, branchTemplate, tagTemplate, shaTemplate, prTemplate, handler := getRepositoryContent(client)
+
+	s.AddResourceTemplate(defaultTemplate, handler)
+	s.AddResourceTemplate(branchTemplate, handler)
+	s.AddResourceTemplate(tagTemplate, handler)
+	s.AddResourceTemplate(shaTemplate, handler)
+	s.AddResourceTemplate(prTemplate, handler)
+
 	// Add GitHub tools - Issues
 	s.AddTool(getIssue(client))
 	s.AddTool(addIssueComment(client))
@@ -65,7 +74,7 @@ func NewServer(client *github.Client) *server.MCPServer {
 // getMe creates a tool to get details of the authenticated user.
 func getMe(client *github.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_me",
-			mcp.WithDescription("Get details of the authenticated user."),
+			mcp.WithDescription("Get details of the authenticated GitHub user"),
 			mcp.WithString("reason",
 				mcp.Description("Optional: reason the session was created"),
 			),
