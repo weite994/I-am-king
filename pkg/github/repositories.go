@@ -164,7 +164,7 @@ func createOrUpdateFile(client *github.Client) (tool mcp.Tool, handler server.To
 // createRepository creates a tool to create a new GitHub repository.
 func createRepository(client *github.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_repository",
-			mcp.WithDescription("Create a new GitHub repository in your accoun"),
+			mcp.WithDescription("Create a new GitHub repository in your account"),
 			mcp.WithString("name",
 				mcp.Required(),
 				mcp.Description("Repository name"),
