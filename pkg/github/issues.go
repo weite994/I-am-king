@@ -261,6 +261,9 @@ func createIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 					},
 				),
 			),
+			mcp.WithNumber("milestone",
+				mcp.Description("Milestone number"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := requiredParam[string](request, "owner")
@@ -283,15 +286,26 @@ func createIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 			}
 
 			// Get assignees
-			assignees, err := optionalParam[[]string](request, "assignees")
+			assignees, err := optionalStringArrayParam(request, "assignees")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
 			// Get labels
-			labels, err := optionalParam[[]string](request, "labels")
+			labels, err := optionalStringArrayParam(request, "labels")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			// Get optional milestone
+			milestone, err := optionalIntParam(request, "milestone")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			var milestoneNum *int
+			if milestone != 0 {
+				milestoneNum = &milestone
 			}
 
 			// Create the issue request
@@ -300,6 +314,7 @@ func createIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 				Body:      github.Ptr(body),
 				Assignees: &assignees,
 				Labels:    &labels,
+				Milestone: milestoneNum,
 			}
 
 			issue, resp, err := client.Issues.Create(ctx, owner, repo, issueRequest)
@@ -386,7 +401,7 @@ func listIssues(client *github.Client, t translations.TranslationHelperFunc) (to
 			}
 
 			// Get labels
-			opts.Labels, err = optionalParam[[]string](request, "labels")
+			opts.Labels, err = optionalStringArrayParam(request, "labels")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -533,7 +548,7 @@ func updateIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 			}
 
 			// Get labels
-			labels, err := optionalParam[[]string](request, "labels")
+			labels, err := optionalStringArrayParam(request, "labels")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -542,7 +557,7 @@ func updateIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 			}
 
 			// Get assignees
-			assignees, err := optionalParam[[]string](request, "assignees")
+			assignees, err := optionalStringArrayParam(request, "assignees")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
