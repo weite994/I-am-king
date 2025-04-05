@@ -613,6 +613,12 @@ func getIssueComments(client *github.Client, t translations.TranslationHelperFun
 				mcp.Required(),
 				mcp.Description("Issue number"),
 			),
+			mcp.WithNumber("page",
+				mcp.Description("Page number"),
+			),
+			mcp.WithNumber("per_page",
+				mcp.Description("Number of records per page"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := requiredParam[string](request, "owner")
@@ -627,10 +633,19 @@ func getIssueComments(client *github.Client, t translations.TranslationHelperFun
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			page, err := optionalIntParamWithDefault(request, "page", 1)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 
 			opts := &github.IssueListCommentsOptions{
 				ListOptions: github.ListOptions{
-					PerPage: 100,
+					Page:    page,
+					PerPage: perPage,
 				},
 			}
 
