@@ -44,7 +44,13 @@ var (
 				stdlog.Fatal("Failed to initialize logger:", err)
 			}
 			logCommands := viper.GetBool("enable-command-logging")
-			if err := runStdioServer(readOnly, logger, logCommands, exportTranslations); err != nil {
+			cfg := runConfig{
+				readOnly:           readOnly,
+				logger:             logger,
+				logCommands:        logCommands,
+				exportTranslations: exportTranslations,
+			}
+			if err := runStdioServer(cfg); err != nil {
 				stdlog.Fatal("failed to run stdio server:", err)
 			}
 		},
@@ -95,7 +101,14 @@ func initLogger(outPath string) (*log.Logger, error) {
 	return logger, nil
 }
 
-func runStdioServer(readOnly bool, logger *log.Logger, logCommands bool, exportTranslations bool) error {
+type runConfig struct {
+	readOnly           bool
+	logger             *log.Logger
+	logCommands        bool
+	exportTranslations bool
+}
+
+func runStdioServer(cfg runConfig) error {
 	// Create app context
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -103,7 +116,7 @@ func runStdioServer(readOnly bool, logger *log.Logger, logCommands bool, exportT
 	// Create GH client
 	token := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
 	if token == "" {
-		logger.Fatal("GITHUB_PERSONAL_ACCESS_TOKEN not set")
+		cfg.logger.Fatal("GITHUB_PERSONAL_ACCESS_TOKEN not set")
 	}
 	ghClient := gogithub.NewClient(nil).WithAuthToken(token)
 	ghClient.UserAgent = fmt.Sprintf("github-mcp-server/%s", version)
@@ -125,13 +138,13 @@ func runStdioServer(readOnly bool, logger *log.Logger, logCommands bool, exportT
 	t, dumpTranslations := translations.TranslationHelper()
 
 	// Create
-	ghServer := github.NewServer(ghClient, readOnly, t)
+	ghServer := github.NewServer(ghClient, cfg.readOnly, t)
 	stdioServer := server.NewStdioServer(ghServer)
 
-	stdLogger := stdlog.New(logger.Writer(), "stdioserver", 0)
+	stdLogger := stdlog.New(cfg.logger.Writer(), "stdioserver", 0)
 	stdioServer.SetErrorLogger(stdLogger)
 
-	if exportTranslations {
+	if cfg.exportTranslations {
 		// Once server is initialized, all translations are loaded
 		dumpTranslations()
 	}
@@ -141,8 +154,8 @@ func runStdioServer(readOnly bool, logger *log.Logger, logCommands bool, exportT
 	go func() {
 		in, out := io.Reader(os.Stdin), io.Writer(os.Stdout)
 
-		if logCommands {
-			loggedIO := iolog.NewIOLogger(in, out, logger)
+		if cfg.logCommands {
+			loggedIO := iolog.NewIOLogger(in, out, cfg.logger)
 			in, out = loggedIO, loggedIO
 		}
 
@@ -155,7 +168,7 @@ func runStdioServer(readOnly bool, logger *log.Logger, logCommands bool, exportT
 	// Wait for shutdown signal
 	select {
 	case <-ctx.Done():
-		logger.Infof("shutting down server...")
+		cfg.logger.Infof("shutting down server...")
 	case err := <-errC:
 		if err != nil {
 			return fmt.Errorf("error running server: %w", err)
