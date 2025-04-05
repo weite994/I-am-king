@@ -113,24 +113,28 @@ func getMe(client *github.Client, t translations.TranslationHelperFunc) (tool mc
 		}
 }
 
-// optionalParamOk is a helper function that can be used to fetch a requested parameter from the request.
+// optionalParamOK is a helper function that can be used to fetch a requested parameter from the request.
 // It returns the value, a boolean indicating if the parameter was present, and an error if the type is wrong.
-func optionalParamOk[T any](r mcp.CallToolRequest, p string) (T, bool, error) {
-	var zero T
-
+func optionalParamOK[T any](r mcp.CallToolRequest, p string) (value T, ok bool, err error) {
 	// Check if the parameter is present in the request
-	val, ok := r.Params.Arguments[p]
-	if !ok {
-		return zero, false, nil // Not present, return zero value, false, no error
+	val, exists := r.Params.Arguments[p]
+	if !exists {
+		// Not present, return zero value, false, no error
+		return
 	}
 
 	// Check if the parameter is of the expected type
-	typedVal, ok := val.(T)
+	value, ok = val.(T)
 	if !ok {
-		return zero, true, fmt.Errorf("parameter %s is not of type %T, is %T", p, zero, val) // Present but wrong type
+		// Present but wrong type
+		err = fmt.Errorf("parameter %s is not of type %T, is %T", p, value, val)
+		ok = true // Set ok to true because the parameter *was* present, even if wrong type
+		return
 	}
 
-	return typedVal, true, nil // Present and correct type
+	// Present and correct type
+	ok = true
+	return
 }
 
 // isAcceptedError checks if the error is an accepted error.

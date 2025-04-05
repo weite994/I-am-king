@@ -118,35 +118,35 @@ func updatePullRequest(client *github.Client, t translations.TranslationHelperFu
 			update := &github.PullRequest{}
 			updateNeeded := false
 
-			if title, ok, err := optionalParamOk[string](request, "title"); err != nil {
+			if title, ok, err := optionalParamOK[string](request, "title"); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			} else if ok {
 				update.Title = github.Ptr(title)
 				updateNeeded = true
 			}
 
-			if body, ok, err := optionalParamOk[string](request, "body"); err != nil {
+			if body, ok, err := optionalParamOK[string](request, "body"); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			} else if ok {
 				update.Body = github.Ptr(body)
 				updateNeeded = true
 			}
 
-			if state, ok, err := optionalParamOk[string](request, "state"); err != nil {
+			if state, ok, err := optionalParamOK[string](request, "state"); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			} else if ok {
 				update.State = github.Ptr(state)
 				updateNeeded = true
 			}
 
-			if base, ok, err := optionalParamOk[string](request, "base"); err != nil {
+			if base, ok, err := optionalParamOK[string](request, "base"); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			} else if ok {
 				update.Base = &github.PullRequestBranch{Ref: github.Ptr(base)}
 				updateNeeded = true
 			}
 
-			if maintainerCanModify, ok, err := optionalParamOk[bool](request, "maintainer_can_modify"); err != nil {
+			if maintainerCanModify, ok, err := optionalParamOK[bool](request, "maintainer_can_modify"); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			} else if ok {
 				update.MaintainerCanModify = github.Ptr(maintainerCanModify)
