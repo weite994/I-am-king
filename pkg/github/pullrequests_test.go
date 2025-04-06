@@ -1248,7 +1248,7 @@ func Test_CreatePullRequestReview(t *testing.T) {
 			expectedReview: mockReview,
 		},
 		{
-			name: "invalid multi-line comment - missing line parameter",
+			name:         "invalid multi-line comment - missing line parameter",
 			mockedClient: mock.NewMockedHTTPClient(),
 			requestArgs: map[string]interface{}{
 				"owner":      "owner",
@@ -1293,7 +1293,7 @@ func Test_CreatePullRequestReview(t *testing.T) {
 			expectedErrMsg: "position cannot be combined with line, side, start_line, or start_side",
 		},
 		{
-			name: "invalid multi-line comment - missing side parameter",
+			name:         "invalid multi-line comment - missing side parameter",
 			mockedClient: mock.NewMockedHTTPClient(),
 			requestArgs: map[string]interface{}{
 				"owner":      "owner",
