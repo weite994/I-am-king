@@ -1650,3 +1650,106 @@ func Test_AddPullRequestReviewComment(t *testing.T) {
 		})
 	}
 }
+
+func Test_ReplyToPullRequestReviewComment(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := ReplyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+
+	assert.Equal(t, "reply_to_pull_request_review_comment", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "pull_number")
+	assert.Contains(t, tool.InputSchema.Properties, "comment_id")
+	assert.Contains(t, tool.InputSchema.Properties, "body")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pull_number", "comment_id", "body"})
+
+	// Setup mock PR comment for success case
+	mockReply := &github.PullRequestComment{
+		ID:   github.Ptr(int64(456)),
+		Body: github.Ptr("Good point, will fix!"),
+	}
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedReply  *github.PullRequestComment
+		expectedErrMsg string
+	}{
+		{
+			name: "successful reply creation",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsCommentsByOwnerByRepoByPullNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusCreated)
+						json.NewEncoder(w).Encode(mockReply)
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":       "owner",
+				"repo":        "repo",
+				"pull_number": float64(1),
+				"comment_id":  float64(123),
+				"body":        "Good point, will fix!",
+			},
+			expectError:   false,
+			expectedReply: mockReply,
+		},
+		{
+			name: "reply creation fails",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsCommentsByOwnerByRepoByPullNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{"message": "Comment not found"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":       "owner",
+				"repo":        "repo",
+				"pull_number": float64(1),
+				"comment_id":  float64(999),
+				"body":        "Good point, will fix!",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to reply to pull request comment",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClient := github.NewClient(tc.mockedClient)
+
+			_, handler := replyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+
+			request := createMCPRequest(tc.requestArgs)
+
+			result, err := handler(context.Background(), request)
+
+			if tc.name == "reply creation fails" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+			require.Len(t, result.Content, 1)
+
+			var returnedReply github.PullRequestComment
+			err = json.Unmarshal([]byte(getTextResult(t, result).Text), &returnedReply)
+			require.NoError(t, err)
+
+			assert.Equal(t, *tc.expectedReply.ID, *returnedReply.ID)
+			assert.Equal(t, *tc.expectedReply.Body, *returnedReply.Body)
+		})
+	}
+}
