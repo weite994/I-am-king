@@ -18,9 +18,33 @@ automation and interaction capabilities for developers and tools.
 2. [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
 The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
 
-
-
 ## Installation
+
+### Homebew (Mac)
+
+```
+brew install github-mcp-server
+```
+
+#### Using the CLI After Homebrew Installation
+
+After installing with Homebrew, you can run the server with:
+
+```
+# Set your GitHub token
+export GITHUB_PERSONAL_ACCESS_TOKEN=<github_token>
+```
+
+```
+# Run the server in stdio mode
+github-mcp-server stdio
+```
+
+For more options and commands:
+
+```
+github-mcp-server --help
+```
 
 ### Usage with VS Code
 
