@@ -600,8 +600,9 @@ func createPullRequestReview(client *github.Client, t translations.TranslationHe
 								"description": "path to the file",
 							},
 							"position": map[string]interface{}{
-								"type":        "number",
-								"description": "line number in the file",
+								"type": "number",
+								"description": `number of lines down from the first "@@" hunk header in the diff. The line just below the "@@" line is position 1, the next line is position 2, and so on. The position in the diff continues to increase through lines of whitespace and additional hunks.
+								This value is not the same as the line number in the file.`,
 							},
 							"body": map[string]interface{}{
 								"type":        "string",
