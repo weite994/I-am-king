@@ -20,8 +20,7 @@ The MCP server can use many of the GitHub APIs, so enable the permissions that y
 
 ## Installation
 
-### Homebew (Mac)
-
+### Homebrew (Mac)
 ```
 brew install github-mcp-server
 ```
