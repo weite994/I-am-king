@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aws/smithy-go/ptr"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -29,12 +28,7 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			mcp.WithString("sha",
 				mcp.Description("Branch name"),
 			),
-			mcp.WithNumber("page",
-				mcp.Description("Page number"),
-			),
-			mcp.WithNumber("perPage",
-				mcp.Description("Number of records per page"),
-			),
+			withPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := requiredParam[string](request, "owner")
@@ -49,11 +43,7 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			page, err := optionalIntParamWithDefault(request, "page", 1)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
+			pagination, err := optionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -61,8 +51,8 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			opts := &github.CommitsListOptions{
 				SHA: sha,
 				ListOptions: github.ListOptions{
-					Page:    page,
-					PerPage: perPage,
+					Page:    pagination.page,
+					PerPage: pagination.perPage,
 				},
 			}
 
@@ -152,9 +142,9 @@ func createOrUpdateFile(client *github.Client, t translations.TranslationHelperF
 
 			// Create the file options
 			opts := &github.RepositoryContentFileOptions{
-				Message: ptr.String(message),
+				Message: github.Ptr(message),
 				Content: contentBytes,
-				Branch:  ptr.String(branch),
+				Branch:  github.Ptr(branch),
 			}
 
 			// If SHA is provided, set it (for updates)
@@ -163,7 +153,7 @@ func createOrUpdateFile(client *github.Client, t translations.TranslationHelperF
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			if sha != "" {
-				opts.SHA = ptr.String(sha)
+				opts.SHA = github.Ptr(sha)
 			}
 
 			// Create or update the file

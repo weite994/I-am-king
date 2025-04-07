@@ -162,15 +162,7 @@ func searchIssues(client *github.Client, t translations.TranslationHelperFunc) (
 				mcp.Description("Sort order ('asc' or 'desc')"),
 				mcp.Enum("asc", "desc"),
 			),
-			mcp.WithNumber("per_page",
-				mcp.Description("Results per page (max 100)"),
-				mcp.Min(1),
-				mcp.Max(100),
-			),
-			mcp.WithNumber("page",
-				mcp.Description("Page number"),
-				mcp.Min(1),
-			),
+			withPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			query, err := requiredParam[string](request, "q")
@@ -185,11 +177,7 @@ func searchIssues(client *github.Client, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			page, err := optionalIntParamWithDefault(request, "page", 1)
+			pagination, err := optionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -198,8 +186,8 @@ func searchIssues(client *github.Client, t translations.TranslationHelperFunc) (
 				Sort:  sort,
 				Order: order,
 				ListOptions: github.ListOptions{
-					PerPage: perPage,
-					Page:    page,
+					PerPage: pagination.perPage,
+					Page:    pagination.page,
 				},
 			}
 
@@ -375,12 +363,7 @@ func listIssues(client *github.Client, t translations.TranslationHelperFunc) (to
 			mcp.WithString("since",
 				mcp.Description("Filter by date (ISO 8601 timestamp)"),
 			),
-			mcp.WithNumber("page",
-				mcp.Description("Page number"),
-			),
-			mcp.WithNumber("per_page",
-				mcp.Description("Results per page"),
-			),
+			withPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := requiredParam[string](request, "owner")
@@ -432,7 +415,7 @@ func listIssues(client *github.Client, t translations.TranslationHelperFunc) (to
 				opts.Page = int(page)
 			}
 
-			if perPage, ok := request.Params.Arguments["per_page"].(float64); ok {
+			if perPage, ok := request.Params.Arguments["perPage"].(float64); ok {
 				opts.PerPage = int(perPage)
 			}
 
@@ -589,6 +572,81 @@ func updateIssue(client *github.Client, t translations.TranslationHelperFunc) (t
 			}
 
 			r, err := json.Marshal(updatedIssue)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
+// getIssueComments creates a tool to get comments for a GitHub issue.
+func getIssueComments(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("get_issue_comments",
+			mcp.WithDescription(t("TOOL_GET_ISSUE_COMMENTS_DESCRIPTION", "Get comments for a GitHub issue")),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("issue_number",
+				mcp.Required(),
+				mcp.Description("Issue number"),
+			),
+			mcp.WithNumber("page",
+				mcp.Description("Page number"),
+			),
+			mcp.WithNumber("per_page",
+				mcp.Description("Number of records per page"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			issueNumber, err := requiredInt(request, "issue_number")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			page, err := optionalIntParamWithDefault(request, "page", 1)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			opts := &github.IssueListCommentsOptions{
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: perPage,
+				},
+			}
+
+			comments, resp, err := client.Issues.ListComments(ctx, owner, repo, issueNumber, opts)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get issue comments: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to get issue comments: %s", string(body))), nil
+			}
+
+			r, err := json.Marshal(comments)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
