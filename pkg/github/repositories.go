@@ -610,3 +610,70 @@ func pushFiles(client *github.Client, t translations.TranslationHelperFunc) (too
 			return mcp.NewToolResultText(string(r)), nil
 		}
 }
+
+// listBranches creates a tool to list branches in a repository.
+func listBranches(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("list_branches",
+			mcp.WithDescription(t("TOOL_LIST_BRANCHES_DESCRIPTION", "List branches in a GitHub repository")),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("page",
+				mcp.Description("Page number"),
+			),
+			mcp.WithNumber("perPage",
+				mcp.Description("Results per page"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			page, err := optionalIntParamWithDefault(request, "page", 1)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			opts := &github.BranchListOptions{
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: perPage,
+				},
+			}
+
+			branches, resp, err := client.Repositories.ListBranches(ctx, owner, repo, opts)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list branches: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to list branches: %s", string(body))), nil
+			}
+
+			r, err := json.Marshal(branches)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}

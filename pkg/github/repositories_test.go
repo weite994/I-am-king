@@ -1293,3 +1293,118 @@ func Test_PushFiles(t *testing.T) {
 		})
 	}
 }
+
+func Test_ListBranches(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := listBranches(mockClient, translations.NullTranslationHelper)
+
+	assert.Equal(t, "list_branches", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
+
+	// Setup mock branches for success case
+	mockBranches := []*github.Branch{
+		{
+			Name:   github.Ptr("main"),
+			Commit: &github.RepositoryCommit{SHA: github.Ptr("abc123")},
+		},
+		{
+			Name:   github.Ptr("develop"),
+			Commit: &github.RepositoryCommit{SHA: github.Ptr("def456")},
+		},
+	}
+
+	// Define test cases
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "success",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.GetReposBranchesByOwnerByRepo,
+					mockBranches,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError: false,
+		},
+		{
+			name:         "missing owner",
+			mockedClient: mock.NewMockedHTTPClient(),
+			requestArgs: map[string]interface{}{
+				"repo": "repo",
+			},
+			expectError:    false,
+			expectedErrMsg: "owner is required",
+		},
+		{
+			name:         "missing repo",
+			mockedClient: mock.NewMockedHTTPClient(),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+			},
+			expectError:    false,
+			expectedErrMsg: "repo is required",
+		},
+		{
+			name: "repository not found",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposBranchesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "nonexistent-repo",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to list branches",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := github.NewClient(tt.mockedClient)
+			_, handler := listBranches(client, translations.NullTranslationHelper)
+
+			// Create call request using helper function
+			request := createMCPRequest(tt.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				if tt.expectedErrMsg != "" {
+					assert.NotNil(t, result)
+					textContent := getTextResult(t, result)
+					assert.Contains(t, textContent.Text, tt.expectedErrMsg)
+				} else {
+					assert.NoError(t, err)
+					assert.NotNil(t, result)
+					textContent := getTextResult(t, result)
+					assert.NotEmpty(t, textContent.Text)
+				}
+			}
+		})
+	}
+}
