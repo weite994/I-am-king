@@ -44,7 +44,7 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 				mcp.Description("Pull request number"),
 			),
 			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up (default 600 seconds)"),
+				mcp.Description("How long to wait before giving up"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -62,19 +62,28 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get timeout parameter with default value
-			timeoutSecs, err := optionalIntParamWithDefault(request, "timeout_seconds", 600)
+			// Get timeout parameter
+			timeoutSecs, err := optionalIntParam(request, "timeout_seconds")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			// If no timeout is provided, we'll run indefinitely
+			var timeoutDuration time.Duration
+			var endTime time.Time
+			hasTimeout := timeoutSecs > 0
 
 			// Initialize start time for this operation
 			startTime := time.Now()
 
 			// Set up polling interval
 			pollInterval := 5 * time.Second
-			timeoutDuration := time.Duration(timeoutSecs) * time.Second
-			endTime := startTime.Add(timeoutDuration)
+
+			// Set timeout if provided
+			if hasTimeout {
+				timeoutDuration = time.Duration(timeoutSecs) * time.Second
+				endTime = startTime.Add(timeoutDuration)
+			}
 
 			// Extract the client's progress token (if any)
 			var progressToken any
@@ -83,7 +92,7 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 			}
 
 			// Enter polling loop
-			for time.Now().Before(endTime) {
+			for !hasTimeout || time.Now().Before(endTime) {
 				// Calculate elapsed time
 				elapsed := time.Since(startTime)
 
@@ -121,12 +130,23 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 
 				// If the client provided a progress token, send a progress notification
 				if progressToken != nil {
-					// Calculate progress as percentage of time elapsed
-					progress := elapsed.Seconds() / timeoutDuration.Seconds()
-					total := 1.0
+					// Calculate progress value
+					var progress float64
+					var total *float64
+					if hasTimeout {
+						// If timeout is set, use percentage of elapsed time
+						progress = elapsed.Seconds() / timeoutDuration.Seconds()
+						totalValue := 1.0
+						total = &totalValue
+					} else {
+						// If no timeout, just increment progress endlessly
+						progress = elapsed.Seconds()
+						// No total value when incrementing endlessly
+						total = nil
+					}
 
-					// Create and send a progress n with the client's token
-					n := mcp.NewProgressNotification(progressToken, progress, &total)
+					// Create and send a progress notification with the client's token
+					n := mcp.NewProgressNotification(progressToken, progress, total)
 					// Send the progress notification to the client
 					params := map[string]any{"progressToken": n.Params.ProgressToken, "progress": n.Params.Progress, "total": n.Params.Total}
 					if err := mcpServer.SendNotificationToClient(ctx, "notifications/progress", params); err != nil {
@@ -139,7 +159,7 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 				time.Sleep(pollInterval)
 			}
 
-			// If we got here, we timed out
+			// If we got here, we timed out (this should only happen if a timeout was set)
 			return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for PR checks to complete after %d seconds", timeoutSecs)), nil
 		}
 }
@@ -164,7 +184,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 				mcp.Description("ID of most recent review (wait for newer reviews)"),
 			),
 			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up (default 600 seconds)"),
+				mcp.Description("How long to wait before giving up"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -188,19 +208,28 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get timeout parameter with default value
-			timeoutSecs, err := optionalIntParamWithDefault(request, "timeout_seconds", 600)
+			// Get timeout parameter
+			timeoutSecs, err := optionalIntParam(request, "timeout_seconds")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			// If no timeout is provided, we'll run indefinitely
+			var timeoutDuration time.Duration
+			var endTime time.Time
+			hasTimeout := timeoutSecs > 0
 
 			// Initialize start time for this operation
 			startTime := time.Now()
 
 			// Set up polling interval
 			pollInterval := 5 * time.Second
-			timeoutDuration := time.Duration(timeoutSecs) * time.Second
-			endTime := startTime.Add(timeoutDuration)
+
+			// Set timeout if provided
+			if hasTimeout {
+				timeoutDuration = time.Duration(timeoutSecs) * time.Second
+				endTime = startTime.Add(timeoutDuration)
+			}
 
 			// Extract the client's progress token (if any)
 			var progressToken any
@@ -209,7 +238,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 			}
 
 			// Enter polling loop
-			for time.Now().Before(endTime) {
+			for !hasTimeout || time.Now().Before(endTime) {
 				// Calculate elapsed time
 				elapsed := time.Since(startTime)
 
@@ -250,12 +279,23 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 
 				// If the client provided a progress token, send a progress notification
 				if progressToken != nil {
-					// Calculate progress as percentage of time elapsed
-					progress := elapsed.Seconds() / timeoutDuration.Seconds()
-					total := 1.0
+					// Calculate progress value
+					var progress float64
+					var total *float64
+					if hasTimeout {
+						// If timeout is set, use percentage of elapsed time
+						progress = elapsed.Seconds() / timeoutDuration.Seconds()
+						totalValue := 1.0
+						total = &totalValue
+					} else {
+						// If no timeout, just increment progress endlessly
+						progress = elapsed.Seconds()
+						// No total value when incrementing endlessly
+						total = nil
+					}
 
-					// Create and send a progress n with the client's token
-					n := mcp.NewProgressNotification(progressToken, progress, &total)
+					// Create and send a progress notification with the client's token
+					n := mcp.NewProgressNotification(progressToken, progress, total)
 
 					// Send the progress notification to the client
 					params := map[string]any{"progressToken": n.Params.ProgressToken, "progress": n.Params.Progress, "total": n.Params.Total}
@@ -269,7 +309,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 				time.Sleep(pollInterval)
 			}
 
-			// If we got here, we timed out
+			// If we got here, we timed out (this should only happen if a timeout was set)
 			return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for PR review after %d seconds", timeoutSecs)), nil
 		}
 }

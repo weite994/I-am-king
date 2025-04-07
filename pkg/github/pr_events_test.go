@@ -29,6 +29,10 @@ func Test_WaitForPRChecks(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "timeout_seconds")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
 
+	// Verify timeout_seconds description doesn't mention default
+	timeoutProp := tool.InputSchema.Properties["timeout_seconds"].(map[string]any)
+	assert.NotContains(t, timeoutProp["description"], "default")
+
 	// Setup mock PR for successful PR fetch
 	mockPR := &github.PullRequest{
 		Number:  github.Ptr(42),
@@ -233,6 +237,10 @@ func Test_WaitForPRReview(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "last_review_id")
 	assert.Contains(t, tool.InputSchema.Properties, "timeout_seconds")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
+
+	// Verify timeout_seconds description doesn't mention default
+	timeoutProp := tool.InputSchema.Properties["timeout_seconds"].(map[string]any)
+	assert.NotContains(t, timeoutProp["description"], "default")
 
 	// Setup mock PR reviews for success case
 	mockReviews := []*github.PullRequestReview{
