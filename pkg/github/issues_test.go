@@ -244,7 +244,7 @@ func Test_SearchIssues(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "q")
 	assert.Contains(t, tool.InputSchema.Properties, "sort")
 	assert.Contains(t, tool.InputSchema.Properties, "order")
-	assert.Contains(t, tool.InputSchema.Properties, "per_page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"q"})
 
@@ -289,17 +289,28 @@ func Test_SearchIssues(t *testing.T) {
 		{
 			name: "successful issues search with all parameters",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatch(
+				mock.WithRequestMatchHandler(
 					mock.GetSearchIssues,
-					mockSearchResult,
+					expectQueryParams(
+						t,
+						map[string]string{
+							"q":        "repo:owner/repo is:issue is:open",
+							"sort":     "created",
+							"order":    "desc",
+							"page":     "1",
+							"per_page": "30",
+						},
+					).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
 				),
 			),
 			requestArgs: map[string]interface{}{
-				"q":        "repo:owner/repo is:issue is:open",
-				"sort":     "created",
-				"order":    "desc",
-				"page":     float64(1),
-				"per_page": float64(30),
+				"q":       "repo:owner/repo is:issue is:open",
+				"sort":    "created",
+				"order":   "desc",
+				"page":    float64(1),
+				"perPage": float64(30),
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -567,7 +578,7 @@ func Test_ListIssues(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "direction")
 	assert.Contains(t, tool.InputSchema.Properties, "since")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
-	assert.Contains(t, tool.InputSchema.Properties, "per_page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
 	// Setup mock issues for success case
@@ -641,7 +652,7 @@ func Test_ListIssues(t *testing.T) {
 				"direction": "desc",
 				"since":     "2023-01-01T00:00:00Z",
 				"page":      float64(1),
-				"per_page":  float64(30),
+				"perPage":   float64(30),
 			},
 			expectError:    false,
 			expectedIssues: mockIssues,
