@@ -169,11 +169,12 @@ func pollForPREvent(eventCtx *PREventContext, checkFn func() (*mcp.CallToolResul
 			if eventCtx.Ctx.Err() == context.DeadlineExceeded {
 				// Customize the timeout message based on the tool name
 				var operation string
-				if strings.Contains(eventCtx.Request.Method, "wait_for_pr_checks") {
+				switch {
+				case strings.Contains(eventCtx.Request.Method, "wait_for_pr_checks"):
 					operation = "PR checks to complete"
-				} else if strings.Contains(eventCtx.Request.Method, "wait_for_pr_review") {
+				case strings.Contains(eventCtx.Request.Method, "wait_for_pr_review"):
 					operation = "PR review"
-				} else {
+				default:
 					operation = "operation"
 				}
 				fmt.Fprintf(os.Stderr, "[DEBUG] pollForPREvent: Timeout exceeded waiting for %s\n", operation)
