@@ -16,9 +16,39 @@ automation and interaction capabilities for developers and tools.
 
 1. To run the server in a container, you will need to have [Docker](https://www.docker.com/) installed.
 2. [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
-The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
+   The MCP server requires specific permissions for different tools. Here are the required permissions for each tool:
 
+   ### User Tools
+   - **get_me** - Get details of the authenticated user
+     - Required permissions: `read:user`
 
+   ### Issues Tools
+   - **get_issue**, **get_issue_comments**, **list_issues** - Read issue data
+     - Required permissions: `repo` (for private repos) or no permissions (for public repos)
+   
+   - **create_issue**, **add_issue_comment**, **update_issue** - Create/modify issues
+     - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
+
+   ### Pull Request Tools
+   - **get_pull_request**, **list_pull_requests**, **get_pull_request_files**, **get_pull_request_status**, **get_pull_request_comments**, **get_pull_request_reviews** - Read PR data
+     - Required permissions: `repo` (for private repos) or no permissions (for public repos)
+   
+   - **merge_pull_request**, **update_pull_request_branch**, **create_pull_request_review**, **create_pull_request** - Create/modify PRs
+     - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
+
+   ### Repository Tools
+   - **search_repositories** - Search repositories
+     - Required permissions: No permissions required for public repos, `repo` for private repos
+   
+   - **get_file_contents**, **list_commits**, **list_branches** - Read repository data
+     - Required permissions: `repo` (for private repos) or no permissions (for public repos)
+   
+   - **create_or_update_file**, **push_files**, **create_repository** - Create/modify repository content
+     - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
+
+   ### Search Tools
+   - **search_issues** - Search issues and pull requests
+     - Required permissions: No permissions required for public data, `repo` for private data
 
 ## Installation
 
@@ -144,23 +174,24 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 - **get_me** - Get details of the authenticated user
   - No parameters required
+  - Required permissions: `read:user`
 
 ### Issues
 
 - **get_issue** - Gets the contents of an issue within a repository
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `issue_number`: Issue number (number, required)
 
 - **get_issue_comments** - Get comments for a GitHub issue
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `issue_number`: Issue number (number, required)
 
 - **create_issue** - Create a new issue in a GitHub repository
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `title`: Issue title (string, required)
@@ -169,14 +200,14 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `labels`: Labels to apply to this issue (string[], optional)
 
 - **add_issue_comment** - Add a comment to an issue
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `issue_number`: Issue number (number, required)
   - `body`: Comment text (string, required)
 
 - **list_issues** - List and filter repository issues
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `state`: Filter by state ('open', 'closed', 'all') (string, optional)
@@ -188,7 +219,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `perPage`: Results per page (number, optional)
 
 - **update_issue** - Update an existing issue in a GitHub repository
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `issue_number`: Issue number to update (number, required)
@@ -209,23 +240,25 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 ### Pull Requests
 
 - **get_pull_request** - Get details of a specific pull request
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
 
 - **list_pull_requests** - List and filter repository pull requests
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `state`: PR state (string, optional)
-  - `sort`: Sort field (string, optional)
-  - `direction`: Sort direction (string, optional)
+  - `state`: Filter by state ('open', 'closed', 'all') (string, optional)
+  - `head`: Filter by head user/org and branch (string, optional)
+  - `base`: Filter by base branch (string, optional)
+  - `sort`: Sort by ('created', 'updated', 'popularity', 'long-running') (string, optional)
+  - `direction`: Sort direction ('asc', 'desc') (string, optional)
   - `perPage`: Results per page (number, optional)
   - `page`: Page number (number, optional)
 
 - **merge_pull_request** - Merge a pull request
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
@@ -234,7 +267,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `merge_method`: Merge method (string, optional)
 
 - **get_pull_request_files** - Get the list of files changed in a pull request
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
@@ -287,10 +320,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `draft`: Create as draft PR (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
 
-### Repositories
+### Repository
 
 - **create_or_update_file** - Create or update a single file in a repository
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `path`: File path (string, required)
@@ -300,7 +333,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `sha`: File SHA if updating (string, optional)
 
 - **push_files** - Push multiple files in a single commit
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `branch`: Branch to push to (string, required)
@@ -308,7 +341,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `message`: Commit message (string, required)
 
 - **search_repositories** - Search for GitHub repositories
-
+  - Required permissions: No permissions required for public repos, `repo` for private repos
   - `query`: Search query (string, required)
   - `sort`: Sort field (string, optional)
   - `order`: Sort order (string, optional)
@@ -316,18 +349,18 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `perPage`: Results per page (number, optional)
 
 - **create_repository** - Create a new GitHub repository
-
+  - Required permissions: `repo` (private repos) or `public_repo` (public repos)
   - `name`: Repository name (string, required)
   - `description`: Repository description (string, optional)
   - `private`: Whether the repository is private (boolean, optional)
   - `autoInit`: Auto-initialize with README (boolean, optional)
 
 - **get_file_contents** - Get contents of a file or directory
-
+  - Required permissions: `repo` (private repos) or none (public repos)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `path`: File path (string, required)
-  - `ref`: Git reference (string, optional)
+  - `ref`: Git reference (branch, tag, commit) (string, optional)
 
 - **fork_repository** - Fork a repository
 
