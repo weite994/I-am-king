@@ -1348,7 +1348,7 @@ func Test_ListBranches(t *testing.T) {
 				"repo": "repo",
 			},
 			expectError:    false,
-			expectedErrMsg: "owner is required",
+			expectedErrMsg: "missing required parameter: owner",
 		},
 		{
 			name:         "missing repo",
@@ -1357,7 +1357,7 @@ func Test_ListBranches(t *testing.T) {
 				"owner": "owner",
 			},
 			expectError:    false,
-			expectedErrMsg: "repo is required",
+			expectedErrMsg: "missing required parameter: repo",
 		},
 		{
 			name: "repository not found",
