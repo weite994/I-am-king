@@ -153,6 +153,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
   - `issue_number`: Issue number (number, required)
 
+- **get_issue_comments** - Get comments for a GitHub issue
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issue_number`: Issue number (number, required)
+
 - **create_issue** - Create a new issue in a GitHub repository
 
   - `owner`: Repository owner (string, required)
@@ -266,7 +272,9 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `body`: Review comment text (string, optional)
   - `event`: Review action ('APPROVE', 'REQUEST_CHANGES', 'COMMENT') (string, required)
   - `commitId`: SHA of commit to review (string, optional)
-  - `comments`: Line-specific comments array of objects, each object with path (string), position (number), and body (string) (array, optional)
+  - `comments`: Line-specific comments array of objects to place comments on pull request changes (array, optional)
+    - For inline comments: provide `path`, `position` (or `line`), and `body`
+    - For multi-line comments: provide `path`, `start_line`, `line`, optional `side`/`start_side`, and `body`
 
 - **create_pull_request** - Create a new pull request
 
