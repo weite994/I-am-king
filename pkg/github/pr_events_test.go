@@ -26,12 +26,8 @@ func Test_WaitForPRChecks(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "pullNumber")
-	assert.Contains(t, tool.InputSchema.Properties, "timeout_seconds")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
-
-	// Verify timeout_seconds description doesn't mention default
-	timeoutProp := tool.InputSchema.Properties["timeout_seconds"].(map[string]any)
-	assert.NotContains(t, timeoutProp["description"], "default")
+	// timeout_seconds parameter has been removed
 
 	// Setup mock PR for successful PR fetch
 	mockPR := &github.PullRequest{
@@ -127,13 +123,12 @@ func Test_WaitForPRChecks(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]any{
-				"owner":           "owner",
-				"repo":            "repo",
-				"pullNumber":      float64(42),
-				"timeout_seconds": float64(0.1), // Very short timeout to force timeout
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
 			},
 			expectError:    true,
-			expectedErrMsg: "context deadline exceeded",
+			expectedErrMsg: "Timeout waiting for",
 		},
 
 		{
@@ -235,12 +230,8 @@ func Test_WaitForPRReview(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "pullNumber")
 	assert.Contains(t, tool.InputSchema.Properties, "last_review_id")
-	assert.Contains(t, tool.InputSchema.Properties, "timeout_seconds")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
-
-	// Verify timeout_seconds description doesn't mention default
-	timeoutProp := tool.InputSchema.Properties["timeout_seconds"].(map[string]any)
-	assert.NotContains(t, timeoutProp["description"], "default")
+	// timeout_seconds parameter has been removed
 
 	// Setup mock PR reviews for success case
 	mockReviews := []*github.PullRequestReview{
@@ -315,14 +306,13 @@ func Test_WaitForPRReview(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]any{
-				"owner":           "owner",
-				"repo":            "repo",
-				"pullNumber":      float64(42),
-				"last_review_id":  float64(203), // Already have the latest review
-				"timeout_seconds": float64(0.1), // Very short timeout to force timeout
+				"owner":          "owner",
+				"repo":           "repo",
+				"pullNumber":     float64(42),
+				"last_review_id": float64(203), // Already have the latest review
 			},
 			expectError:    true,
-			expectedErrMsg: "context deadline exceeded",
+			expectedErrMsg: "Timeout waiting for",
 		},
 
 		{

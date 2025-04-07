@@ -25,8 +25,6 @@ type PREventContext struct {
 	Owner         string
 	Repo          string
 	PullNumber    int
-	TimeoutSecs   int
-	HasTimeout    bool
 	StartTime     time.Time
 	ProgressToken any
 	PollInterval  time.Duration
@@ -65,24 +63,11 @@ func sendProgressNotification(ctx context.Context, eventCtx *PREventContext) {
 	// Calculate progress value
 	var progress float64
 	var total *float64
-	if eventCtx.HasTimeout {
-		// If timeout is set, use percentage of elapsed time
-		// Get the deadline from the context
-		deadline, ok := ctx.Deadline()
-		fmt.Fprintf(os.Stderr, "[DEBUG] sendProgressNotification: Context has deadline: %v\n", ok)
-		timeoutDuration := deadline.Sub(eventCtx.StartTime)
-		fmt.Fprintf(os.Stderr, "[DEBUG] sendProgressNotification: Timeout duration: %v\n", timeoutDuration)
-		progress = elapsed.Seconds() / timeoutDuration.Seconds()
-		totalValue := 1.0
-		total = &totalValue
-		fmt.Fprintf(os.Stderr, "[DEBUG] sendProgressNotification: Progress with timeout: %f/%f\n", progress, *total)
-	} else {
-		// If no timeout, just increment progress endlessly
-		progress = elapsed.Seconds()
-		// No total value when incrementing endlessly
-		total = nil
-		fmt.Fprintf(os.Stderr, "[DEBUG] sendProgressNotification: Progress without timeout: %f (no total)\n", progress)
-	}
+	// Just increment progress endlessly
+	progress = elapsed.Seconds()
+	// No total value when incrementing endlessly
+	total = nil
+	fmt.Fprintf(os.Stderr, "[DEBUG] sendProgressNotification: Progress without timeout: %f (no total)\n", progress)
 
 	// Create and send a progress notification with the client's token
 	n := mcp.NewProgressNotification(eventCtx.ProgressToken, progress, total)
@@ -141,29 +126,9 @@ func parsePREventParams(ctx context.Context, mcpServer *server.MCPServer, client
 	eventCtx.PullNumber = pullNumber
 	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Pull Number: %d\n", pullNumber)
 
-	// Get timeout parameter
-	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Extracting optional 'timeout_seconds' parameter\n")
-	timeoutSecs, err := optionalIntParam(request, "timeout_seconds")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: ERROR extracting 'timeout_seconds' parameter: %v\n", err)
-		return nil, mcp.NewToolResultError(err.Error()), nil, nil
-	}
-	eventCtx.TimeoutSecs = timeoutSecs
-	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Timeout seconds: %d\n", timeoutSecs)
-
-	// If timeout is provided, create a child context with timeout
-	eventCtx.HasTimeout = timeoutSecs > 0
-	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Has timeout: %v\n", eventCtx.HasTimeout)
-	var cancel context.CancelFunc
-	if eventCtx.HasTimeout {
-		fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Creating context with timeout of %d seconds\n", timeoutSecs)
-		eventCtx.Ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSecs)*time.Second)
-		// We can't defer cancel() here because this function returns before the context should be canceled
-		// The caller must handle cancellation
-	} else {
-		fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Using context without timeout\n")
-		cancel = func() {} // No-op cancel function if no timeout
-	}
+	// Create a no-op cancel function
+	var cancel context.CancelFunc = func() {} // No-op cancel function
+	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Using context without timeout\n")
 
 	// Extract the client's progress token (if any)
 	fmt.Fprintf(os.Stderr, "[DEBUG] parsePREventParams: Checking for progress token\n")
@@ -201,7 +166,7 @@ func pollForPREvent(eventCtx *PREventContext, checkFn func() (*mcp.CallToolResul
 		select {
 		case <-eventCtx.Ctx.Done():
 			fmt.Fprintf(os.Stderr, "[DEBUG] pollForPREvent: Context done with error: %v\n", eventCtx.Ctx.Err())
-			if eventCtx.HasTimeout && eventCtx.Ctx.Err() == context.DeadlineExceeded {
+			if eventCtx.Ctx.Err() == context.DeadlineExceeded {
 				// Customize the timeout message based on the tool name
 				var operation string
 				if strings.Contains(eventCtx.Request.Method, "wait_for_pr_checks") {
@@ -211,8 +176,8 @@ func pollForPREvent(eventCtx *PREventContext, checkFn func() (*mcp.CallToolResul
 				} else {
 					operation = "operation"
 				}
-				fmt.Fprintf(os.Stderr, "[DEBUG] pollForPREvent: Timeout exceeded waiting for %s after %d seconds\n", operation, eventCtx.TimeoutSecs)
-				return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for %s after %d seconds", operation, eventCtx.TimeoutSecs)), nil
+				fmt.Fprintf(os.Stderr, "[DEBUG] pollForPREvent: Timeout exceeded waiting for %s\n", operation)
+				return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for %s", operation)), nil
 			}
 			fmt.Fprintf(os.Stderr, "[DEBUG] pollForPREvent: Operation canceled: %v\n", eventCtx.Ctx.Err())
 			return mcp.NewToolResultError(fmt.Sprintf("Operation canceled: %v", eventCtx.Ctx.Err())), nil
@@ -262,9 +227,6 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 			mcp.WithNumber("pullNumber",
 				mcp.Required(),
 				mcp.Description("Pull request number"),
-			),
-			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up. When not provided, no timeout will be applied."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -361,9 +323,6 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 			),
 			mcp.WithNumber("last_review_id",
 				mcp.Description("ID of most recent review (wait for newer reviews)"),
-			),
-			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up. When not provided, no timeout will be applied."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
