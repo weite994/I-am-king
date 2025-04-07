@@ -171,6 +171,8 @@ func pollForPREvent(eventCtx *PREventContext, checkFn func() (*mcp.CallToolResul
 
 		// Call the check function
 		result, err := checkFn()
+		// nil will be returned for result AND nil when we have not yet completed
+		// our check
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +205,7 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 				mcp.Description("Pull request number"),
 			),
 			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up"),
+				mcp.Description("How long to wait before giving up. When not provided, no timeout will be applied."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -274,7 +276,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 				mcp.Description("ID of most recent review (wait for newer reviews)"),
 			),
 			mcp.WithNumber("timeout_seconds",
-				mcp.Description("How long to wait before giving up"),
+				mcp.Description("How long to wait before giving up. When not provided, no timeout will be applied."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
