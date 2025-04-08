@@ -265,31 +265,49 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 
 				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Got PR head SHA: %s\n", *pr.Head.SHA)
 
-				// Get combined status for the head SHA
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Getting combined status for SHA: %s\n", *pr.Head.SHA)
-				status, resp, err := client.Repositories.GetCombinedStatus(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, *pr.Head.SHA, nil)
+				// Get check runs for the head SHA
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Getting check runs for SHA: %s\n", *pr.Head.SHA)
+				checkRuns, resp, err := client.Checks.ListCheckRunsForRef(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, *pr.Head.SHA, nil)
+
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR getting combined status: %v\n", err)
-					return nil, fmt.Errorf("failed to get combined status: %w", err)
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR getting check runs: %v\n", err)
+					return nil, fmt.Errorf("failed to get check runs: %w", err)
 				}
 
 				// Handle the response
-				if err := handleResponse(resp, "failed to get combined status"); err != nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR handling status response: %v\n", err)
+				if err := handleResponse(resp, "failed to get check runs"); err != nil {
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR handling check runs response: %v\n", err)
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				// Check if all checks are complete
-				if status.State == nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Status state is nil, continuing polling\n")
-					return nil, nil
+				// Check if there are any check runs
+				if checkRuns.GetTotal() == 0 {
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: No check runs found, considering checks complete\n")
+					// If there are no check runs, we should consider the checks complete
+					// Otherwise, we'd poll indefinitely for repositories without checks
+					r, err := json.Marshal(checkRuns)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR marshaling empty check runs: %v\n", err)
+						return nil, fmt.Errorf("failed to marshal response: %w", err)
+					}
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Returning empty check runs result\n")
+					return mcp.NewToolResultText(string(r)), nil
 				}
 
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Current status state: %s\n", *status.State)
-				if *status.State == "success" || *status.State == "failure" || *status.State == "error" {
-					// All checks are complete, return the status
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Checks complete with state: %s\n", *status.State)
-					r, err := json.Marshal(status)
+				// Check if all checks are complete
+				allComplete := true
+				for _, checkRun := range checkRuns.CheckRuns {
+					if checkRun.GetStatus() != "completed" {
+						allComplete = false
+						break
+					}
+				}
+
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: All checks complete: %v, Total checks: %d\n", allComplete, checkRuns.GetTotal())
+				if allComplete {
+					// All checks are complete, return the check runs
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: All checks complete\n")
+					r, err := json.Marshal(checkRuns)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: ERROR marshaling response: %v\n", err)
 						return nil, fmt.Errorf("failed to marshal response: %w", err)
@@ -299,7 +317,7 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 				}
 
 				// Return nil to continue polling
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Checks still in progress (state: %s), continuing polling\n", *status.State)
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRChecks.checkFn: Checks still in progress, continuing polling\n")
 				return nil, nil
 			})
 		}

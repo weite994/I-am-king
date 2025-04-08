@@ -40,44 +40,67 @@ func Test_WaitForPRChecks(t *testing.T) {
 		},
 	}
 
-	// Setup mock status for success case
-	mockSuccessStatus := &github.CombinedStatus{
-		State:      github.Ptr("success"),
-		TotalCount: github.Ptr(3),
-		Statuses: []*github.RepoStatus{
+	// Setup mock check runs for completed case
+	mockCompletedCheckRuns := &github.ListCheckRunsResults{
+		Total: github.Ptr(2),
+		CheckRuns: []*github.CheckRun{
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("continuous-integration/travis-ci"),
-				Description: github.Ptr("Build succeeded"),
-				TargetURL:   github.Ptr("https://travis-ci.org/owner/repo/builds/123"),
+				ID:         github.Ptr(int64(1)),
+				Name:       github.Ptr("travis-ci"),
+				Status:     github.Ptr("completed"),
+				Conclusion: github.Ptr("success"),
+				HTMLURL:    github.Ptr("https://travis-ci.org/owner/repo/builds/123"),
+				Output: &github.CheckRunOutput{
+					Title:   github.Ptr("Build succeeded"),
+					Summary: github.Ptr("All tests passed"),
+				},
 			},
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("codecov/patch"),
-				Description: github.Ptr("Coverage increased"),
-				TargetURL:   github.Ptr("https://codecov.io/gh/owner/repo/pull/42"),
+				ID:         github.Ptr(int64(2)),
+				Name:       github.Ptr("codecov"),
+				Status:     github.Ptr("completed"),
+				Conclusion: github.Ptr("success"),
+				HTMLURL:    github.Ptr("https://codecov.io/gh/owner/repo/pull/42"),
+				Output: &github.CheckRunOutput{
+					Title:   github.Ptr("Coverage increased"),
+					Summary: github.Ptr("Coverage is now at 85%"),
+				},
 			},
 		},
 	}
 
-	// Setup mock status for pending case
-	mockPendingStatus := &github.CombinedStatus{
-		State:      github.Ptr("pending"),
-		TotalCount: github.Ptr(3),
-		Statuses: []*github.RepoStatus{
+	// Setup mock check runs for in-progress case
+	mockInProgressCheckRuns := &github.ListCheckRunsResults{
+		Total: github.Ptr(2),
+		CheckRuns: []*github.CheckRun{
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("continuous-integration/travis-ci"),
-				Description: github.Ptr("Build succeeded"),
-				TargetURL:   github.Ptr("https://travis-ci.org/owner/repo/builds/123"),
+				ID:         github.Ptr(int64(1)),
+				Name:       github.Ptr("travis-ci"),
+				Status:     github.Ptr("completed"),
+				Conclusion: github.Ptr("success"),
+				HTMLURL:    github.Ptr("https://travis-ci.org/owner/repo/builds/123"),
+				Output: &github.CheckRunOutput{
+					Title:   github.Ptr("Build succeeded"),
+					Summary: github.Ptr("All tests passed"),
+				},
 			},
 			{
-				State:       github.Ptr("pending"),
-				Context:     github.Ptr("codecov/patch"),
-				Description: github.Ptr("Coverage check in progress"),
-				TargetURL:   github.Ptr("https://codecov.io/gh/owner/repo/pull/42"),
+				ID:      github.Ptr(int64(2)),
+				Name:    github.Ptr("codecov"),
+				Status:  github.Ptr("in_progress"),
+				HTMLURL: github.Ptr("https://codecov.io/gh/owner/repo/pull/42"),
+				Output: &github.CheckRunOutput{
+					Title:   github.Ptr("Coverage in progress"),
+					Summary: github.Ptr("Calculating coverage"),
+				},
 			},
 		},
+	}
+
+	// Setup mock empty check runs
+	mockEmptyCheckRuns := &github.ListCheckRunsResults{
+		Total:     github.Ptr(0),
+		CheckRuns: []*github.CheckRun{},
 	}
 
 	tests := []struct {
@@ -86,7 +109,7 @@ func Test_WaitForPRChecks(t *testing.T) {
 		requestArgs    map[string]any
 		expectError    bool
 		expectProgress bool
-		expectedStatus *github.CombinedStatus
+		expectedStatus *github.ListCheckRunsResults
 		expectedErrMsg string
 	}{
 		{
@@ -97,8 +120,8 @@ func Test_WaitForPRChecks(t *testing.T) {
 					mockPR,
 				),
 				mock.WithRequestMatch(
-					mock.GetReposCommitsStatusByOwnerByRepoByRef,
-					mockSuccessStatus,
+					mock.GetReposCommitsCheckRunsByOwnerByRepoByRef,
+					mockCompletedCheckRuns,
 				),
 			),
 			requestArgs: map[string]any{
@@ -108,7 +131,7 @@ func Test_WaitForPRChecks(t *testing.T) {
 			},
 			expectError:    false,
 			expectProgress: false,
-			expectedStatus: mockSuccessStatus,
+			expectedStatus: mockCompletedCheckRuns,
 		},
 		{
 			name: "checks still pending",
@@ -118,8 +141,8 @@ func Test_WaitForPRChecks(t *testing.T) {
 					mockPR,
 				),
 				mock.WithRequestMatch(
-					mock.GetReposCommitsStatusByOwnerByRepoByRef,
-					mockPendingStatus,
+					mock.GetReposCommitsCheckRunsByOwnerByRepoByRef,
+					mockInProgressCheckRuns,
 				),
 			),
 			requestArgs: map[string]any{
@@ -130,7 +153,27 @@ func Test_WaitForPRChecks(t *testing.T) {
 			expectError:    true,
 			expectedErrMsg: "Timeout waiting for",
 		},
-
+		{
+			name: "no check runs configured",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.GetReposPullsByOwnerByRepoByPullNumber,
+					mockPR,
+				),
+				mock.WithRequestMatch(
+					mock.GetReposCommitsCheckRunsByOwnerByRepoByRef,
+					mockEmptyCheckRuns,
+				),
+			),
+			requestArgs: map[string]any{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+			},
+			expectError:    false,
+			expectProgress: false,
+			expectedStatus: mockEmptyCheckRuns,
+		},
 		{
 			name: "PR fetch fails",
 			mockedClient: mock.NewMockedHTTPClient(
@@ -171,7 +214,7 @@ func Test_WaitForPRChecks(t *testing.T) {
 				"pullNumber": float64(42),
 			},
 			expectError:    true,
-			expectedErrMsg: "failed to get combined status",
+			expectedErrMsg: "failed to get check runs",
 		},
 	}
 
@@ -207,13 +250,17 @@ func Test_WaitForPRChecks(t *testing.T) {
 			require.NoError(t, err)
 			textContent := getTextResult(t, result)
 
-			// For completed responses, unmarshal and verify the status
-			var returnedStatus github.CombinedStatus
-			err = json.Unmarshal([]byte(textContent.Text), &returnedStatus)
+			// For completed responses, unmarshal and verify the check runs
+			var returnedCheckRuns github.ListCheckRunsResults
+			err = json.Unmarshal([]byte(textContent.Text), &returnedCheckRuns)
 			require.NoError(t, err)
-			assert.Equal(t, *tc.expectedStatus.State, *returnedStatus.State)
-			assert.Equal(t, *tc.expectedStatus.TotalCount, *returnedStatus.TotalCount)
-			assert.Len(t, returnedStatus.Statuses, len(tc.expectedStatus.Statuses))
+			assert.Equal(t, *tc.expectedStatus.Total, *returnedCheckRuns.Total)
+			assert.Len(t, returnedCheckRuns.CheckRuns, len(tc.expectedStatus.CheckRuns))
+			// Verify the first check run
+			if len(returnedCheckRuns.CheckRuns) > 0 && len(tc.expectedStatus.CheckRuns) > 0 {
+				assert.Equal(t, *tc.expectedStatus.CheckRuns[0].Name, *returnedCheckRuns.CheckRuns[0].Name)
+				assert.Equal(t, *tc.expectedStatus.CheckRuns[0].Status, *returnedCheckRuns.CheckRuns[0].Status)
+			}
 		})
 	}
 }
