@@ -601,8 +601,8 @@ func pushFiles(client *github.Client, t translations.TranslationHelperFunc) (too
 		}
 }
 
-// listBranches creates a tool to list branches in a repository.
-func listBranches(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// ListBranches creates a tool to list branches in a repository.
+func ListBranches(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_branches",
 			mcp.WithDescription(t("TOOL_LIST_BRANCHES_DESCRIPTION", "List branches in a GitHub repository")),
 			mcp.WithString("owner",
