@@ -17,7 +17,7 @@ import (
 func Test_GetPullRequest(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := getPullRequest(mockClient, translations.NullTranslationHelper)
+	tool, _ := GetPullRequest(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "get_pull_request", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -94,7 +94,7 @@ func Test_GetPullRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := getPullRequest(client, translations.NullTranslationHelper)
+			_, handler := GetPullRequest(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -311,7 +311,7 @@ func Test_UpdatePullRequest(t *testing.T) {
 func Test_ListPullRequests(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := listPullRequests(mockClient, translations.NullTranslationHelper)
+	tool, _ := ListPullRequests(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "list_pull_requests", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -322,7 +322,7 @@ func Test_ListPullRequests(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "base")
 	assert.Contains(t, tool.InputSchema.Properties, "sort")
 	assert.Contains(t, tool.InputSchema.Properties, "direction")
-	assert.Contains(t, tool.InputSchema.Properties, "per_page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
@@ -372,7 +372,7 @@ func Test_ListPullRequests(t *testing.T) {
 				"state":     "all",
 				"sort":      "created",
 				"direction": "desc",
-				"per_page":  float64(30),
+				"perPage":   float64(30),
 				"page":      float64(1),
 			},
 			expectError: false,
@@ -403,7 +403,7 @@ func Test_ListPullRequests(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := listPullRequests(client, translations.NullTranslationHelper)
+			_, handler := ListPullRequests(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -441,7 +441,7 @@ func Test_ListPullRequests(t *testing.T) {
 func Test_MergePullRequest(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := mergePullRequest(mockClient, translations.NullTranslationHelper)
+	tool, _ := MergePullRequest(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "merge_pull_request", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -518,7 +518,7 @@ func Test_MergePullRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := mergePullRequest(client, translations.NullTranslationHelper)
+			_, handler := MergePullRequest(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -552,7 +552,7 @@ func Test_MergePullRequest(t *testing.T) {
 func Test_GetPullRequestFiles(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := getPullRequestFiles(mockClient, translations.NullTranslationHelper)
+	tool, _ := GetPullRequestFiles(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "get_pull_request_files", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -630,7 +630,7 @@ func Test_GetPullRequestFiles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := getPullRequestFiles(client, translations.NullTranslationHelper)
+			_, handler := GetPullRequestFiles(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -668,7 +668,7 @@ func Test_GetPullRequestFiles(t *testing.T) {
 func Test_GetPullRequestStatus(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := getPullRequestStatus(mockClient, translations.NullTranslationHelper)
+	tool, _ := GetPullRequestStatus(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "get_pull_request_status", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -790,7 +790,7 @@ func Test_GetPullRequestStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := getPullRequestStatus(client, translations.NullTranslationHelper)
+			_, handler := GetPullRequestStatus(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -829,7 +829,7 @@ func Test_GetPullRequestStatus(t *testing.T) {
 func Test_UpdatePullRequestBranch(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := updatePullRequestBranch(mockClient, translations.NullTranslationHelper)
+	tool, _ := UpdatePullRequestBranch(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "update_pull_request_branch", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -917,7 +917,7 @@ func Test_UpdatePullRequestBranch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := updatePullRequestBranch(client, translations.NullTranslationHelper)
+			_, handler := UpdatePullRequestBranch(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -945,7 +945,7 @@ func Test_UpdatePullRequestBranch(t *testing.T) {
 func Test_GetPullRequestComments(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := getPullRequestComments(mockClient, translations.NullTranslationHelper)
+	tool, _ := GetPullRequestComments(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "get_pull_request_comments", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1033,7 +1033,7 @@ func Test_GetPullRequestComments(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := getPullRequestComments(client, translations.NullTranslationHelper)
+			_, handler := GetPullRequestComments(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -1072,7 +1072,7 @@ func Test_GetPullRequestComments(t *testing.T) {
 func Test_GetPullRequestReviews(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := getPullRequestReviews(mockClient, translations.NullTranslationHelper)
+	tool, _ := GetPullRequestReviews(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "get_pull_request_reviews", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1156,7 +1156,7 @@ func Test_GetPullRequestReviews(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := getPullRequestReviews(client, translations.NullTranslationHelper)
+			_, handler := GetPullRequestReviews(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -1195,7 +1195,7 @@ func Test_GetPullRequestReviews(t *testing.T) {
 func Test_CreatePullRequestReview(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := createPullRequestReview(mockClient, translations.NullTranslationHelper)
+	tool, _ := CreatePullRequestReview(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "create_pull_request_review", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1349,7 +1349,152 @@ func Test_CreatePullRequestReview(t *testing.T) {
 				},
 			},
 			expectError:    false,
-			expectedErrMsg: "each comment must have a position",
+			expectedErrMsg: "each comment must have either position or line",
+		},
+		{
+			name: "successful review creation with line parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsReviewsByOwnerByRepoByPullNumber,
+					expectRequestBody(t, map[string]interface{}{
+						"body":  "Code review comments",
+						"event": "COMMENT",
+						"comments": []interface{}{
+							map[string]interface{}{
+								"path": "main.go",
+								"line": float64(42),
+								"body": "Consider adding a comment here",
+							},
+						},
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockReview),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"body":       "Code review comments",
+				"event":      "COMMENT",
+				"comments": []interface{}{
+					map[string]interface{}{
+						"path": "main.go",
+						"line": float64(42),
+						"body": "Consider adding a comment here",
+					},
+				},
+			},
+			expectError:    false,
+			expectedReview: mockReview,
+		},
+		{
+			name: "successful review creation with multi-line comment",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsReviewsByOwnerByRepoByPullNumber,
+					expectRequestBody(t, map[string]interface{}{
+						"body":  "Multi-line comment review",
+						"event": "COMMENT",
+						"comments": []interface{}{
+							map[string]interface{}{
+								"path":       "main.go",
+								"start_line": float64(10),
+								"line":       float64(15),
+								"side":       "RIGHT",
+								"body":       "This entire block needs refactoring",
+							},
+						},
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockReview),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"body":       "Multi-line comment review",
+				"event":      "COMMENT",
+				"comments": []interface{}{
+					map[string]interface{}{
+						"path":       "main.go",
+						"start_line": float64(10),
+						"line":       float64(15),
+						"side":       "RIGHT",
+						"body":       "This entire block needs refactoring",
+					},
+				},
+			},
+			expectError:    false,
+			expectedReview: mockReview,
+		},
+		{
+			name:         "invalid multi-line comment - missing line parameter",
+			mockedClient: mock.NewMockedHTTPClient(),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"event":      "COMMENT",
+				"comments": []interface{}{
+					map[string]interface{}{
+						"path":       "main.go",
+						"start_line": float64(10),
+						// missing line parameter
+						"body": "Invalid multi-line comment",
+					},
+				},
+			},
+			expectError:    false,
+			expectedErrMsg: "each comment must have either position or line", // Updated error message
+		},
+		{
+			name: "invalid comment - mixing position with line parameters",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.PostReposPullsReviewsByOwnerByRepoByPullNumber,
+					mockReview,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"event":      "COMMENT",
+				"comments": []interface{}{
+					map[string]interface{}{
+						"path":     "main.go",
+						"position": float64(5),
+						"line":     float64(42),
+						"body":     "Invalid parameter combination",
+					},
+				},
+			},
+			expectError:    false,
+			expectedErrMsg: "position cannot be combined with line, side, start_line, or start_side",
+		},
+		{
+			name:         "invalid multi-line comment - missing side parameter",
+			mockedClient: mock.NewMockedHTTPClient(),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"event":      "COMMENT",
+				"comments": []interface{}{
+					map[string]interface{}{
+						"path":       "main.go",
+						"start_line": float64(10),
+						"line":       float64(15),
+						"start_side": "LEFT",
+						// missing side parameter
+						"body": "Invalid multi-line comment",
+					},
+				},
+			},
+			expectError:    false,
+			expectedErrMsg: "if start_side is provided, side must also be provided",
 		},
 		{
 			name: "review creation fails",
@@ -1378,7 +1523,7 @@ func Test_CreatePullRequestReview(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := createPullRequestReview(client, translations.NullTranslationHelper)
+			_, handler := CreatePullRequestReview(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -1421,7 +1566,7 @@ func Test_CreatePullRequestReview(t *testing.T) {
 func Test_CreatePullRequest(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := createPullRequest(mockClient, translations.NullTranslationHelper)
+	tool, _ := CreatePullRequest(mockClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "create_pull_request", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1533,7 +1678,7 @@ func Test_CreatePullRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := createPullRequest(client, translations.NullTranslationHelper)
+			_, handler := CreatePullRequest(client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)

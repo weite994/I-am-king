@@ -7,15 +7,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aws/smithy-go/ptr"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// listCommits creates a tool to get commits of a branch in a repository.
-func listCommits(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// ListCommits creates a tool to get commits of a branch in a repository.
+func ListCommits(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_commits",
 			mcp.WithDescription(t("TOOL_LIST_COMMITS_DESCRIPTION", "Get list of commits of a branch in a GitHub repository")),
 			mcp.WithString("owner",
@@ -29,12 +28,7 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			mcp.WithString("sha",
 				mcp.Description("Branch name"),
 			),
-			mcp.WithNumber("page",
-				mcp.Description("Page number"),
-			),
-			mcp.WithNumber("perPage",
-				mcp.Description("Number of records per page"),
-			),
+			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := requiredParam[string](request, "owner")
@@ -45,15 +39,11 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			sha, err := optionalParam[string](request, "sha")
+			sha, err := OptionalParam[string](request, "sha")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			page, err := optionalIntParamWithDefault(request, "page", 1)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			perPage, err := optionalIntParamWithDefault(request, "per_page", 30)
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -61,8 +51,8 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 			opts := &github.CommitsListOptions{
 				SHA: sha,
 				ListOptions: github.ListOptions{
-					Page:    page,
-					PerPage: perPage,
+					Page:    pagination.page,
+					PerPage: pagination.perPage,
 				},
 			}
 
@@ -89,8 +79,8 @@ func listCommits(client *github.Client, t translations.TranslationHelperFunc) (t
 		}
 }
 
-// createOrUpdateFile creates a tool to create or update a file in a GitHub repository.
-func createOrUpdateFile(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// CreateOrUpdateFile creates a tool to create or update a file in a GitHub repository.
+func CreateOrUpdateFile(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_or_update_file",
 			mcp.WithDescription(t("TOOL_CREATE_OR_UPDATE_FILE_DESCRIPTION", "Create or update a single file in a GitHub repository")),
 			mcp.WithString("owner",
@@ -152,18 +142,18 @@ func createOrUpdateFile(client *github.Client, t translations.TranslationHelperF
 
 			// Create the file options
 			opts := &github.RepositoryContentFileOptions{
-				Message: ptr.String(message),
+				Message: github.Ptr(message),
 				Content: contentBytes,
-				Branch:  ptr.String(branch),
+				Branch:  github.Ptr(branch),
 			}
 
 			// If SHA is provided, set it (for updates)
-			sha, err := optionalParam[string](request, "sha")
+			sha, err := OptionalParam[string](request, "sha")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			if sha != "" {
-				opts.SHA = ptr.String(sha)
+				opts.SHA = github.Ptr(sha)
 			}
 
 			// Create or update the file
@@ -190,8 +180,8 @@ func createOrUpdateFile(client *github.Client, t translations.TranslationHelperF
 		}
 }
 
-// createRepository creates a tool to create a new GitHub repository.
-func createRepository(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// CreateRepository creates a tool to create a new GitHub repository.
+func CreateRepository(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_repository",
 			mcp.WithDescription(t("TOOL_CREATE_REPOSITORY_DESCRIPTION", "Create a new GitHub repository in your account")),
 			mcp.WithString("name",
@@ -213,15 +203,15 @@ func createRepository(client *github.Client, t translations.TranslationHelperFun
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			description, err := optionalParam[string](request, "description")
+			description, err := OptionalParam[string](request, "description")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			private, err := optionalParam[bool](request, "private")
+			private, err := OptionalParam[bool](request, "private")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			autoInit, err := optionalParam[bool](request, "autoInit")
+			autoInit, err := OptionalParam[bool](request, "autoInit")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -256,8 +246,8 @@ func createRepository(client *github.Client, t translations.TranslationHelperFun
 		}
 }
 
-// getFileContents creates a tool to get the contents of a file or directory from a GitHub repository.
-func getFileContents(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// GetFileContents creates a tool to get the contents of a file or directory from a GitHub repository.
+func GetFileContents(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_file_contents",
 			mcp.WithDescription(t("TOOL_GET_FILE_CONTENTS_DESCRIPTION", "Get the contents of a file or directory from a GitHub repository")),
 			mcp.WithString("owner",
@@ -289,7 +279,7 @@ func getFileContents(client *github.Client, t translations.TranslationHelperFunc
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			branch, err := optionalParam[string](request, "branch")
+			branch, err := OptionalParam[string](request, "branch")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -325,8 +315,8 @@ func getFileContents(client *github.Client, t translations.TranslationHelperFunc
 		}
 }
 
-// forkRepository creates a tool to fork a repository.
-func forkRepository(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// ForkRepository creates a tool to fork a repository.
+func ForkRepository(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("fork_repository",
 			mcp.WithDescription(t("TOOL_FORK_REPOSITORY_DESCRIPTION", "Fork a GitHub repository to your account or specified organization")),
 			mcp.WithString("owner",
@@ -350,7 +340,7 @@ func forkRepository(client *github.Client, t translations.TranslationHelperFunc)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			org, err := optionalParam[string](request, "organization")
+			org, err := OptionalParam[string](request, "organization")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -388,8 +378,8 @@ func forkRepository(client *github.Client, t translations.TranslationHelperFunc)
 		}
 }
 
-// createBranch creates a tool to create a new branch.
-func createBranch(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// CreateBranch creates a tool to create a new branch.
+func CreateBranch(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_branch",
 			mcp.WithDescription(t("TOOL_CREATE_BRANCH_DESCRIPTION", "Create a new branch in a GitHub repository")),
 			mcp.WithString("owner",
@@ -421,7 +411,7 @@ func createBranch(client *github.Client, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			fromBranch, err := optionalParam[string](request, "from_branch")
+			fromBranch, err := OptionalParam[string](request, "from_branch")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -468,8 +458,8 @@ func createBranch(client *github.Client, t translations.TranslationHelperFunc) (
 		}
 }
 
-// pushFiles creates a tool to push multiple files in a single commit to a GitHub repository.
-func pushFiles(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+// PushFiles creates a tool to push multiple files in a single commit to a GitHub repository.
+func PushFiles(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("push_files",
 			mcp.WithDescription(t("TOOL_PUSH_FILES_DESCRIPTION", "Push multiple files to a GitHub repository in a single commit")),
 			mcp.WithString("owner",
