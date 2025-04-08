@@ -558,7 +558,7 @@ func AddPullRequestReviewComment(client *github.Client, t translations.Translati
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			pullNumber, err := requiredInt(request, "pull_number")
+			pullNumber, err := RequiredInt(request, "pull_number")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -586,14 +586,13 @@ func AddPullRequestReviewComment(client *github.Client, t translations.Translati
 				comment.InReplyTo = github.Ptr(int64(replyToFloat))
 			} else {
 				// Handle subject_type parameter
-				subjectType, err := optionalParam[string](request, "subject_type")
+				subjectType, err := OptionalParam[string](request, "subject_type")
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
-				if subjectType == "file" {
-					// When commenting on a file, no line/position fields are needed
-				} else {
+				if subjectType != "file" {
 					// Handle line or position-based comments
+					// No action needed if subjectType is "file"
 					line, lineExists := request.Params.Arguments["line"].(float64)
 					startLine, startLineExists := request.Params.Arguments["start_line"].(float64)
 					side, sideExists := request.Params.Arguments["side"].(string)
@@ -684,11 +683,11 @@ func ReplyToPullRequestReviewComment(client *github.Client, t translations.Trans
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			pullNumber, err := requiredInt(request, "pull_number")
+			pullNumber, err := RequiredInt(request, "pull_number")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			commentID, err := requiredInt(request, "comment_id")
+			commentID, err := RequiredInt(request, "comment_id")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

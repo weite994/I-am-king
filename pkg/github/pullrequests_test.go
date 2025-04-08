@@ -1575,7 +1575,11 @@ func Test_AddPullRequestReviewComment(t *testing.T) {
 					mock.PostReposPullsCommentsByOwnerByRepoByPullNumber,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusCreated)
-						json.NewEncoder(w).Encode(mockComment)
+						err := json.NewEncoder(w).Encode(mockComment)
+						if err != nil {
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+							return
+						}
 					}),
 				),
 			),
@@ -1686,7 +1690,11 @@ func Test_ReplyToPullRequestReviewComment(t *testing.T) {
 					mock.PostReposPullsCommentsByOwnerByRepoByPullNumber,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusCreated)
-						json.NewEncoder(w).Encode(mockReply)
+						err := json.NewEncoder(w).Encode(mockReply)
+						if err != nil {
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+							return
+						}
 					}),
 				),
 			),
@@ -1728,7 +1736,7 @@ func Test_ReplyToPullRequestReviewComment(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := github.NewClient(tc.mockedClient)
 
-			_, handler := replyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+			_, handler := ReplyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
 
 			request := createMCPRequest(tc.requestArgs)
 
