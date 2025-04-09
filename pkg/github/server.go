@@ -60,6 +60,7 @@ func NewServer(client *github.Client, version string, readOnly bool, t translati
 	s.AddTool(SearchRepositories(client, t))
 	s.AddTool(GetFileContents(client, t))
 	s.AddTool(ListCommits(client, t))
+	s.AddTool(ListBranches(client, t))
 	if !readOnly {
 		s.AddTool(CreateOrUpdateFile(client, t))
 		s.AddTool(CreateRepository(client, t))
