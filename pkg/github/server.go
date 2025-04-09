@@ -232,12 +232,12 @@ func OptionalIntParamWithDefault(r mcp.CallToolRequest, p string, d int) (int, e
 // 1. Checks if the parameter is present in the request, if not, it returns its zero-value
 // 2. If it is present, iterates the elements and checks each is a string
 func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error) {
-    // Check if the parameter is present in the request
+	// Check if the parameter is present in the request
 	if _, ok := r.Params.Arguments[p]; !ok {
 		return []string{}, nil
 	}
 
-    switch v := r.Params.Arguments[p].(type) {
+	switch v := r.Params.Arguments[p].(type) {
 	case nil:
 		return []string{}, nil
 	case []string:
