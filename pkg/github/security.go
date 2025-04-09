@@ -129,7 +129,9 @@ func UpdateSecuritySettings(client *github.Client, t translations.TranslationHel
 
 		// Merge the new settings with existing ones
 		if securitySettings.AdvancedSecurity != nil {
-			repository.SecurityAndAnalysis.AdvancedSecurity = securitySettings.AdvancedSecurity
+			if repository.SecurityAndAnalysis.AdvancedSecurity == nil || repository.SecurityAndAnalysis.AdvancedSecurity.Status == "" {
+				repository.SecurityAndAnalysis.AdvancedSecurity = securitySettings.AdvancedSecurity
+			}
 		}
 		if securitySettings.SecretScanning != nil {
 			repository.SecurityAndAnalysis.SecretScanning = securitySettings.SecretScanning
