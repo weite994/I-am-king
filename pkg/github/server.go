@@ -31,53 +31,53 @@ func NewServer(client *github.Client, version string, readOnly bool, t translati
 	s.AddResourceTemplate(getRepositoryResourcePrContent(client, t))
 
 	// Add GitHub tools - Issues
-	s.AddTool(getIssue(client, t))
-	s.AddTool(searchIssues(client, t))
-	s.AddTool(listIssues(client, t))
-	s.AddTool(getIssueComments(client, t))
+	s.AddTool(GetIssue(client, t))
+	s.AddTool(SearchIssues(client, t))
+	s.AddTool(ListIssues(client, t))
+	s.AddTool(GetIssueComments(client, t))
 	if !readOnly {
-		s.AddTool(createIssue(client, t))
-		s.AddTool(addIssueComment(client, t))
-		s.AddTool(updateIssue(client, t))
+		s.AddTool(CreateIssue(client, t))
+		s.AddTool(AddIssueComment(client, t))
+		s.AddTool(UpdateIssue(client, t))
 	}
 
 	// Add GitHub tools - Pull Requests
-	s.AddTool(getPullRequest(client, t))
-	s.AddTool(listPullRequests(client, t))
-	s.AddTool(getPullRequestFiles(client, t))
-	s.AddTool(getPullRequestStatus(client, t))
-	s.AddTool(getPullRequestComments(client, t))
-	s.AddTool(getPullRequestReviews(client, t))
+	s.AddTool(GetPullRequest(client, t))
+	s.AddTool(ListPullRequests(client, t))
+	s.AddTool(GetPullRequestFiles(client, t))
+	s.AddTool(GetPullRequestStatus(client, t))
+	s.AddTool(GetPullRequestComments(client, t))
+	s.AddTool(GetPullRequestReviews(client, t))
 	if !readOnly {
-		s.AddTool(mergePullRequest(client, t))
-		s.AddTool(updatePullRequestBranch(client, t))
-		s.AddTool(createPullRequestReview(client, t))
-		s.AddTool(createPullRequest(client, t))
+		s.AddTool(MergePullRequest(client, t))
+		s.AddTool(UpdatePullRequestBranch(client, t))
+		s.AddTool(CreatePullRequestReview(client, t))
+		s.AddTool(CreatePullRequest(client, t))
 	}
 
 	// Add GitHub tools - Repositories
-	s.AddTool(searchRepositories(client, t))
-	s.AddTool(getFileContents(client, t))
-	s.AddTool(listCommits(client, t))
-	s.AddTool(listBranches(client, t))
+	s.AddTool(SearchRepositories(client, t))
+	s.AddTool(GetFileContents(client, t))
+	s.AddTool(ListCommits(client, t))
+	s.AddTool(ListBranches(client, t))
 	if !readOnly {
-		s.AddTool(createOrUpdateFile(client, t))
-		s.AddTool(createRepository(client, t))
-		s.AddTool(forkRepository(client, t))
-		s.AddTool(createBranch(client, t))
-		s.AddTool(pushFiles(client, t))
+		s.AddTool(CreateOrUpdateFile(client, t))
+		s.AddTool(CreateRepository(client, t))
+		s.AddTool(ForkRepository(client, t))
+		s.AddTool(CreateBranch(client, t))
+		s.AddTool(PushFiles(client, t))
 	}
 
 	// Add GitHub tools - Search
-	s.AddTool(searchCode(client, t))
-	s.AddTool(searchUsers(client, t))
+	s.AddTool(SearchCode(client, t))
+	s.AddTool(SearchUsers(client, t))
 
 	// Add GitHub tools - Users
-	s.AddTool(getMe(client, t))
+	s.AddTool(GetMe(client, t))
 
 	// Add GitHub tools - Code Scanning
-	s.AddTool(getCodeScanningAlert(client, t))
-	s.AddTool(listCodeScanningAlerts(client, t))
+	s.AddTool(GetCodeScanningAlert(client, t))
+	s.AddTool(ListCodeScanningAlerts(client, t))
 	return s
 }
 

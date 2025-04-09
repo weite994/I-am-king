@@ -19,35 +19,35 @@ automation and interaction capabilities for developers and tools.
    The MCP server requires specific permissions for different tools. Here are the required permissions for each tool:
 
    ### User Tools
-   - **get_me** - Get details of the authenticated user
+   - **GetMe** - Get details of the authenticated user
      - Required permissions: `read:user`
 
    ### Issues Tools
-   - **get_issue**, **get_issue_comments**, **list_issues** - Read issue data
+   - **GetIssue**, **GetIssueComments**, **ListIssues** - Read issue data
      - Required permissions: `repo` (for private repos) or no permissions (for public repos)
    
-   - **create_issue**, **add_issue_comment**, **update_issue** - Create/modify issues
+   - **CreateIssue**, **AddIssueComment**, **UpdateIssue** - Create/modify issues
      - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
 
    ### Pull Request Tools
-   - **get_pull_request**, **list_pull_requests**, **get_pull_request_files**, **get_pull_request_status**, **get_pull_request_comments**, **get_pull_request_reviews** - Read PR data
+   - **GetPullRequest**, **ListPullRequests**, **GetPullRequestFiles**, **GetPullRequestStatus**, **GetPullRequestComments**, **GetPullRequestReviews** - Read PR data
      - Required permissions: `repo` (for private repos) or no permissions (for public repos)
    
-   - **merge_pull_request**, **update_pull_request_branch**, **create_pull_request_review**, **create_pull_request** - Create/modify PRs
+   - **MergePullRequest**, **UpdatePullRequestBranch**, **CreatePullRequestReview**, **CreatePullRequest** - Create/modify PRs
      - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
 
    ### Repository Tools
-   - **search_repositories** - Search repositories
+   - **SearchRepositories** - Search repositories
      - Required permissions: No permissions required for public repos, `repo` for private repos
    
-   - **get_file_contents**, **list_commits**, **list_branches** - Read repository data
+   - **GetFileContents**, **ListCommits**, **ListBranches** - Read repository data
      - Required permissions: `repo` (for private repos) or no permissions (for public repos)
    
-   - **create_or_update_file**, **push_files**, **create_repository** - Create/modify repository content
+   - **CreateOrUpdateFile**, **PushFiles**, **CreateRepository**, **CreateBranch** - Create/modify repository content
      - Required permissions: `repo` (for private repos) or `public_repo` (for public repos)
 
    ### Search Tools
-   - **search_issues** - Search issues and pull requests
+   - **SearchIssues**, **SearchCode**, **SearchUsers** - Search GitHub data
      - Required permissions: No permissions required for public data, `repo` for private data
 
 ## Installation
