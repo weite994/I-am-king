@@ -471,6 +471,7 @@ func Test_CreateIssue(t *testing.T) {
 				"owner": "owner",
 				"repo":  "repo",
 				"title": "Minimal Issue",
+				"assignees": nil,	// Expect no failure with nil optional value.
 			},
 			expectError: false,
 			expectedIssue: &github.Issue{
