@@ -78,6 +78,18 @@ func NewServer(client *github.Client, version string, readOnly bool, t translati
 	// Add GitHub tools - Code Scanning
 	s.AddTool(GetCodeScanningAlert(client, t))
 	s.AddTool(ListCodeScanningAlerts(client, t))
+
+	// Add GitHub tools - Security
+	s.AddTool(GetSecuritySettings(client, t))
+	s.AddTool(GetDependabotSecurityUpdatesStatus(client, t))
+	if !readOnly {
+		s.AddTool(UpdateSecuritySettings(client, t))
+		// Dependabot security update tools are currently disabled due to GitHub API behavior discrepancy
+		// See: https://github.com/github/github-mcp-server/issues/176
+		// s.AddTool(EnableDependabotSecurityUpdates(client, t))
+		// s.AddTool(DisableDependabotSecurityUpdates(client, t))
+	}
+
 	return s
 }
 
