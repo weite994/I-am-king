@@ -15,7 +15,8 @@ automation and interaction capabilities for developers and tools.
 ## Prerequisites
 
 1. To run the server in a container, you will need to have [Docker](https://www.docker.com/) installed.
-2. [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
+2. Once Docker is installed, you will also need to ensure Docker is running.
+3. Lastly you will need to [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
 The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
 
 
@@ -287,6 +288,17 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `draft`: Create as draft PR (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
 
+- **update_pull_request** - Update an existing pull request in a GitHub repository
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number to update (number, required)
+  - `title`: New title (string, optional)
+  - `body`: New description (string, optional)
+  - `state`: New state ('open' or 'closed') (string, optional)
+  - `base`: New base branch name (string, optional)
+  - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
+
 ### Repositories
 
 - **create_or_update_file** - Create or update a single file in a repository
@@ -441,6 +453,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
     - `repo`: Repository name (string, required)
     - `prNumber`: Pull request number (string, required)
     - `path`: File or directory path (string, optional)
+
+## Library Usage
+
+The exported Go API of this module should currently be considered unstable, and subject to breaking changes. In the future, we may offer stability; please file an issue if there is a use case where this would be valuable.
 
 ## License
 
