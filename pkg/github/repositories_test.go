@@ -1310,12 +1310,12 @@ func Test_ListBranches(t *testing.T) {
 	// Setup mock branches for success case
 	mockBranches := []*github.Branch{
 		{
-			Name:   github.String("main"),
-			Commit: &github.RepositoryCommit{SHA: github.String("abc123")},
+			Name:   github.Ptr("main"),
+			Commit: &github.RepositoryCommit{SHA: github.Ptr("abc123")},
 		},
 		{
-			Name:   github.String("develop"),
-			Commit: &github.RepositoryCommit{SHA: github.String("def456")},
+			Name:   github.Ptr("develop"),
+			Commit: &github.RepositoryCommit{SHA: github.Ptr("def456")},
 		},
 	}
 
