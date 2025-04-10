@@ -1369,15 +1369,18 @@ func Test_ListBranches(t *testing.T) {
 			// Call handler
 			result, err := handler(context.Background(), request)
 			if tt.wantErr {
-				require.Error(t, err)
+				require.NoError(t, err)
+				textContent := getTextResult(t, result)
 				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
+					assert.Contains(t, textContent.Text, tt.errContains)
 				}
 				return
 			}
 
 			require.NoError(t, err)
+			require.NotNil(t, result)
 			textContent := getTextResult(t, result)
+			require.NotEmpty(t, textContent.Text)
 
 			// Verify response
 			var branches []github.Branch
@@ -1391,8 +1394,10 @@ func Test_ListBranches(t *testing.T) {
 
 	// Verify tool definition
 	assert.Equal(t, "list_branches", tool.Name)
-	assert.Contains(t, tool.InputSchema.Required, "owner")
-	assert.Contains(t, tool.InputSchema.Required, "repo")
-	assert.NotContains(t, tool.InputSchema.Required, "page")
-	assert.NotContains(t, tool.InputSchema.Required, "perPage")
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 }
