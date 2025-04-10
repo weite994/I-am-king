@@ -58,6 +58,7 @@ func NewServer(client *github.Client, version string, readOnly bool, t translati
 	// Add GitHub tools - Repositories
 	s.AddTool(searchRepositories(client, t))
 	s.AddTool(getFileContents(client, t))
+	s.AddTool(getCommit(client, t))
 	s.AddTool(listCommits(client, t))
 	if !readOnly {
 		s.AddTool(createOrUpdateFile(client, t))
