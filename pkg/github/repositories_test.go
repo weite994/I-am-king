@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -1297,42 +1295,37 @@ func Test_PushFiles(t *testing.T) {
 }
 
 func Test_ListBranches(t *testing.T) {
-	// Create a test server
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/repos/owner/repo/branches", r.URL.Path)
-		assert.Equal(t, "GET", r.Method)
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := ListBranches(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
-		// Check query parameters
-		query := r.URL.Query()
-		if page := query.Get("page"); page != "" {
-			assert.Equal(t, "2", page)
-		}
-		if perPage := query.Get("per_page"); perPage != "" {
-			assert.Equal(t, "30", perPage)
-		}
+	assert.Equal(t, "list_branches", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
-		// Return mock branches
-		mockBranches := []github.Branch{
-			{Name: github.String("main")},
-			{Name: github.String("develop")},
-		}
-		mockResponse(t, http.StatusOK, mockBranches)(w, r)
-	}))
-	defer ts.Close()
-
-	// Create a GitHub client using the test server URL
-	client := github.NewClient(nil)
-	client.BaseURL, _ = url.Parse(ts.URL + "/")
-
-	// Create the tool
-	tool, handler := ListBranches(stubGetClientFn(client), translations.NullTranslationHelper)
+	// Setup mock branches for success case
+	mockBranches := []*github.Branch{
+		{
+			Name:   github.String("main"),
+			Commit: &github.RepositoryCommit{SHA: github.String("abc123")},
+		},
+		{
+			Name:   github.String("develop"),
+			Commit: &github.RepositoryCommit{SHA: github.String("def456")},
+		},
+	}
 
 	// Test cases
 	tests := []struct {
-		name        string
-		args        map[string]interface{}
-		wantErr     bool
-		errContains string
+		name          string
+		args          map[string]interface{}
+		mockResponses []mock.MockBackendOption
+		wantErr       bool
+		errContains   string
 	}{
 		{
 			name: "success",
@@ -1340,6 +1333,12 @@ func Test_ListBranches(t *testing.T) {
 				"owner": "owner",
 				"repo":  "repo",
 				"page":  float64(2),
+			},
+			mockResponses: []mock.MockBackendOption{
+				mock.WithRequestMatch(
+					mock.GetReposBranchesByOwnerByRepo,
+					mockBranches,
+				),
 			},
 			wantErr: false,
 		},
@@ -1363,16 +1362,19 @@ func Test_ListBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create mock client
+			mockClient := github.NewClient(mock.NewMockedHTTPClient(tt.mockResponses...))
+			_, handler := ListBranches(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
 			// Create request
 			request := createMCPRequest(tt.args)
 
 			// Call handler
 			result, err := handler(context.Background(), request)
 			if tt.wantErr {
-				require.NoError(t, err)
-				textContent := getTextResult(t, result)
+				require.Error(t, err)
 				if tt.errContains != "" {
-					assert.Contains(t, textContent.Text, tt.errContains)
+					assert.Contains(t, err.Error(), tt.errContains)
 				}
 				return
 			}
@@ -1383,7 +1385,7 @@ func Test_ListBranches(t *testing.T) {
 			require.NotEmpty(t, textContent.Text)
 
 			// Verify response
-			var branches []github.Branch
+			var branches []*github.Branch
 			err = json.Unmarshal([]byte(textContent.Text), &branches)
 			require.NoError(t, err)
 			assert.Len(t, branches, 2)
@@ -1391,13 +1393,4 @@ func Test_ListBranches(t *testing.T) {
 			assert.Equal(t, "develop", *branches[1].Name)
 		})
 	}
-
-	// Verify tool definition
-	assert.Equal(t, "list_branches", tool.Name)
-	assert.NotEmpty(t, tool.Description)
-	assert.Contains(t, tool.InputSchema.Properties, "owner")
-	assert.Contains(t, tool.InputSchema.Properties, "repo")
-	assert.Contains(t, tool.InputSchema.Properties, "page")
-	assert.Contains(t, tool.InputSchema.Properties, "perPage")
-	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 }
