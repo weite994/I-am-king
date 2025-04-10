@@ -1347,16 +1347,18 @@ func Test_ListBranches(t *testing.T) {
 			args: map[string]interface{}{
 				"repo": "repo",
 			},
-			wantErr:     true,
-			errContains: "missing required parameter: owner",
+			mockResponses: []mock.MockBackendOption{},
+			wantErr:       false,
+			errContains:   "missing required parameter: owner",
 		},
 		{
 			name: "missing repo",
 			args: map[string]interface{}{
 				"owner": "owner",
 			},
-			wantErr:     true,
-			errContains: "missing required parameter: repo",
+			mockResponses: []mock.MockBackendOption{},
+			wantErr:       false,
+			errContains:   "missing required parameter: repo",
 		},
 	}
 
@@ -1381,6 +1383,13 @@ func Test_ListBranches(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, result)
+
+			if tt.errContains != "" {
+				textContent := getTextResult(t, result)
+				assert.Contains(t, textContent.Text, tt.errContains)
+				return
+			}
+
 			textContent := getTextResult(t, result)
 			require.NotEmpty(t, textContent.Text)
 
