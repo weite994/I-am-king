@@ -14,8 +14,10 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+type GetClientFn func(context.Context) (*github.Client, error)
+
 // NewServer creates a new GitHub MCP server with the specified GH client and logger.
-func NewServer(client *github.Client, version string, readOnly bool, t translations.TranslationHelperFunc) *server.MCPServer {
+func NewServer(getClient GetClientFn, version string, readOnly bool, t translations.TranslationHelperFunc) *server.MCPServer {
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"github-mcp-server",
@@ -24,66 +26,68 @@ func NewServer(client *github.Client, version string, readOnly bool, t translati
 		server.WithLogging())
 
 	// Add GitHub Resources
-	s.AddResourceTemplate(GetRepositoryResourceContent(client, t))
-	s.AddResourceTemplate(GetRepositoryResourceBranchContent(client, t))
-	s.AddResourceTemplate(GetRepositoryResourceCommitContent(client, t))
-	s.AddResourceTemplate(GetRepositoryResourceTagContent(client, t))
-	s.AddResourceTemplate(GetRepositoryResourcePrContent(client, t))
+	s.AddResourceTemplate(GetRepositoryResourceContent(getClient, t))
+	s.AddResourceTemplate(GetRepositoryResourceBranchContent(getClient, t))
+	s.AddResourceTemplate(GetRepositoryResourceCommitContent(getClient, t))
+	s.AddResourceTemplate(GetRepositoryResourceTagContent(getClient, t))
+	s.AddResourceTemplate(GetRepositoryResourcePrContent(getClient, t))
 
 	// Add GitHub tools - Issues
-	s.AddTool(GetIssue(client, t))
-	s.AddTool(SearchIssues(client, t))
-	s.AddTool(ListIssues(client, t))
-	s.AddTool(GetIssueComments(client, t))
+	s.AddTool(GetIssue(getClient, t))
+	s.AddTool(SearchIssues(getClient, t))
+	s.AddTool(ListIssues(getClient, t))
+	s.AddTool(GetIssueComments(getClient, t))
 	if !readOnly {
-		s.AddTool(CreateIssue(client, t))
-		s.AddTool(AddIssueComment(client, t))
-		s.AddTool(UpdateIssue(client, t))
+		s.AddTool(CreateIssue(getClient, t))
+		s.AddTool(AddIssueComment(getClient, t))
+		s.AddTool(UpdateIssue(getClient, t))
 	}
 
 	// Add GitHub tools - Pull Requests
-	s.AddTool(GetPullRequest(client, t))
-	s.AddTool(ListPullRequests(client, t))
-	s.AddTool(GetPullRequestFiles(client, t))
-	s.AddTool(GetPullRequestStatus(client, t))
-	s.AddTool(GetPullRequestComments(client, t))
-	s.AddTool(GetPullRequestReviews(client, t))
+	s.AddTool(GetPullRequest(getClient, t))
+	s.AddTool(ListPullRequests(getClient, t))
+	s.AddTool(GetPullRequestFiles(getClient, t))
+	s.AddTool(GetPullRequestStatus(getClient, t))
+	s.AddTool(GetPullRequestComments(getClient, t))
+	s.AddTool(GetPullRequestReviews(getClient, t))
 	if !readOnly {
 		s.AddTool(MergePullRequest(client, t))
 		s.AddTool(UpdatePullRequestBranch(client, t))
 		s.AddTool(CreatePullRequestReview(client, t))
 		s.AddTool(CreatePullRequest(client, t))
+		s.AddTool(UpdatePullRequest(getClient, t))
 		s.AddTool(AddPullRequestReviewComment(client, t))
 		s.AddTool(ReplyToPullRequestReviewComment(client, t))
 	}
 
 	// Add GitHub tools - Repositories
-	s.AddTool(SearchRepositories(client, t))
-	s.AddTool(GetFileContents(client, t))
-	s.AddTool(ListCommits(client, t))
+	s.AddTool(SearchRepositories(getClient, t))
+	s.AddTool(GetFileContents(getClient, t))
+	s.AddTool(GetCommit(getClient, t))
+	s.AddTool(ListCommits(getClient, t))
 	if !readOnly {
-		s.AddTool(CreateOrUpdateFile(client, t))
-		s.AddTool(CreateRepository(client, t))
-		s.AddTool(ForkRepository(client, t))
-		s.AddTool(CreateBranch(client, t))
-		s.AddTool(PushFiles(client, t))
+		s.AddTool(CreateOrUpdateFile(getClient, t))
+		s.AddTool(CreateRepository(getClient, t))
+		s.AddTool(ForkRepository(getClient, t))
+		s.AddTool(CreateBranch(getClient, t))
+		s.AddTool(PushFiles(getClient, t))
 	}
 
 	// Add GitHub tools - Search
-	s.AddTool(SearchCode(client, t))
-	s.AddTool(SearchUsers(client, t))
+	s.AddTool(SearchCode(getClient, t))
+	s.AddTool(SearchUsers(getClient, t))
 
 	// Add GitHub tools - Users
-	s.AddTool(GetMe(client, t))
+	s.AddTool(GetMe(getClient, t))
 
 	// Add GitHub tools - Code Scanning
-	s.AddTool(GetCodeScanningAlert(client, t))
-	s.AddTool(ListCodeScanningAlerts(client, t))
+	s.AddTool(GetCodeScanningAlert(getClient, t))
+	s.AddTool(ListCodeScanningAlerts(getClient, t))
 	return s
 }
 
 // GetMe creates a tool to get details of the authenticated user.
-func GetMe(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_me",
 			mcp.WithDescription(t("TOOL_GET_ME_DESCRIPTION", "Get details of the authenticated GitHub user. Use this when a request include \"me\", \"my\"...")),
 			mcp.WithString("reason",
@@ -91,6 +95,10 @@ func GetMe(client *github.Client, t translations.TranslationHelperFunc) (tool mc
 			),
 		),
 		func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
 			user, resp, err := client.Users.Get(ctx, "")
 			if err != nil {
 				return nil, fmt.Errorf("failed to get user: %w", err)
@@ -112,6 +120,30 @@ func GetMe(client *github.Client, t translations.TranslationHelperFunc) (tool mc
 
 			return mcp.NewToolResultText(string(r)), nil
 		}
+}
+
+// OptionalParamOK is a helper function that can be used to fetch a requested parameter from the request.
+// It returns the value, a boolean indicating if the parameter was present, and an error if the type is wrong.
+func OptionalParamOK[T any](r mcp.CallToolRequest, p string) (value T, ok bool, err error) {
+	// Check if the parameter is present in the request
+	val, exists := r.Params.Arguments[p]
+	if !exists {
+		// Not present, return zero value, false, no error
+		return
+	}
+
+	// Check if the parameter is of the expected type
+	value, ok = val.(T)
+	if !ok {
+		// Present but wrong type
+		err = fmt.Errorf("parameter %s is not of type %T, is %T", p, value, val)
+		ok = true // Set ok to true because the parameter *was* present, even if wrong type
+		return
+	}
+
+	// Present and correct type
+	ok = true
+	return
 }
 
 // isAcceptedError checks if the error is an accepted error.
@@ -215,6 +247,8 @@ func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error)
 	}
 
 	switch v := r.Params.Arguments[p].(type) {
+	case nil:
+		return []string{}, nil
 	case []string:
 		return v, nil
 	case []any:
