@@ -112,7 +112,7 @@ The MCP servers from VS Code and Claude needs to be adjusted respectively:
 +  "stdio"
   ],
   "env": {
-   "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+   "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token} OR <YOUR_TOKEN>"
   }
 }
 ```
