@@ -92,9 +92,30 @@ More about using MCP server tools in VS Code's [agent mode documentation](https:
 ### Build from source
 
 If you don't have Docker, you can use `go` to build the binary in the
-`cmd/github-mcp-server` directory, and use the `github-mcp-server stdio`
-command with the `GITHUB_PERSONAL_ACCESS_TOKEN` environment variable set to
-your token.
+`cmd/github-mcp-server` directory:
+```
+GOTOOLCHAIN=auto go install github.com/github/github-mcp-server/cmd/github-mcp-server@latest
+```
+
+The MCP servers from VS Code and Claude needs to be adjusted respectively:
+```diff
+"github": {
+- "command": "docker",
++ "command": "~/go/bin/github-mcp-server",
+  "args": [
+-  "run",
+-  "-i",
+-  "--rm",
+-  "-e",
+-  "GITHUB_PERSONAL_ACCESS_TOKEN",
+-  "ghcr.io/github/github-mcp-server"
++  "stdio"
+  ],
+  "env": {
+   "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+  }
+}
+```
 
 ## GitHub Enterprise Server
 
