@@ -8,13 +8,8 @@ WORKDIR /build
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add git
 
-# Install dependencies
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=bind,source=go.mod,target=go.mod \
-    --mount=type=bind,source=go.sum,target=go.sum \
-    go mod download
-
 # Build the server
+# go build automatically download required module dependencies to /go/pkg/mod
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=bind,target=. \
