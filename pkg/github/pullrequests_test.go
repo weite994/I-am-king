@@ -1890,7 +1890,6 @@ func Test_AddPullRequestReviewComment(t *testing.T) {
 			assert.NotNil(t, result)
 			require.Len(t, result.Content, 1)
 
-			// Check for error message in the result
 			textContent := getTextResult(t, result)
 			if tc.expectedErrMsg != "" {
 				assert.Contains(t, textContent.Text, tc.expectedErrMsg)
