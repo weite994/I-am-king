@@ -30,134 +30,6 @@ type PullRequestEventContext struct {
 	PollInterval  time.Duration
 }
 
-// handleResponse is a helper function to handle GitHub API responses and properly close the body
-func handleResponse(resp *github.Response, errorPrefix string) error {
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read response body: %w", err)
-		}
-		return fmt.Errorf("%s: %s", errorPrefix, string(body))
-	}
-	return nil
-}
-
-// sendProgressNotification sends a progress notification to the client
-func sendProgressNotification(ctx context.Context, eventCtx *PullRequestEventContext) {
-	if eventCtx.ProgressToken == nil {
-		return
-	}
-
-	// Calculate elapsed time
-	elapsed := time.Since(eventCtx.StartTime)
-
-	// Calculate progress value - increment progress endlessly with no total
-	progress := elapsed.Seconds()
-	var total *float64 = nil
-
-	// Create and send a progress notification with the client's token
-	n := mcp.NewProgressNotification(eventCtx.ProgressToken, progress, total)
-	params := map[string]any{"progressToken": n.Params.ProgressToken, "progress": n.Params.Progress, "total": n.Params.Total}
-
-	if err := eventCtx.MCPServer.SendNotificationToClient(ctx, "notifications/progress", params); err != nil {
-		// Log the error but continue - notification failures shouldn't stop the process
-		fmt.Printf("Failed to send progress notification: %v\n", err)
-	}
-}
-
-// parsePullRequestEventParams parses common parameters for pull request event handlers and sets up the context
-func parsePullRequestEventParams(ctx context.Context, mcpServer *server.MCPServer, client *github.Client, request mcp.CallToolRequest) (*PullRequestEventContext, *mcp.CallToolResult, context.CancelFunc, error) {
-	eventCtx := &PullRequestEventContext{
-		MCPServer:    mcpServer,
-		Client:       client,
-		Ctx:          ctx,
-		Request:      request,
-		PollInterval: 5 * time.Second,
-		StartTime:    time.Now(),
-	}
-
-	// Get required parameters
-	owner, err := requiredParam[string](request, "owner")
-	if err != nil {
-		return nil, mcp.NewToolResultError(err.Error()), nil, nil
-	}
-	eventCtx.Owner = owner
-
-	repo, err := requiredParam[string](request, "repo")
-	if err != nil {
-		return nil, mcp.NewToolResultError(err.Error()), nil, nil
-	}
-	eventCtx.Repo = repo
-
-	pullNumber, err := requiredInt(request, "pullNumber")
-	if err != nil {
-		return nil, mcp.NewToolResultError(err.Error()), nil, nil
-	}
-	eventCtx.PullNumber = pullNumber
-
-	// Create a no-op cancel function
-	var cancel context.CancelFunc = func() {} // No-op cancel function
-
-	// Extract the client's progress token (if any)
-	if request.Params.Meta != nil {
-		eventCtx.ProgressToken = request.Params.Meta.ProgressToken
-	}
-
-	return eventCtx, nil, cancel, nil
-}
-
-// pollForPullRequestEvent runs a polling loop for pull request events with proper context handling
-func pollForPullRequestEvent(eventCtx *PullRequestEventContext, checkFn func() (*mcp.CallToolResult, error)) (*mcp.CallToolResult, error) {
-	// Use a defer to ensure we send a final progress update if needed
-	defer func() {
-		if eventCtx.ProgressToken != nil {
-			sendProgressNotification(eventCtx.Ctx, eventCtx)
-		}
-	}()
-
-	// Enter polling loop
-	for {
-		// Check if context is done (canceled or deadline exceeded)
-		select {
-		case <-eventCtx.Ctx.Done():
-			if eventCtx.Ctx.Err() == context.DeadlineExceeded {
-				// Customize the timeout message based on the tool name
-				var operation string
-				switch {
-				case strings.Contains(eventCtx.Request.Method, "wait_for_pullrequest_checks"):
-					operation = "pull request checks to complete"
-				case strings.Contains(eventCtx.Request.Method, "wait_for_pullrequest_review"):
-					operation = "pull request review"
-				default:
-					operation = "operation"
-				}
-				return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for %s", operation)), nil
-			}
-			return mcp.NewToolResultError(fmt.Sprintf("Operation canceled: %v", eventCtx.Ctx.Err())), nil
-		default:
-			// Continue with current logic
-		}
-
-		// Call the check function
-		result, err := checkFn()
-		// nil will be returned for result AND nil when we have not yet completed
-		// our check
-		if err != nil {
-			return nil, err
-		}
-		if result != nil {
-			return result, nil
-		}
-
-		// Send progress notification
-		sendProgressNotification(eventCtx.Ctx, eventCtx)
-
-		// Sleep before next poll
-		time.Sleep(eventCtx.PollInterval)
-	}
-}
-
 // waitForPullRequestReview creates a tool to wait for a new review to be added to a pull request.
 func waitForPullRequestReview(mcpServer *server.MCPServer, gh *github.Client, gql *githubv4.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("wait_for_pullrequest_review",
@@ -321,4 +193,132 @@ func waitForPullRequestChecks(mcpServer *server.MCPServer, client *github.Client
 				return nil, nil
 			})
 		}
+}
+
+// pollForPullRequestEvent runs a polling loop for pull request events with proper context handling
+func pollForPullRequestEvent(eventCtx *PullRequestEventContext, checkFn func() (*mcp.CallToolResult, error)) (*mcp.CallToolResult, error) {
+	// Use a defer to ensure we send a final progress update if needed
+	defer func() {
+		if eventCtx.ProgressToken != nil {
+			sendProgressNotification(eventCtx.Ctx, eventCtx)
+		}
+	}()
+
+	// Enter polling loop
+	for {
+		// Check if context is done (canceled or deadline exceeded)
+		select {
+		case <-eventCtx.Ctx.Done():
+			if eventCtx.Ctx.Err() == context.DeadlineExceeded {
+				// Customize the timeout message based on the tool name
+				var operation string
+				switch {
+				case strings.Contains(eventCtx.Request.Method, "wait_for_pullrequest_checks"):
+					operation = "pull request checks to complete"
+				case strings.Contains(eventCtx.Request.Method, "wait_for_pullrequest_review"):
+					operation = "pull request review"
+				default:
+					operation = "operation"
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("Timeout waiting for %s", operation)), nil
+			}
+			return mcp.NewToolResultError(fmt.Sprintf("Operation canceled: %v", eventCtx.Ctx.Err())), nil
+		default:
+			// Continue with current logic
+		}
+
+		// Call the check function
+		result, err := checkFn()
+		// nil will be returned for result AND nil when we have not yet completed
+		// our check
+		if err != nil {
+			return nil, err
+		}
+		if result != nil {
+			return result, nil
+		}
+
+		// Send progress notification
+		sendProgressNotification(eventCtx.Ctx, eventCtx)
+
+		// Sleep before next poll
+		time.Sleep(eventCtx.PollInterval)
+	}
+}
+
+// sendProgressNotification sends a progress notification to the client
+func sendProgressNotification(ctx context.Context, eventCtx *PullRequestEventContext) {
+	if eventCtx.ProgressToken == nil {
+		return
+	}
+
+	// Calculate elapsed time
+	elapsed := time.Since(eventCtx.StartTime)
+
+	// Calculate progress value - increment progress endlessly with no total
+	progress := elapsed.Seconds()
+	var total *float64 = nil
+
+	// Create and send a progress notification with the client's token
+	n := mcp.NewProgressNotification(eventCtx.ProgressToken, progress, total)
+	params := map[string]any{"progressToken": n.Params.ProgressToken, "progress": n.Params.Progress, "total": n.Params.Total}
+
+	if err := eventCtx.MCPServer.SendNotificationToClient(ctx, "notifications/progress", params); err != nil {
+		// Log the error but continue - notification failures shouldn't stop the process
+		fmt.Printf("Failed to send progress notification: %v\n", err)
+	}
+}
+
+// parsePullRequestEventParams parses common parameters for pull request event handlers and sets up the context
+func parsePullRequestEventParams(ctx context.Context, mcpServer *server.MCPServer, client *github.Client, request mcp.CallToolRequest) (*PullRequestEventContext, *mcp.CallToolResult, context.CancelFunc, error) {
+	eventCtx := &PullRequestEventContext{
+		MCPServer:    mcpServer,
+		Client:       client,
+		Ctx:          ctx,
+		Request:      request,
+		PollInterval: 5 * time.Second,
+		StartTime:    time.Now(),
+	}
+
+	// Get required parameters
+	owner, err := requiredParam[string](request, "owner")
+	if err != nil {
+		return nil, mcp.NewToolResultError(err.Error()), nil, nil
+	}
+	eventCtx.Owner = owner
+
+	repo, err := requiredParam[string](request, "repo")
+	if err != nil {
+		return nil, mcp.NewToolResultError(err.Error()), nil, nil
+	}
+	eventCtx.Repo = repo
+
+	pullNumber, err := requiredInt(request, "pullNumber")
+	if err != nil {
+		return nil, mcp.NewToolResultError(err.Error()), nil, nil
+	}
+	eventCtx.PullNumber = pullNumber
+
+	// Create a no-op cancel function
+	var cancel context.CancelFunc = func() {} // No-op cancel function
+
+	// Extract the client's progress token (if any)
+	if request.Params.Meta != nil {
+		eventCtx.ProgressToken = request.Params.Meta.ProgressToken
+	}
+
+	return eventCtx, nil, cancel, nil
+}
+
+// handleResponse is a helper function to handle GitHub API responses and properly close the body
+func handleResponse(resp *github.Response, errorPrefix string) error {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
+		return fmt.Errorf("%s: %s", errorPrefix, string(body))
+	}
+	return nil
 }
