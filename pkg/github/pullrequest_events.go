@@ -340,7 +340,6 @@ func pollForPullRequestEvent(eventCtx *PullRequestEventContext, checkFn func() (
 		select {
 		case <-eventCtx.Ctx.Done():
 			if eventCtx.Ctx.Err() == context.DeadlineExceeded {
-				// Customize the timeout message based on the tool name
 				var operation string
 				switch {
 				case strings.Contains(eventCtx.Request.Method, "wait_for_pullrequest_checks"):

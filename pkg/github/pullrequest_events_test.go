@@ -29,7 +29,6 @@ func Test_WaitForPullRequestChecks(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "pullNumber")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
-	// timeout_seconds parameter has been removed
 
 	// Setup mock PR for successful PR fetch
 	mockPR := &github.PullRequest{
