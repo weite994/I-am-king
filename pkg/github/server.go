@@ -49,8 +49,8 @@ func NewServer(gh *github.Client, gql *githubv4.Client, readOnly bool, t transla
 	s.AddTool(getPullRequestStatus(gh, t))
 	s.AddTool(getPullRequestComments(gh, t))
 	s.AddTool(getPullRequestReviews(gh, t))
-	s.AddTool(waitForPRChecks(s, gh, t))
-	s.AddTool(waitForPRReview(s, gh, gql, t))
+	s.AddTool(waitForPullRequestChecks(s, gh, t))
+	s.AddTool(waitForPullRequestReview(s, gh, gql, t))
 
 	if !readOnly {
 		s.AddTool(mergePullRequest(gh, t))

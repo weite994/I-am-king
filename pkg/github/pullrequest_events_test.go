@@ -16,13 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_WaitForPRChecks(t *testing.T) {
+func Test_WaitForPullRequestChecks(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	mockServer := server.NewMCPServer("test", "1.0.0")
-	tool, _ := waitForPRChecks(mockServer, mockClient, translations.NullTranslationHelper)
+	tool, _ := waitForPullRequestChecks(mockServer, mockClient, translations.NullTranslationHelper)
 
-	assert.Equal(t, "wait_for_pr_checks", tool.Name)
+	assert.Equal(t, "wait_for_pullrequest_checks", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
@@ -224,7 +224,7 @@ func Test_WaitForPRChecks(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
 			mockServer := server.NewMCPServer("test", "1.0.0")
-			_, handler := waitForPRChecks(mockServer, client, translations.NullTranslationHelper)
+			_, handler := waitForPullRequestChecks(mockServer, client, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -266,15 +266,15 @@ func Test_WaitForPRChecks(t *testing.T) {
 	}
 }
 
-func Test_WaitForPRReview(t *testing.T) {
+func Test_WaitForPullRequestReview(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	// Create a mock githubv4.Client
 	mockGQLClient := &githubv4.Client{}
 	mockServer := server.NewMCPServer("test", "1.0.0")
-	tool, _ := waitForPRReview(mockServer, mockClient, mockGQLClient, translations.NullTranslationHelper)
+	tool, _ := waitForPullRequestReview(mockServer, mockClient, mockGQLClient, translations.NullTranslationHelper)
 
-	assert.Equal(t, "wait_for_pr_review", tool.Name)
+	assert.Equal(t, "wait_for_pullrequest_review", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
@@ -393,7 +393,7 @@ func Test_WaitForPRReview(t *testing.T) {
 			// Create a mock githubv4.Client for each test case
 			mockGQLClient := &githubv4.Client{}
 			mockServer := server.NewMCPServer("test", "1.0.0")
-			_, handler := waitForPRReview(mockServer, client, mockGQLClient, translations.NullTranslationHelper)
+			_, handler := waitForPullRequestReview(mockServer, client, mockGQLClient, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
