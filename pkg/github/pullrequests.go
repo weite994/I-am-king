@@ -665,12 +665,10 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 				mcp.Description("The text of the review comment"),
 			),
 			mcp.WithString("commit_id",
-				mcp.Required(),
-				mcp.Description("The SHA of the commit to comment on"),
+				mcp.Description("The SHA of the commit to comment on. Required unless in_reply_to is specified."),
 			),
 			mcp.WithString("path",
-				mcp.Required(),
-				mcp.Description("The relative path to the file that necessitates a comment"),
+				mcp.Description("The relative path to the file that necessitates a comment. Required unless in_reply_to is specified."),
 			),
 			mcp.WithString("subject_type",
 				mcp.Description("The level at which the comment is targeted, 'line' or 'file'"),
@@ -691,7 +689,7 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 				mcp.Enum("LEFT", "RIGHT"),
 			),
 			mcp.WithNumber("in_reply_to",
-				mcp.Description("The ID of the review comment to reply to. When specified, all parameters other than body are ignored"),
+				mcp.Description("The ID of the review comment to reply to. When specified, only body is required and all other parameters are ignored"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -711,6 +709,40 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			// Check if this is a reply to an existing comment
+			if replyToFloat, ok := request.Params.Arguments["in_reply_to"].(float64); ok {
+				// Use the specialized method for reply comments due to inconsistency in underlying go-github library: https://github.com/google/go-github/pull/950
+				commentID := int64(replyToFloat)
+				createdReply, resp, err := client.PullRequests.CreateCommentInReplyTo(ctx, owner, repo, pullNumber, body, commentID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to reply to pull request comment: %w", err)
+				}
+				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != http.StatusCreated {
+					respBody, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read response body: %w", err)
+					}
+					return mcp.NewToolResultError(fmt.Sprintf("failed to reply to pull request comment: %s", string(respBody))), nil
+				}
+
+				r, err := json.Marshal(createdReply)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal response: %w", err)
+				}
+
+				return mcp.NewToolResultText(string(r)), nil
+			}
+
+			// This is a new comment, not a reply
+			// Verify required parameters for a new comment
 			commitID, err := requiredParam[string](request, "commit_id")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -726,53 +758,37 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 				Path:     github.Ptr(path),
 			}
 
-			// Check for in_reply_to parameter which takes precedence
-			if replyToFloat, ok := request.Params.Arguments["in_reply_to"].(float64); ok {
-				comment.InReplyTo = github.Ptr(int64(replyToFloat))
-			} else {
-				// Handle subject_type parameter
-				subjectType, err := OptionalParam[string](request, "subject_type")
-				if err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-				if subjectType != "file" {
-					// Handle line or position-based comments
-					// No action needed if subjectType is "file"
-					line, lineExists := request.Params.Arguments["line"].(float64)
-					startLine, startLineExists := request.Params.Arguments["start_line"].(float64)
-					side, sideExists := request.Params.Arguments["side"].(string)
-					startSide, startSideExists := request.Params.Arguments["start_side"].(string)
-
-					if subjectType != "file" && !lineExists {
-						return mcp.NewToolResultError("line parameter is required unless using subject_type:file or in_reply_to"), nil
-					}
-
-					if lineExists {
-						comment.Line = github.Ptr(int(line))
-					}
-					if sideExists {
-						comment.Side = github.Ptr(side)
-					}
-					if startLineExists {
-						comment.StartLine = github.Ptr(int(startLine))
-					}
-					if startSideExists {
-						comment.StartSide = github.Ptr(startSide)
-					}
-
-					// Validate multi-line comment parameters
-					if startLineExists && !lineExists {
-						return mcp.NewToolResultError("if start_line is provided, line must also be provided"), nil
-					}
-					if startSideExists && !sideExists {
-						return mcp.NewToolResultError("if start_side is provided, side must also be provided"), nil
-					}
-				}
-			}
-
-			client, err := getClient(ctx)
+			subjectType, err := OptionalParam[string](request, "subject_type")
 			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if subjectType != "file" {
+				line, lineExists := request.Params.Arguments["line"].(float64)
+				startLine, startLineExists := request.Params.Arguments["start_line"].(float64)
+				side, sideExists := request.Params.Arguments["side"].(string)
+				startSide, startSideExists := request.Params.Arguments["start_side"].(string)
+
+				if !lineExists {
+					return mcp.NewToolResultError("line parameter is required unless using subject_type:file"), nil
+				}
+
+				comment.Line = github.Ptr(int(line))
+				if sideExists {
+					comment.Side = github.Ptr(side)
+				}
+				if startLineExists {
+					comment.StartLine = github.Ptr(int(startLine))
+				}
+				if startSideExists {
+					comment.StartSide = github.Ptr(startSide)
+				}
+
+				if startLineExists && !lineExists {
+					return mcp.NewToolResultError("if start_line is provided, line must also be provided"), nil
+				}
+				if startSideExists && !sideExists {
+					return mcp.NewToolResultError("if start_side is provided, side must also be provided"), nil
+				}
 			}
 
 			createdComment, resp, err := client.PullRequests.CreateComment(ctx, owner, repo, pullNumber, comment)
@@ -782,90 +798,14 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
-				body, err := io.ReadAll(resp.Body)
+				respBody, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read response body: %w", err)
 				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to create pull request comment: %s", string(body))), nil
+				return mcp.NewToolResultError(fmt.Sprintf("failed to create pull request comment: %s", string(respBody))), nil
 			}
 
 			r, err := json.Marshal(createdComment)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal response: %w", err)
-			}
-
-			return mcp.NewToolResultText(string(r)), nil
-		}
-}
-
-// ReplyToPullRequestReviewComment creates a tool to reply to an existing review comment on a pull request.
-func ReplyToPullRequestReviewComment(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool,
-	handler server.ToolHandlerFunc) {
-	return mcp.NewTool("reply_to_pull_request_review_comment",
-			mcp.WithDescription(t("TOOL_REPLY_TO_PULL_REQUEST_REVIEW_COMMENT_DESCRIPTION", "Reply to an existing review comment on a pull request")),
-			mcp.WithString("owner",
-				mcp.Required(),
-				mcp.Description("Repository owner"),
-			),
-			mcp.WithString("repo",
-				mcp.Required(),
-				mcp.Description("Repository name"),
-			),
-			mcp.WithNumber("pull_number",
-				mcp.Required(),
-				mcp.Description("Pull request number"),
-			),
-			mcp.WithNumber("comment_id",
-				mcp.Required(),
-				mcp.Description("The unique identifier of the comment to reply to"),
-			),
-			mcp.WithString("body",
-				mcp.Required(),
-				mcp.Description("The text of the reply comment"),
-			),
-		),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			repo, err := requiredParam[string](request, "repo")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			pullNumber, err := RequiredInt(request, "pull_number")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			commentID, err := RequiredInt(request, "comment_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			body, err := requiredParam[string](request, "body")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
-
-			createdReply, resp, err := client.PullRequests.CreateCommentInReplyTo(ctx, owner, repo, pullNumber, body, int64(commentID))
-			if err != nil {
-				return nil, fmt.Errorf("failed to reply to pull request comment: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if resp.StatusCode != http.StatusCreated {
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, fmt.Errorf("failed to read response body: %w", err)
-				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to reply to pull request comment: %s", string(body))), nil
-			}
-
-			r, err := json.Marshal(createdReply)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
