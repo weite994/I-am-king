@@ -48,12 +48,12 @@ func ListRepositories(client *github.Client, t translations.TranslationHelperFun
 				},
 			}
 
-			repo_type, err := OptionalParam[string](request, "type")
+			repoType, err := OptionalParam[string](request, "type")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			if repo_type != "" {
-				opts.Type = repo_type
+			if repoType != "" {
+				opts.Type = repoType
 			}
 			sort, err := OptionalParam[string](request, "sort")
 			if err != nil {
