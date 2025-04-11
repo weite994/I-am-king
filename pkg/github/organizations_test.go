@@ -16,7 +16,7 @@ import (
 func Test_ListRepositories(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := ListRepositories(mockClient, translations.NullTranslationHelper)
+	tool, _ := ListRepositories(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
 	assert.Equal(t, "list_repositories", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -172,7 +172,7 @@ func Test_ListRepositories(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := ListRepositories(client, translations.NullTranslationHelper)
+			_, handler := ListRepositories(stubGetClientFn(client), translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)

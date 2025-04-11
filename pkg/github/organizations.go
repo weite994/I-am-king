@@ -13,7 +13,7 @@ import (
 )
 
 // ListCommits creates a tool to get commits of a branch in a repository.
-func ListRepositories(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func ListRepositories(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_repositories",
 			mcp.WithDescription(t("TOOL_LIST_REPOSITORIES_DESCRIPTION", "Get list of repositories in a GitHub organization")),
 			mcp.WithString("org",
@@ -68,6 +68,11 @@ func ListRepositories(client *github.Client, t translations.TranslationHelperFun
 			}
 			if direction != "" {
 				opts.Direction = direction
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
 			repos, resp, err := client.Repositories.ListByOrg(ctx, org, opts)
