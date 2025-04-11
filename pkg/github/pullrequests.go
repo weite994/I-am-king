@@ -645,7 +645,7 @@ func GetPullRequestComments(getClient GetClientFn, t translations.TranslationHel
 }
 
 // AddPullRequestReviewComment creates a tool to add a review comment to a pull request.
-func AddPullRequestReviewComment(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func AddPullRequestReviewComment(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("add_pull_request_review_comment",
 			mcp.WithDescription(t("TOOL_ADD_PULL_REQUEST_COMMENT_DESCRIPTION", "Add a review comment to a pull request")),
 			mcp.WithString("owner",
@@ -770,6 +770,11 @@ func AddPullRequestReviewComment(client *github.Client, t translations.Translati
 				}
 			}
 
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
 			createdComment, resp, err := client.PullRequests.CreateComment(ctx, owner, repo, pullNumber, comment)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create pull request comment: %w", err)
@@ -794,7 +799,7 @@ func AddPullRequestReviewComment(client *github.Client, t translations.Translati
 }
 
 // ReplyToPullRequestReviewComment creates a tool to reply to an existing review comment on a pull request.
-func ReplyToPullRequestReviewComment(client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool,
+func ReplyToPullRequestReviewComment(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool,
 	handler server.ToolHandlerFunc) {
 	return mcp.NewTool("reply_to_pull_request_review_comment",
 			mcp.WithDescription(t("TOOL_REPLY_TO_PULL_REQUEST_REVIEW_COMMENT_DESCRIPTION", "Reply to an existing review comment on a pull request")),
@@ -839,6 +844,11 @@ func ReplyToPullRequestReviewComment(client *github.Client, t translations.Trans
 			body, err := requiredParam[string](request, "body")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
 			createdReply, resp, err := client.PullRequests.CreateCommentInReplyTo(ctx, owner, repo, pullNumber, body, int64(commentID))

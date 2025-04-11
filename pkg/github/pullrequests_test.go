@@ -1722,7 +1722,7 @@ func Test_CreatePullRequest(t *testing.T) {
 
 func Test_AddPullRequestReviewComment(t *testing.T) {
 	mockClient := github.NewClient(nil)
-	tool, _ := AddPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+	tool, _ := AddPullRequestReviewComment(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
 	assert.Equal(t, "add_pull_request_review_comment", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1808,7 +1808,7 @@ func Test_AddPullRequestReviewComment(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := github.NewClient(tc.mockedClient)
 
-			_, handler := AddPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+			_, handler := AddPullRequestReviewComment(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
 			request := createMCPRequest(tc.requestArgs)
 
@@ -1840,7 +1840,7 @@ func Test_AddPullRequestReviewComment(t *testing.T) {
 func Test_ReplyToPullRequestReviewComment(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := ReplyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+	tool, _ := ReplyToPullRequestReviewComment(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
 	assert.Equal(t, "reply_to_pull_request_review_comment", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1918,7 +1918,7 @@ func Test_ReplyToPullRequestReviewComment(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := github.NewClient(tc.mockedClient)
 
-			_, handler := ReplyToPullRequestReviewComment(mockClient, translations.NullTranslationHelper)
+			_, handler := ReplyToPullRequestReviewComment(stubGetClientFn(mockClient), translations.NullTranslationHelper)
 
 			request := createMCPRequest(tc.requestArgs)
 
