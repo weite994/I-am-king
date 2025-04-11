@@ -213,6 +213,104 @@ func pollForPullRequestEvent(eventCtx *PullRequestEventContext, checkFn func() (
 	}
 }
 
+// waitForPullRequestReview creates a tool to wait for a new review to be added to a pull request.
+func waitForPullRequestReview(mcpServer *server.MCPServer, gh *github.Client, gql *githubv4.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Registering wait_for_pullrequest_review tool\n")
+	return mcp.NewTool("wait_for_pullrequest_review",
+			mcp.WithDescription(t("TOOL_WAIT_FOR_PULLREQUEST_REVIEW_DESCRIPTION", "Wait for a pull request to be approved, or for additional feedback to be added")),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("pullNumber",
+				mcp.Required(),
+				mcp.Description("Pull request number"),
+			),
+			mcp.WithNumber("last_review_id",
+				mcp.Description("ID of most recent review (wait for newer reviews)"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Tool handler called with method: %s\n", request.Method)
+			// Parse common parameters and set up context
+			eventCtx, result, cancel, err := parsePullRequestEventParams(ctx, mcpServer, gh, request)
+			if result != nil || err != nil {
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Parameter parsing failed: %v\n", err)
+				return result, err
+			}
+			defer cancel()
+			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Parameters parsed successfully\n")
+
+			// Get optional last_review_id parameter
+			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Extracting optional 'last_review_id' parameter\n")
+			lastReviewID, err := optionalIntParam(request, "last_review_id")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: ERROR extracting 'last_review_id' parameter: %v\n", err)
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Last review ID: %d\n", lastReviewID)
+			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Starting polling for new reviews\n")
+
+			// Run the polling loop with a check function for pull request reviews
+			return pollForPullRequestEvent(eventCtx, func() (*mcp.CallToolResult, error) {
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Checking for new reviews\n")
+				// Get the current reviews
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Listing reviews for %s/%s #%d\n", eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber)
+				reviews, resp, err := gh.PullRequests.ListReviews(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber, nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR listing reviews: %v\n", err)
+					return nil, fmt.Errorf("failed to get pull request reviews: %w", err)
+				}
+
+				// Handle the response
+				if err := handleResponse(resp, "failed to get pull request reviews"); err != nil {
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR handling reviews response: %v\n", err)
+					return mcp.NewToolResultError(err.Error()), nil
+				}
+
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found %d reviews, checking for new ones after ID %d\n", len(reviews), lastReviewID)
+				// Check if there are any new reviews
+				var latestReview *github.PullRequestReview
+				for _, review := range reviews {
+					if review.ID == nil {
+						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Skipping review with nil ID\n")
+						continue
+					}
+
+					reviewID := int(*review.ID)
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Checking review ID: %d\n", reviewID)
+					if reviewID > lastReviewID {
+						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found newer review with ID: %d\n", reviewID)
+						if latestReview == nil || reviewID > int(*latestReview.ID) {
+							fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: This is the latest review so far\n")
+							latestReview = review
+						}
+					}
+				}
+
+				// If we found a new review, return it
+				if latestReview != nil {
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found new review with ID: %d\n", *latestReview.ID)
+					r, err := json.Marshal(latestReview)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR marshaling review: %v\n", err)
+						return nil, fmt.Errorf("failed to marshal response: %w", err)
+					}
+					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Returning new review result\n")
+					return mcp.NewToolResultText(string(r)), nil
+				}
+
+				// Return nil to continue polling
+				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: No new reviews found, continuing polling\n")
+				return nil, nil
+			})
+		}
+}
+
 // waitForPullRequestChecks creates a tool to wait for all status checks to complete on a pull request.
 func waitForPullRequestChecks(mcpServer *server.MCPServer, client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestChecks: Registering wait_for_pullrequest_checks tool\n")
@@ -319,104 +417,6 @@ func waitForPullRequestChecks(mcpServer *server.MCPServer, client *github.Client
 
 				// Return nil to continue polling
 				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestChecks.checkFn: Checks still in progress, continuing polling\n")
-				return nil, nil
-			})
-		}
-}
-
-// waitForPullRequestReview creates a tool to wait for a new review to be added to a pull request.
-func waitForPullRequestReview(mcpServer *server.MCPServer, gh *github.Client, gql *githubv4.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
-	fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Registering wait_for_pullrequest_review tool\n")
-	return mcp.NewTool("wait_for_pullrequest_review",
-			mcp.WithDescription(t("TOOL_WAIT_FOR_PULLREQUEST_REVIEW_DESCRIPTION", "Wait for a pull request to be approved, or for additional feedback to be added")),
-			mcp.WithString("owner",
-				mcp.Required(),
-				mcp.Description("Repository owner"),
-			),
-			mcp.WithString("repo",
-				mcp.Required(),
-				mcp.Description("Repository name"),
-			),
-			mcp.WithNumber("pullNumber",
-				mcp.Required(),
-				mcp.Description("Pull request number"),
-			),
-			mcp.WithNumber("last_review_id",
-				mcp.Description("ID of most recent review (wait for newer reviews)"),
-			),
-		),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Tool handler called with method: %s\n", request.Method)
-			// Parse common parameters and set up context
-			eventCtx, result, cancel, err := parsePullRequestEventParams(ctx, mcpServer, gh, request)
-			if result != nil || err != nil {
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Parameter parsing failed: %v\n", err)
-				return result, err
-			}
-			defer cancel()
-			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Parameters parsed successfully\n")
-
-			// Get optional last_review_id parameter
-			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Extracting optional 'last_review_id' parameter\n")
-			lastReviewID, err := optionalIntParam(request, "last_review_id")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: ERROR extracting 'last_review_id' parameter: %v\n", err)
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Last review ID: %d\n", lastReviewID)
-			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview: Starting polling for new reviews\n")
-
-			// Run the polling loop with a check function for pull request reviews
-			return pollForPullRequestEvent(eventCtx, func() (*mcp.CallToolResult, error) {
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Checking for new reviews\n")
-				// Get the current reviews
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Listing reviews for %s/%s #%d\n", eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber)
-				reviews, resp, err := gh.PullRequests.ListReviews(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber, nil)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR listing reviews: %v\n", err)
-					return nil, fmt.Errorf("failed to get pull request reviews: %w", err)
-				}
-
-				// Handle the response
-				if err := handleResponse(resp, "failed to get pull request reviews"); err != nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR handling reviews response: %v\n", err)
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found %d reviews, checking for new ones after ID %d\n", len(reviews), lastReviewID)
-				// Check if there are any new reviews
-				var latestReview *github.PullRequestReview
-				for _, review := range reviews {
-					if review.ID == nil {
-						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Skipping review with nil ID\n")
-						continue
-					}
-
-					reviewID := int(*review.ID)
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Checking review ID: %d\n", reviewID)
-					if reviewID > lastReviewID {
-						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found newer review with ID: %d\n", reviewID)
-						if latestReview == nil || reviewID > int(*latestReview.ID) {
-							fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: This is the latest review so far\n")
-							latestReview = review
-						}
-					}
-				}
-
-				// If we found a new review, return it
-				if latestReview != nil {
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Found new review with ID: %d\n", *latestReview.ID)
-					r, err := json.Marshal(latestReview)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: ERROR marshaling review: %v\n", err)
-						return nil, fmt.Errorf("failed to marshal response: %w", err)
-					}
-					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: Returning new review result\n")
-					return mcp.NewToolResultText(string(r)), nil
-				}
-
-				// Return nil to continue polling
-				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPullRequestReview.checkFn: No new reviews found, continuing polling\n")
 				return nil, nil
 			})
 		}
