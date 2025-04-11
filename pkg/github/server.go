@@ -12,10 +12,11 @@ import (
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shurcooL/githubv4"
 )
 
 // NewServer creates a new GitHub MCP server with the specified GH client and logger.
-func NewServer(client *github.Client, readOnly bool, t translations.TranslationHelperFunc) *server.MCPServer {
+func NewServer(gh *github.Client, gql *githubv4.Client, readOnly bool, t translations.TranslationHelperFunc) *server.MCPServer {
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"github-mcp-server",
@@ -24,63 +25,63 @@ func NewServer(client *github.Client, readOnly bool, t translations.TranslationH
 		server.WithLogging())
 
 	// Add GitHub Resources
-	s.AddResourceTemplate(getRepositoryResourceContent(client, t))
-	s.AddResourceTemplate(getRepositoryResourceBranchContent(client, t))
-	s.AddResourceTemplate(getRepositoryResourceCommitContent(client, t))
-	s.AddResourceTemplate(getRepositoryResourceTagContent(client, t))
-	s.AddResourceTemplate(getRepositoryResourcePrContent(client, t))
+	s.AddResourceTemplate(getRepositoryResourceContent(gh, t))
+	s.AddResourceTemplate(getRepositoryResourceBranchContent(gh, t))
+	s.AddResourceTemplate(getRepositoryResourceCommitContent(gh, t))
+	s.AddResourceTemplate(getRepositoryResourceTagContent(gh, t))
+	s.AddResourceTemplate(getRepositoryResourcePrContent(gh, t))
 
 	// Add GitHub tools - Issues
-	s.AddTool(getIssue(client, t))
-	s.AddTool(searchIssues(client, t))
-	s.AddTool(listIssues(client, t))
+	s.AddTool(getIssue(gh, t))
+	s.AddTool(searchIssues(gh, t))
+	s.AddTool(listIssues(gh, t))
 	if !readOnly {
-		s.AddTool(createIssue(client, t))
-		s.AddTool(addIssueComment(client, t))
-		s.AddTool(createIssue(client, t))
-		s.AddTool(updateIssue(client, t))
+		s.AddTool(createIssue(gh, t))
+		s.AddTool(addIssueComment(gh, t))
+		s.AddTool(createIssue(gh, t))
+		s.AddTool(updateIssue(gh, t))
 	}
 
 	// Add GitHub tools - Pull Requests
-	s.AddTool(getPullRequest(client, t))
-	s.AddTool(listPullRequests(client, t))
-	s.AddTool(getPullRequestFiles(client, t))
-	s.AddTool(getPullRequestStatus(client, t))
-	s.AddTool(getPullRequestComments(client, t))
-	s.AddTool(getPullRequestReviews(client, t))
-	s.AddTool(waitForPRChecks(s, client, t))
-	s.AddTool(waitForPRReview(s, client, t))
+	s.AddTool(getPullRequest(gh, t))
+	s.AddTool(listPullRequests(gh, t))
+	s.AddTool(getPullRequestFiles(gh, t))
+	s.AddTool(getPullRequestStatus(gh, t))
+	s.AddTool(getPullRequestComments(gh, t))
+	s.AddTool(getPullRequestReviews(gh, t))
+	s.AddTool(waitForPRChecks(s, gh, t))
+	s.AddTool(waitForPRReview(s, gh, gql, t))
 
 	if !readOnly {
-		s.AddTool(mergePullRequest(client, t))
-		s.AddTool(updatePullRequestBranch(client, t))
-		s.AddTool(createPullRequestReview(client, t))
-		s.AddTool(replyToReviewComment(client, t))
-		s.AddTool(createPullRequest(client, t))
+		s.AddTool(mergePullRequest(gh, t))
+		s.AddTool(updatePullRequestBranch(gh, t))
+		s.AddTool(createPullRequestReview(gh, t))
+		s.AddTool(replyToReviewComment(gh, t))
+		s.AddTool(createPullRequest(gh, t))
 	}
 
 	// Add GitHub tools - Repositories
-	s.AddTool(searchRepositories(client, t))
-	s.AddTool(getFileContents(client, t))
-	s.AddTool(listCommits(client, t))
+	s.AddTool(searchRepositories(gh, t))
+	s.AddTool(getFileContents(gh, t))
+	s.AddTool(listCommits(gh, t))
 	if !readOnly {
-		s.AddTool(createOrUpdateFile(client, t))
-		s.AddTool(createRepository(client, t))
-		s.AddTool(forkRepository(client, t))
-		s.AddTool(createBranch(client, t))
-		s.AddTool(pushFiles(client, t))
+		s.AddTool(createOrUpdateFile(gh, t))
+		s.AddTool(createRepository(gh, t))
+		s.AddTool(forkRepository(gh, t))
+		s.AddTool(createBranch(gh, t))
+		s.AddTool(pushFiles(gh, t))
 	}
 
 	// Add GitHub tools - Search
-	s.AddTool(searchCode(client, t))
-	s.AddTool(searchUsers(client, t))
+	s.AddTool(searchCode(gh, t))
+	s.AddTool(searchUsers(gh, t))
 
 	// Add GitHub tools - Users
-	s.AddTool(getMe(client, t))
+	s.AddTool(getMe(gh, t))
 
 	// Add GitHub tools - Code Scanning
-	s.AddTool(getCodeScanningAlert(client, t))
-	s.AddTool(listCodeScanningAlerts(client, t))
+	s.AddTool(getCodeScanningAlert(gh, t))
+	s.AddTool(listCodeScanningAlerts(gh, t))
 	return s
 }
 

@@ -16,9 +16,11 @@ import (
 	"github.com/github/github-mcp-server/pkg/translations"
 	gogithub "github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shurcooL/githubv4"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
 )
 
 var version = "version"
@@ -138,6 +140,7 @@ func runStdioServer(cfg runConfig) error {
 	if token == "" {
 		cfg.logger.Fatal("GITHUB_PERSONAL_ACCESS_TOKEN not set")
 	}
+
 	ghClient := gogithub.NewClient(nil).WithAuthToken(token)
 	ghClient.UserAgent = fmt.Sprintf("github-mcp-server/%s", version)
 
@@ -155,10 +158,16 @@ func runStdioServer(cfg runConfig) error {
 		}
 	}
 
+	src := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	httpClient := oauth2.NewClient(context.Background(), src)
+	gqlClient := githubv4.NewClient(httpClient)
+
 	t, dumpTranslations := translations.TranslationHelper()
 
 	// Create
-	ghServer := github.NewServer(ghClient, cfg.readOnly, t)
+	ghServer := github.NewServer(ghClient, gqlClient, cfg.readOnly, t)
 	stdioServer := server.NewStdioServer(ghServer)
 
 	stdLogger := stdlog.New(cfg.logger.Writer(), "stdioserver", 0)

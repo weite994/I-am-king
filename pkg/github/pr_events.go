@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shurcooL/githubv4"
 )
 
 // PREventContext holds common state for PR event handlers
@@ -324,10 +325,10 @@ func waitForPRChecks(mcpServer *server.MCPServer, client *github.Client, t trans
 }
 
 // waitForPRReview creates a tool to wait for a new review to be added to a pull request.
-func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func waitForPRReview(mcpServer *server.MCPServer, gh *github.Client, gql *githubv4.Client, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview: Registering wait_for_pr_review tool\n")
 	return mcp.NewTool("wait_for_pr_review",
-			mcp.WithDescription(t("TOOL_WAIT_FOR_PR_REVIEW_DESCRIPTION", "Wait for a new review to be added to a pull request")),
+			mcp.WithDescription(t("TOOL_WAIT_FOR_PR_REVIEW_DESCRIPTION", "Wait for a pull request to be approved, or for additional feedback to be added")),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("Repository owner"),
@@ -347,7 +348,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview: Tool handler called with method: %s\n", request.Method)
 			// Parse common parameters and set up context
-			eventCtx, result, cancel, err := parsePREventParams(ctx, mcpServer, client, request)
+			eventCtx, result, cancel, err := parsePREventParams(ctx, mcpServer, gh, request)
 			if result != nil || err != nil {
 				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview: Parameter parsing failed: %v\n", err)
 				return result, err
@@ -370,7 +371,7 @@ func waitForPRReview(mcpServer *server.MCPServer, client *github.Client, t trans
 				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview.checkFn: Checking for new reviews\n")
 				// Get the current reviews
 				fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview.checkFn: Listing reviews for %s/%s #%d\n", eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber)
-				reviews, resp, err := client.PullRequests.ListReviews(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber, nil)
+				reviews, resp, err := gh.PullRequests.ListReviews(eventCtx.Ctx, eventCtx.Owner, eventCtx.Repo, eventCtx.PullNumber, nil)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "[DEBUG] waitForPRReview.checkFn: ERROR listing reviews: %v\n", err)
 					return nil, fmt.Errorf("failed to get pull request reviews: %w", err)

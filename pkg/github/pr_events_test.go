@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
+	"github.com/shurcooL/githubv4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,8 +269,10 @@ func Test_WaitForPRChecks(t *testing.T) {
 func Test_WaitForPRReview(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
+	// Create a mock githubv4.Client
+	mockGQLClient := &githubv4.Client{}
 	mockServer := server.NewMCPServer("test", "1.0.0")
-	tool, _ := waitForPRReview(mockServer, mockClient, translations.NullTranslationHelper)
+	tool, _ := waitForPRReview(mockServer, mockClient, mockGQLClient, translations.NullTranslationHelper)
 
 	assert.Equal(t, "wait_for_pr_review", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -387,8 +390,10 @@ func Test_WaitForPRReview(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
+			// Create a mock githubv4.Client for each test case
+			mockGQLClient := &githubv4.Client{}
 			mockServer := server.NewMCPServer("test", "1.0.0")
-			_, handler := waitForPRReview(mockServer, client, translations.NullTranslationHelper)
+			_, handler := waitForPRReview(mockServer, client, mockGQLClient, translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
