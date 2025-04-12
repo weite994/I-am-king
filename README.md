@@ -408,6 +408,16 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+### Organizations
+
+- **list_repositories** - Get list of repositories in a GitHub organization.
+  - `org`: Organization name (string, required)
+  - `type`: Type of repositories to list (string, optional)
+  - `sort`: Sort field (string, optional)
+  - `direction`: Sort order (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
 ### Code Scanning
 
 - **get_code_scanning_alert** - Get a code scanning alert
