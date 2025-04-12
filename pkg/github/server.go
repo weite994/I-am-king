@@ -53,6 +53,7 @@ func NewServer(getClient GetClientFn, version string, readOnly bool, t translati
 	// Add GitHub tools - Pull Requests
 	s.AddTool(GetPullRequest(getClient, t))
 	s.AddTool(ListPullRequests(getClient, t))
+	s.AddTool(IsPullRequestMerged(getClient, t))
 	s.AddTool(GetPullRequestFiles(getClient, t))
 	s.AddTool(GetPullRequestStatus(getClient, t))
 	s.AddTool(GetPullRequestComments(getClient, t))
@@ -179,7 +180,6 @@ func requiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
 
 	if r.Params.Arguments[p].(T) == zero {
 		return zero, fmt.Errorf("missing required parameter: %s", p)
-
 	}
 
 	return r.Params.Arguments[p].(T), nil

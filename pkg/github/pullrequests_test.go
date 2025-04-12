@@ -1069,6 +1069,115 @@ func Test_GetPullRequestComments(t *testing.T) {
 	}
 }
 
+func Test_IsPullRequestMerged(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := IsPullRequestMerged(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "is_pull_request_merged", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "pullNumber")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "pullNumber"})
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedResult string
+		expectedErrMsg string
+	}{
+		{
+			name: "successfully check merged PR",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposPullsMergeByOwnerByRepoByPullNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						// GitHub API returns 204 No Content for merged PRs
+						w.WriteHeader(http.StatusNoContent)
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+			},
+			expectError:    false,
+			expectedResult: "Pull request is merged.",
+		},
+		{
+			name: "successfully check unmerged PR",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposPullsMergeByOwnerByRepoByPullNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						// GitHub API returns 404 Not Found for unmerged PRs
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+			},
+			expectError:    false,
+			expectedResult: "Pull request not merged or does not exist.",
+		},
+		{
+			name: "unexpected status code",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposPullsMergeByOwnerByRepoByPullNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						// Some other error
+						w.WriteHeader(http.StatusInternalServerError)
+						_, _ = w.Write([]byte(`{"message": "Internal Server Error"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to check if pull request is merged",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := IsPullRequestMerged(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			request := createMCPRequest(tc.requestArgs)
+			result, err := handler(context.Background(), request)
+
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+			textContent := getTextResult(t, result)
+
+			var response struct {
+				Status string `json:"status"`
+			}
+			err = json.Unmarshal([]byte(textContent.Text), &response)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedResult, response.Status)
+		})
+	}
+}
+
 func Test_GetPullRequestReviews(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)

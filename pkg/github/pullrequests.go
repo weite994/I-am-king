@@ -290,6 +290,80 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 		}
 }
 
+// IsPullRequestMerged creates a tool to check if a pull request is merged.
+func IsPullRequestMerged(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("is_pull_request_merged",
+			mcp.WithDescription(t("TOOL_IS_PULL_REQUEST_MERGED_DESCRIPTION", "Check if a pull request is merged.")),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("pullNumber",
+				mcp.Required(),
+				mcp.Description("Pull request number"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			pullNumber, err := RequiredInt(request, "pullNumber")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+			_, resp, err := client.PullRequests.IsMerged(ctx, owner, repo, pullNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to check if pull request is merged: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			// 204 if pull request is merged, 404 if not
+			type responseFormat = struct {
+				Status string `json:"status"`
+			}
+			switch resp.StatusCode {
+			case http.StatusNoContent:
+				response := responseFormat{
+					Status: "Pull request is merged.",
+				}
+				r, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal response: %w", err)
+				}
+				return mcp.NewToolResultText(string(r)), nil
+			case http.StatusNotFound:
+				response := responseFormat{
+					Status: "Pull request not merged or does not exist.",
+				}
+				r, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal response: %w", err)
+				}
+				return mcp.NewToolResultText(string(r)), nil
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read response body: %w", err)
+			}
+			return mcp.NewToolResultError(fmt.Sprintf("failed to check if pull request is merged: %s", string(body))), nil
+		}
+}
+
 // MergePullRequest creates a tool to merge a pull request.
 func MergePullRequest(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("merge_pull_request",
