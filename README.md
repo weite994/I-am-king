@@ -232,6 +232,13 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `issue_number`: Issue number (number, required)
   - `body`: Comment text (string, required)
 
+- **add_sub_issue** - Add a sub-issue to an existing issue
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `parent_issue_number`: Parent issue number (number, required)
+  - `child_issue_number`: Child issue number to add as sub-issue (number, required)
+
 - **list_issues** - List and filter repository issues
 
   - `owner`: Repository owner (string, required)
@@ -510,4 +517,3 @@ The exported Go API of this module should currently be considered unstable, and 
 ## License
 
 This project is licensed under the terms of the MIT open source license. Please refer to [MIT](./LICENSE) for the full terms.
-

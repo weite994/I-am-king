@@ -44,10 +44,12 @@ func NewServer(getClient GetClientFn, version string, readOnly bool, t translati
 	s.AddTool(SearchIssues(getClient, t))
 	s.AddTool(ListIssues(getClient, t))
 	s.AddTool(GetIssueComments(getClient, t))
+	s.AddTool(GetSubIssues(getClient, t))
 	if !readOnly {
 		s.AddTool(CreateIssue(getClient, t))
 		s.AddTool(AddIssueComment(getClient, t))
 		s.AddTool(UpdateIssue(getClient, t))
+		s.AddTool(AddSubIssue(getClient, t))
 	}
 
 	// Add GitHub tools - Pull Requests
