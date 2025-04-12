@@ -5,12 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
+
+// containsForkFilter checks if a query already contains a fork filter.
+// This prevents duplicate or conflicting fork filters in the query.
+func containsForkFilter(query string) bool {
+	query = strings.ToLower(query)
+	return strings.Contains(query, " fork:") || strings.HasPrefix(query, "fork:")
+}
 
 // SearchRepositories creates a tool to search for GitHub repositories.
 func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
@@ -20,6 +28,10 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 				mcp.Required(),
 				mcp.Description("Search query"),
 			),
+			mcp.WithString("fork",
+				mcp.Description("Fork filter: 'true' to include forks, 'only' to show only forks, 'false' to exclude forks (default)"),
+				mcp.Enum("true", "only", "false"),
+			),
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -27,9 +39,24 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			fork, err := OptionalParam[string](request, "fork")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			// Modify query to include fork parameter if specified
+			if fork != "" {
+				// GitHub API supports 'fork:true', 'fork:only', and absence for excluding forks
+				if fork == "true" || fork == "only" {
+					// Check if the query already contains a fork filter
+					if !containsForkFilter(query) {
+						query = query + " fork:" + fork
+					}
+				}
 			}
 
 			opts := &github.SearchOptions{

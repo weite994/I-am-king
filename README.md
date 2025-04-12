@@ -346,6 +346,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `query`: Search query (string, required)
   - `sort`: Sort field (string, optional)
   - `order`: Sort order (string, optional)
+  - `fork`: Fork filter: 'true' to include forks, 'only' to show only forks, 'false' to exclude forks (default) (string, optional)
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 

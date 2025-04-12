@@ -88,6 +88,8 @@ func Test_SearchRepositories(t *testing.T) {
 						"q":        "golang test",
 						"page":     "1",
 						"per_page": "30",
+						// Note: Not specifying 'fork' parameter here, which verifies that
+						// when 'fork' is not provided in the request, it's not added to the query parameters
 					}).andThen(
 						mockResponse(t, http.StatusOK, mockSearchResult),
 					),
@@ -95,6 +97,69 @@ func Test_SearchRepositories(t *testing.T) {
 			),
 			requestArgs: map[string]interface{}{
 				"query": "golang test",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "repository search with fork parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchRepositories,
+					expectQueryParams(t, map[string]string{
+						"q":        "golang test fork:only",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "golang test",
+				"fork":  "only",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "repository search with fork parameter (true)",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchRepositories,
+					expectQueryParams(t, map[string]string{
+						"q":        "golang test fork:true",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "golang test",
+				"fork":  "true",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "repository search with fork parameter (false)",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchRepositories,
+					expectQueryParams(t, map[string]string{
+						"q":        "golang test",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "golang test",
+				"fork":  "false",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
