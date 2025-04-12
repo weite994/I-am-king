@@ -434,18 +434,19 @@ func printResponse(response string, prettyPrint bool) error {
 					return fmt.Errorf("failed to pretty print text content: %w", err)
 				}
 				fmt.Println(string(prettyText))
-			} else {
-				var textContentList []interface{}
-				if err := json.Unmarshal([]byte(content.Text), &textContentList); err != nil {
-					return fmt.Errorf("failed to parse text content as a list: %w", err)
-				}
-				// Pretty print the array content
-				prettyText, err := json.MarshalIndent(textContentList, "", "  ")
-				if err != nil {
-					return fmt.Errorf("failed to pretty print array content: %w", err)
-				}
-				fmt.Println(string(prettyText))
+				continue
 			}
+
+			// Fallback parsing as JSONL
+			var textContentList []map[string]interface{}
+			if err := json.Unmarshal([]byte(content.Text), &textContentList); err != nil {
+				return fmt.Errorf("failed to parse text content as a list: %w", err)
+			}
+			prettyText, err := json.MarshalIndent(textContentList, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to pretty print array content: %w", err)
+			}
+			fmt.Println(string(prettyText))
 		}
 	}
 
