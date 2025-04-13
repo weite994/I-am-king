@@ -1,0 +1,58 @@
+{
+  "gitConfig": {
+    "repository": {
+      "owner": "DeanLuus22021994",
+      "name": "vscode-docs",
+      "fork": "DeanDev",
+      "defaultBranch": "DeanDev",
+      "ssh": "git@github.com:DeanLuus22021994/vscode-docs.git",
+      "https": "https://github.com/DeanLuus22021994/vscode-docs.git"
+    },
+    "branchSettings": {
+      "trackRemote": true,
+      "autoFetch": true,
+      "fetchInterval": 300,
+      "defaultCommitter": {
+        "name": "MCP Server",
+        "email": "mcp-server@example.com"
+      }
+    },
+    "pullRequestSettings": {
+      "defaultBase": "main",
+      "defaultReviewers": [],
+      "autoCreateOnPush": false,
+      "draftByDefault": true
+    },
+    "commitSettings": {
+      "signCommits": false,
+      "conventionalCommits": true,
+      "prefixes": [
+        "feat",
+        "fix",
+        "docs",
+        "style",
+        "refactor",
+        "perf",
+        "test",
+        "build",
+        "ci",
+        "chore"
+      ]
+    },
+    "hooks": {
+      "preCommit": "",
+      "postCommit": "",
+      "prePush": "",
+      "postPush": ""
+    }
+  },
+  "systemResources": {
+    "cpuCores": 10,
+    "threadCount": 16,
+    "maxRamGB": 14,
+    "gpuEnabled": true,
+    "gpuModel": "NVIDIA RTX 3050 6GB",
+    "storageGB": 250
+  },
+  "lastUpdated": "2025-04-13T21:31:16.662Z"
+}
