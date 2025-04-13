@@ -96,27 +96,21 @@ npm run build -- --cache-dir=/home/vscode/.cache/build-cache
 
 The server should start automatically when your devcontainer launches. To verify:
 
-1. Open a terminal in VS Code and run:
+```bash
+if [ -f "/tmp/mcp-server.pid" ] && ps -p "$(cat /tmp/mcp-server.pid)" > /dev/null; then
+  echo "MCP Server is running";
+else
+  echo "MCP Server is not running";
+fi
+```
 
-   ```bash
-   if [ -f "/tmp/mcp-server.pid" ] && ps -p "$(cat /tmp/mcp-server.pid)" > /dev/null; then
-     echo "MCP Server is running";
-   else
-     echo "MCP Server is not running";
-   fi
-   ```
+```bash
+cat /tmp/mcp-server.log
+```
 
-2. Check the server logs:
-
-   ```bash
-   cat /tmp/mcp-server.log
-   ```
-
-3. Verify GPU utilization:
-
-   ```bash
-   nvidia-smi
-   ```
+```bash
+nvidia-smi
+```
 
 ## Manually Starting the Server
 
@@ -186,49 +180,35 @@ the MCP server will use:
 
 ### Server Won't Start
 
-1. Ensure your GitHub token is set:
+```bash
+echo $GITHUB_PERSONAL_ACCESS_TOKEN | wc -c
+```
+(Should return a number greater than 1)
 
-   ```bash
-   echo $GITHUB_PERSONAL_ACCESS_TOKEN | wc -c
-   ```
-   (Should return a number greater than 1)
+```bash
+cd /workspace/.github/cmd/github-mcp-server
+go build -v
+```
 
-2. Check for build errors:
+```bash
+cat /tmp/mcp-server.log
+```
 
-   ```bash
-   cd /workspace/.github/cmd/github-mcp-server
-   go build -v
-   ```
-
-3. Check logs for errors:
-
-   ```bash
-   cat /tmp/mcp-server.log
-   ```
-
-4. Verify GPU availability:
-
-   ```bash
-   nvidia-smi
-   ```
+```bash
+nvidia-smi
+```
 
 ### Server Crashes or Returns Errors
 
-1. Restart the server:
+```bash
+kill $(cat /tmp/mcp-server.pid)
+/workspace/.github/start-mcp-server.sh
+```
 
-   ```bash
-   kill $(cat /tmp/mcp-server.pid)
-   /workspace/.github/start-mcp-server.sh
-   ```
-
-2. Check if your token has the required permissions or has expired
-
-3. Check system resource usage:
-
-   ```bash
-   free -h  # Check memory usage
-   htop     # Check CPU usage
-   ```
+```bash
+free -h  # Check memory usage
+htop     # Check CPU usage
+```
 
 ## Additional Resources
 
