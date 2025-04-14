@@ -61,10 +61,8 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 
 			// Convert inputs to the format expected by the GitHub API
 			inputsMap := make(map[string]any)
-			if inputs != nil {
-				for k, v := range inputs {
-					inputsMap[k] = v
-				}
+			for k, v := range inputs {
+				inputsMap[k] = v
 			}
 
 			// Create the event to dispatch
