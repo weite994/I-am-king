@@ -117,7 +117,7 @@ func ListCodeScanningAlerts(getClient GetClientFn, t translations.TranslationHel
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			tool_name, err := OptionalParam[string](request, "tool_name")
+			toolName, err := OptionalParam[string](request, "tool_name")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -126,7 +126,7 @@ func ListCodeScanningAlerts(getClient GetClientFn, t translations.TranslationHel
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
-			alerts, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, owner, repo, &github.AlertListOptions{Ref: ref, State: state, Severity: severity, ToolName: tool_name})
+			alerts, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, owner, repo, &github.AlertListOptions{Ref: ref, State: state, Severity: severity, ToolName: toolName})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list alerts: %w", err)
 			}
