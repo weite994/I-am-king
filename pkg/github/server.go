@@ -80,6 +80,11 @@ func NewServer(getClient GetClientFn, version string, readOnly bool, t translati
 		s.AddTool(PushFiles(getClient, t))
 	}
 
+	// Add GitHub tools - Actions
+	if !readOnly {
+		s.AddTool(RunWorkflow(getClient, t))
+	}
+
 	// Add GitHub tools - Search
 	s.AddTool(SearchCode(getClient, t))
 	s.AddTool(SearchUsers(getClient, t))

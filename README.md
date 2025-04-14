@@ -437,6 +437,16 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `state`: Alert state (string, optional)
   - `severity`: Alert severity (string, optional)
 
+### Actions
+
+- **run_workflow** - Trigger a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `workflowId`: Workflow ID or filename (string, required)
+  - `ref`: Git reference (branch or tag name) (string, required)
+  - `inputs`: Workflow inputs (object, optional)
+
 ## Resources
 
 ### Repository Content
