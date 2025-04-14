@@ -163,7 +163,7 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 						"ref":       "main",
 						"state":     "open",
 						"severity":  "high",
-						"tool_name": "CodeQL",
+						"tool_name": "codeql",
 					}).andThen(
 						mockResponse(t, http.StatusOK, mockAlerts),
 					),
@@ -175,7 +175,7 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 				"ref":       "main",
 				"state":     "open",
 				"severity":  "high",
-				"tool_name": "CodeQL",
+				"tool_name": "codeql",
 			},
 			expectError:    false,
 			expectedAlerts: mockAlerts,
