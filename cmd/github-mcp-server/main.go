@@ -64,7 +64,7 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
-    rootCmd.SetVersionTemplate("{{.Short}}\n{{.Version}}\n")
+	rootCmd.SetVersionTemplate("{{.Short}}\n{{.Version}}\n")
 
 	// Add global flags that will be shared by all commands
 	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
