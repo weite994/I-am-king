@@ -1,5 +1,6 @@
 .idea
 cmd/github-mcp-server/github-mcp-server
+.vscode/mcp.json
 # Added by goreleaser init:
 dist/
 __debug_bin*
