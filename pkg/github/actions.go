@@ -23,9 +23,9 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				mcp.Required(),
 				mcp.Description("Repository name"),
 			),
-			mcp.WithString("workflowId",
+			mcp.WithString("workflow_file",
 				mcp.Required(),
-				mcp.Description("The ID of the workflow. You can also pass the workflow file name as a string."),
+				mcp.Description("The workflow file name or ID of the workflow entity."),
 			),
 			mcp.WithString("ref",
 				mcp.Required(),
@@ -44,7 +44,7 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			workflowID, err := requiredParam[string](request, "workflowId")
+			workflowFileName, err := requiredParam[string](request, "workflow_file")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -76,7 +76,7 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, owner, repo, workflowID, event)
+			resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, owner, repo, workflowFileName, event)
 			if err != nil {
 				return nil, fmt.Errorf("failed to trigger workflow: %w", err)
 			}

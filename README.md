@@ -444,7 +444,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `workflowId`: Workflow ID or filename (string, required)
+  - `workflow_file`: Workflow ID or filename (string, required)
   - `ref`: Git reference (branch or tag name) (string, required)
   - `inputs`: Workflow inputs (object, optional)
 

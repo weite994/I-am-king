@@ -22,10 +22,10 @@ func Test_RunWorkflow(t *testing.T) {
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
-	assert.Contains(t, tool.InputSchema.Properties, "workflowId")
+	assert.Contains(t, tool.InputSchema.Properties, "workflow_file")
 	assert.Contains(t, tool.InputSchema.Properties, "ref")
 	assert.Contains(t, tool.InputSchema.Properties, "inputs")
-	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "workflowId", "ref"})
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "workflow_file", "ref"})
 
 	tests := []struct {
 		name           string
@@ -45,10 +45,10 @@ func Test_RunWorkflow(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]any{
-				"owner":      "owner",
-				"repo":       "repo",
-				"workflowId": "workflow_id",
-				"ref":        "main",
+				"owner":         "owner",
+				"repo":          "repo",
+				"workflow_file": "main.yaml",
+				"ref":           "main",
 				"inputs": map[string]any{
 					"input1": "value1",
 					"input2": "value2",
@@ -60,9 +60,9 @@ func Test_RunWorkflow(t *testing.T) {
 			name:         "missing required parameter",
 			mockedClient: mock.NewMockedHTTPClient(),
 			requestArgs: map[string]any{
-				"owner":      "owner",
-				"repo":       "repo",
-				"workflowId": "main.yaml",
+				"owner":         "owner",
+				"repo":          "repo",
+				"workflow_file": "main.yaml",
 				// missing ref
 			},
 			expectError:    true,
