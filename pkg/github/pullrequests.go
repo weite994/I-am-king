@@ -211,7 +211,7 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 				mcp.Description("Filter by base branch"),
 			),
 			mcp.WithString("sort",
-				mcp.Description("Sort by category"),
+				mcp.Description("Sort by"),
 				mcp.Enum("created", "updated", "popularity", "long-running"),
 			),
 			mcp.WithString("direction",
