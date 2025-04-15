@@ -16,6 +16,7 @@ import (
 func GetSecretScanningAlert(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool(
 			"get_secret_scanning_alert",
+			mcp.WithDescription(t("TOOL_GET_SECRET_SCANNING_ALERT_DESCRIPTION", "Get details of a specific secret scanning alert in a GitHub repository.")),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The owner of the repository."),
@@ -74,6 +75,7 @@ func GetSecretScanningAlert(getClient GetClientFn, t translations.TranslationHel
 func ListSecretScanningAlerts(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool(
 			"list_secret_scanning_alerts",
+			mcp.WithDescription(t("TOOL_LIST_SECRET_SCANNING_ALERTS_DESCRIPTION", "List secret scanning alerts in a GitHub repository.")),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The owner of the repository."),
