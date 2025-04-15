@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -15,6 +13,7 @@ import (
 	iolog "github.com/github/github-mcp-server/pkg/log"
 	"github.com/github/github-mcp-server/pkg/translations"
 	gogithub "github.com/google/go-github/v69/github"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -41,18 +40,20 @@ var (
 			logFile := viper.GetString("log-file")
 			readOnly := viper.GetBool("read-only")
 			exportTranslations := viper.GetBool("export-translations")
-			prettyPrintJSON := viper.GetBool("pretty-print-json")
 			logger, err := initLogger(logFile)
 			if err != nil {
 				stdlog.Fatal("Failed to initialize logger:", err)
 			}
+
+			enabledToolsets := viper.GetStringSlice("toolsets")
+
 			logCommands := viper.GetBool("enable-command-logging")
 			cfg := runConfig{
 				readOnly:           readOnly,
 				logger:             logger,
 				logCommands:        logCommands,
 				exportTranslations: exportTranslations,
-				prettyPrintJSON:    prettyPrintJSON,
+				enabledToolsets:    enabledToolsets,
 			}
 			if err := runStdioServer(cfg); err != nil {
 				stdlog.Fatal("failed to run stdio server:", err)
@@ -67,20 +68,22 @@ func init() {
 	rootCmd.SetVersionTemplate("{{.Short}}\n{{.Version}}\n")
 
 	// Add global flags that will be shared by all commands
+	rootCmd.PersistentFlags().StringSlice("toolsets", github.DefaultTools, "An optional comma separated list of groups of tools to allow, defaults to enabling all")
+	rootCmd.PersistentFlags().Bool("dynamic-toolsets", false, "Enable dynamic toolsets")
 	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
 	rootCmd.PersistentFlags().String("log-file", "", "Path to log file")
 	rootCmd.PersistentFlags().Bool("enable-command-logging", false, "When enabled, the server will log all command requests and responses to the log file")
 	rootCmd.PersistentFlags().Bool("export-translations", false, "Save translations to a JSON file")
 	rootCmd.PersistentFlags().String("gh-host", "", "Specify the GitHub hostname (for GitHub Enterprise etc.)")
-	rootCmd.PersistentFlags().Bool("pretty-print-json", false, "Pretty print JSON output")
 
 	// Bind flag to viper
+	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
+	_ = viper.BindPFlag("dynamic_toolsets", rootCmd.PersistentFlags().Lookup("dynamic-toolsets"))
 	_ = viper.BindPFlag("read-only", rootCmd.PersistentFlags().Lookup("read-only"))
 	_ = viper.BindPFlag("log-file", rootCmd.PersistentFlags().Lookup("log-file"))
 	_ = viper.BindPFlag("enable-command-logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
 	_ = viper.BindPFlag("export-translations", rootCmd.PersistentFlags().Lookup("export-translations"))
-	_ = viper.BindPFlag("gh-host", rootCmd.PersistentFlags().Lookup("gh-host"))
-	_ = viper.BindPFlag("pretty-print-json", rootCmd.PersistentFlags().Lookup("pretty-print-json"))
+	_ = viper.BindPFlag("host", rootCmd.PersistentFlags().Lookup("gh-host"))
 
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
@@ -88,7 +91,7 @@ func init() {
 
 func initConfig() {
 	// Initialize Viper configuration
-	viper.SetEnvPrefix("APP")
+	viper.SetEnvPrefix("github")
 	viper.AutomaticEnv()
 }
 
@@ -114,20 +117,7 @@ type runConfig struct {
 	logger             *log.Logger
 	logCommands        bool
 	exportTranslations bool
-	prettyPrintJSON    bool
-}
-
-// JSONPrettyPrintWriter is a Writer that pretty prints input to indented JSON
-type JSONPrettyPrintWriter struct {
-	writer io.Writer
-}
-
-func (j JSONPrettyPrintWriter) Write(p []byte) (n int, err error) {
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, p, "", "\t"); err != nil {
-		return 0, err
-	}
-	return j.writer.Write(prettyJSON.Bytes())
+	enabledToolsets    []string
 }
 
 func runStdioServer(cfg runConfig) error {
@@ -136,18 +126,14 @@ func runStdioServer(cfg runConfig) error {
 	defer stop()
 
 	// Create GH client
-	token := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	token := viper.GetString("personal_access_token")
 	if token == "" {
 		cfg.logger.Fatal("GITHUB_PERSONAL_ACCESS_TOKEN not set")
 	}
 	ghClient := gogithub.NewClient(nil).WithAuthToken(token)
 	ghClient.UserAgent = fmt.Sprintf("github-mcp-server/%s", version)
 
-	// Check GH_HOST env var first, then fall back to viper config
-	host := os.Getenv("GH_HOST")
-	if host == "" {
-		host = viper.GetString("gh-host")
-	}
+	host := viper.GetString("host")
 
 	if host != "" {
 		var err error
@@ -159,8 +145,51 @@ func runStdioServer(cfg runConfig) error {
 
 	t, dumpTranslations := translations.TranslationHelper()
 
-	// Create
-	ghServer := github.NewServer(ghClient, cfg.readOnly, t)
+	beforeInit := func(_ context.Context, _ any, message *mcp.InitializeRequest) {
+		ghClient.UserAgent = fmt.Sprintf("github-mcp-server/%s (%s/%s)", version, message.Params.ClientInfo.Name, message.Params.ClientInfo.Version)
+	}
+
+	getClient := func(_ context.Context) (*gogithub.Client, error) {
+		return ghClient, nil // closing over client
+	}
+
+	hooks := &server.Hooks{
+		OnBeforeInitialize: []server.OnBeforeInitializeFunc{beforeInit},
+	}
+	// Create server
+	ghServer := github.NewServer(version, server.WithHooks(hooks))
+
+	enabled := cfg.enabledToolsets
+	dynamic := viper.GetBool("dynamic_toolsets")
+	if dynamic {
+		// filter "all" from the enabled toolsets
+		enabled = make([]string, 0, len(cfg.enabledToolsets))
+		for _, toolset := range cfg.enabledToolsets {
+			if toolset != "all" {
+				enabled = append(enabled, toolset)
+			}
+		}
+	}
+
+	// Create default toolsets
+	toolsets, err := github.InitToolsets(enabled, cfg.readOnly, getClient, t)
+	context := github.InitContextToolset(getClient, t)
+
+	if err != nil {
+		stdlog.Fatal("Failed to initialize toolsets:", err)
+	}
+
+	// Register resources with the server
+	github.RegisterResources(ghServer, getClient, t)
+	// Register the tools with the server
+	toolsets.RegisterTools(ghServer)
+	context.RegisterTools(ghServer)
+
+	if dynamic {
+		dynamic := github.InitDynamicToolset(ghServer, toolsets, t)
+		dynamic.RegisterTools(ghServer)
+	}
+
 	stdioServer := server.NewStdioServer(ghServer)
 
 	stdLogger := stdlog.New(cfg.logger.Writer(), "stdioserver", 0)
@@ -181,9 +210,6 @@ func runStdioServer(cfg runConfig) error {
 			in, out = loggedIO, loggedIO
 		}
 
-		if cfg.prettyPrintJSON {
-			out = JSONPrettyPrintWriter{writer: out}
-		}
 		errC <- stdioServer.Listen(ctx, in, out)
 	}()
 
