@@ -239,7 +239,7 @@ func getToken(host string) (string, error) {
 		}
 		return token, nil
 	}
-	return "", fmt.Errorf("unknown token source: %s", token_source)
+	return "", fmt.Errorf("unknown token source: %s", tokenSource)
 }
 
 func getHost() string {
