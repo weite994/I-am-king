@@ -233,8 +233,8 @@ func getToken(host string) (string, error) {
 		}
 		return token, nil
 	case "gh":
-		token, err := auth.TokenForHost(host)
-		if err == "default" {
+		token, source := auth.TokenForHost(host)
+		if source == "default" {
 			return "", fmt.Errorf("no token found for host: %s", host)
 		}
 		return token, nil
