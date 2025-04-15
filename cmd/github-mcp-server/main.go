@@ -25,12 +25,12 @@ var version = "version"
 var commit = "commit"
 var date = "date"
 
-var root_command_name = "github-mcp-server"
-var default_token_source = "env"
+var rootCommandName = "github-mcp-server"
+var defaultTokenSource = "env"
 
 var (
 	rootCmd = &cobra.Command{
-		Use:     root_command_name,
+		Use:     rootCommandName,
 		Short:   "GitHub MCP Server",
 		Long:    `A GitHub MCP server that handles various tools and resources.`,
 		Version: fmt.Sprintf("Version: %s\nCommit: %s\nBuild Date: %s", version, commit, date),
@@ -79,7 +79,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("enable-command-logging", false, "When enabled, the server will log all command requests and responses to the log file")
 	rootCmd.PersistentFlags().Bool("export-translations", false, "Save translations to a JSON file")
 	rootCmd.PersistentFlags().String("gh-host", "", "Specify the GitHub hostname (for GitHub Enterprise etc.)")
-	rootCmd.PersistentFlags().String("token-source", default_token_source, "Authentication token source (e.g. env, gh)")
+	rootCmd.PersistentFlags().String("token-source", defaultTokenSource, "Authentication token source (e.g. env, gh)")
 
 	// Bind flag to viper
 	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
@@ -224,8 +224,8 @@ func runStdioServer(cfg runConfig) error {
 }
 
 func getToken(host string) (string, error) {
-	token_source := viper.GetString("token-source")
-	switch token_source {
+	tokenSource := viper.GetString("token-source")
+	switch tokenSource {
 	case "env":
 		token := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
 		if token == "" {
