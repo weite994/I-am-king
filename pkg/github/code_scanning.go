@@ -86,11 +86,16 @@ func ListCodeScanningAlerts(getClient GetClientFn, t translations.TranslationHel
 				mcp.Description("The Git reference for the results you want to list."),
 			),
 			mcp.WithString("state",
-				mcp.Description("State of the code scanning alerts to list. Set to closed to list only closed code scanning alerts. Default: open"),
+				mcp.Description("Filter code scanning alerts by state. Defaults to open"),
 				mcp.DefaultString("open"),
+				mcp.Enum("open", "closed", "dismissed", "fixed"),
 			),
 			mcp.WithString("severity",
-				mcp.Description("Only code scanning alerts with this severity will be returned. Possible values are: critical, high, medium, low, warning, note, error."),
+				mcp.Description("Filter code scanning alerts by severity"),
+				mcp.Enum("critical", "high", "medium", "low", "warning", "note", "error"),
+			),
+			mcp.WithString("tool_name",
+				mcp.Description("The name of the tool used for code scanning."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -114,12 +119,16 @@ func ListCodeScanningAlerts(getClient GetClientFn, t translations.TranslationHel
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			toolName, err := OptionalParam[string](request, "tool_name")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 
 			client, err := getClient(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
-			alerts, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, owner, repo, &github.AlertListOptions{Ref: ref, State: state, Severity: severity})
+			alerts, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, owner, repo, &github.AlertListOptions{Ref: ref, State: state, Severity: severity, ToolName: toolName})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list alerts: %w", err)
 			}
