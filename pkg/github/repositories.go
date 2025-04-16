@@ -391,7 +391,7 @@ func CreateRepository(getClient GetClientFn, t translations.TranslationHelperFun
 // CreateRepositoryFromTemplate creates a tool to create a new GitHub repository from a template.
 func CreateRepositoryFromTemplate(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_repository_from_template",
-			mcp.WithDescription(t("TOOL_CREATE_REPOSITORY_FROM_TEMPLATE_DESCRIPTION", "Create a new GitHub repository from a template in your account")),
+			mcp.WithDescription(t("TOOL_CREATE_REPOSITORY_FROM_TEMPLATE_DESCRIPTION", "Create a new GitHub repository in your account from a template repository")),
 			mcp.WithString("name",
 				mcp.Required(),
 				mcp.Description("Repository name"),
