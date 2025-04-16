@@ -89,6 +89,10 @@ More about using MCP server tools in VS Code's [agent mode documentation](https:
 }
 ```
 
+### Usage with Hosted Server
+
+You may also use a hosted GitHub MCP server, which provides a single endpoint for streamlined integration (e.g. [Klavis AI](https://klavis.ai))
+
 ### Build from source
 
 If you don't have Docker, you can use `go build` to build the binary in the
