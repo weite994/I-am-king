@@ -85,25 +85,15 @@ func ListSecretScanningAlerts(getClient GetClientFn, t translations.TranslationH
 				mcp.Description("The name of the repository."),
 			),
 			mcp.WithString("state",
-				mcp.Description("Filter code scanning alerts by state ('open', 'resolved')"),
+				mcp.Description("Filter by state"),
 				mcp.Enum("open", "resolved"),
 			),
 			mcp.WithString("secret_type",
 				mcp.Description("A comma-separated list of secret types to return. All default secret patterns are returned. To return generic patterns, pass the token name(s) in the parameter."),
 			),
 			mcp.WithString("resolution",
-				mcp.Description("Filter code scanning alerts by resolution ('false_positive', 'wont_fix', 'revoked', 'pattern_edited', 'pattern_deleted', 'used_in_tests')"),
+				mcp.Description("Filter by resolution"),
 				mcp.Enum("false_positive", "wont_fix", "revoked", "pattern_edited", "pattern_deleted", "used_in_tests"),
-			),
-			mcp.WithString("sort",
-				mcp.Description("Filter code scanning alerts by sort ('created', 'updated') Default: created"),
-				mcp.DefaultString("created"),
-				mcp.Enum("created", "updated"),
-			),
-			mcp.WithString("direction",
-				mcp.Description("Filter code scanning alerts by direction ('desc', 'asc') Default: desc"),
-				mcp.DefaultString("desc"),
-				mcp.Enum("desc", "asc"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -127,20 +117,12 @@ func ListSecretScanningAlerts(getClient GetClientFn, t translations.TranslationH
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			sort, err := OptionalParam[string](request, "sort")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			direction, err := OptionalParam[string](request, "direction")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
 
 			client, err := getClient(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
-			alerts, resp, err := client.SecretScanning.ListAlertsForRepo(ctx, owner, repo, &github.SecretScanningAlertListOptions{State: state, SecretType: secretType, Resolution: resolution, Sort: sort, Direction: direction})
+			alerts, resp, err := client.SecretScanning.ListAlertsForRepo(ctx, owner, repo, &github.SecretScanningAlertListOptions{State: state, SecretType: secretType, Resolution: resolution})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list alerts: %w", err)
 			}

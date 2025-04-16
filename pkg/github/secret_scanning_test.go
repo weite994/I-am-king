@@ -26,8 +26,8 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 
 	// Setup mock alert for success case
 	mockAlert := &github.SecretScanningAlert{
-		Number: github.Ptr(42),
-		State: github.Ptr("open"),
+		Number:  github.Ptr(42),
+		State:   github.Ptr("open"),
 		HTMLURL: github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/42"),
 	}
 
@@ -124,22 +124,22 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "state")
 	assert.Contains(t, tool.InputSchema.Properties, "secret_type")
 	assert.Contains(t, tool.InputSchema.Properties, "resolution")
-	assert.Contains(t, tool.InputSchema.Properties, "sort")
-	assert.Contains(t, tool.InputSchema.Properties, "direction")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
 	// Setup mock alerts for success case
-	mockAlerts := []*github.SecretScanningAlert{
-		{
-			Number:  github.Ptr(42),
-			State:   github.Ptr("open"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/security/code-scanning/42"),
-		},
-		{
-			Number:  github.Ptr(43),
-			State:   github.Ptr("fixed"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/security/code-scanning/43"),
-		},
+	resolvedAlert := github.SecretScanningAlert{
+		Number:     github.Ptr(2),
+		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/2"),
+		State:      github.Ptr("resolved"),
+		Resolution: github.Ptr("false_positive"),
+		SecretType: github.Ptr("adafruit_io_key"),
+	}
+	openAlert := github.SecretScanningAlert{
+		Number:     github.Ptr(2),
+		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/3"),
+		State:      github.Ptr("open"),
+		Resolution: github.Ptr("false_positive"),
+		SecretType: github.Ptr("adafruit_io_key"),
 	}
 
 	tests := []struct {
@@ -151,28 +151,41 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name: "successful alerts listing",
+			name: "successful resolved alerts listing",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.GetReposSecretScanningAlertsByOwnerByRepoByAlertNumber,
+					mock.GetReposSecretScanningAlertsByOwnerByRepo,
 					expectQueryParams(t, map[string]string{
-						"ref":      "main",
-						"state":    "open",
-						"severity": "high",
+						"state": "resolved",
 					}).andThen(
-						mockResponse(t, http.StatusOK, mockAlerts),
+						mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert}),
 					),
 				),
 			),
 			requestArgs: map[string]interface{}{
-				"owner":    "owner",
-				"repo":     "repo",
-				"ref":      "main",
-				"state":    "open",
-				"severity": "high",
+				"owner": "owner",
+				"repo":  "repo",
+				"state": "resolved",
 			},
 			expectError:    false,
-			expectedAlerts: mockAlerts,
+			expectedAlerts: []*github.SecretScanningAlert{&resolvedAlert},
+		},
+		{
+			name: "successful alerts listing",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposSecretScanningAlertsByOwnerByRepo,
+					expectQueryParams(t, map[string]string{}).andThen(
+						mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert, &openAlert}),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError:    false,
+			expectedAlerts: []*github.SecretScanningAlert{&resolvedAlert, &openAlert},
 		},
 		{
 			name: "alerts listing fails",
@@ -196,17 +209,13 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
 			_, handler := ListSecretScanningAlerts(stubGetClientFn(client), translations.NullTranslationHelper)
 
-			// Create call request
 			request := createMCPRequest(tc.requestArgs)
 
-			// Call handler
 			result, err := handler(context.Background(), request)
 
-			// Verify results
 			if tc.expectError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedErrMsg)
@@ -215,18 +224,19 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// Parse the result and get the text content if no error
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the result
-			var returnedAlerts []*github.Alert
+			var returnedAlerts []*github.SecretScanningAlert
 			err = json.Unmarshal([]byte(textContent.Text), &returnedAlerts)
 			assert.NoError(t, err)
 			assert.Len(t, returnedAlerts, len(tc.expectedAlerts))
 			for i, alert := range returnedAlerts {
 				assert.Equal(t, *tc.expectedAlerts[i].Number, *alert.Number)
-				assert.Equal(t, *tc.expectedAlerts[i].State, *alert.State)
 				assert.Equal(t, *tc.expectedAlerts[i].HTMLURL, *alert.HTMLURL)
+				assert.Equal(t, *tc.expectedAlerts[i].State, *alert.State)
+				assert.Equal(t, *tc.expectedAlerts[i].Resolution, *alert.Resolution)
+				assert.Equal(t, *tc.expectedAlerts[i].SecretType, *alert.SecretType)
 			}
 		})
 	}
