@@ -68,7 +68,7 @@ More about using MCP server tools in VS Code's [agent mode documentation](https:
 
 ### Usage with Claude Desktop
 
-Keep in mind Docker engine has to run in background before running Claude Desktop App if you are using Windows.
+Keep in mind that the Docker engine must be running in the background before starting the Claude Desktop App on Windows.
 
 ```json
 {
