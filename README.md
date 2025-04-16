@@ -448,7 +448,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `state`: Alert state (string, optional)
-  - `secret_type`: The secret types to be filtered for in a comma-seperated list (string, optional)
+  - `secret_type`: The secret types to be filtered for in a comma-separated list (string, optional)
   - `resolution`: The resolution status (string, optional)
 
 ## Resources
