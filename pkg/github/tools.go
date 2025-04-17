@@ -73,7 +73,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(GetCodeScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListCodeScanningAlerts(getClient, t)),
 		)
-	secretSecurity := toolsets.NewToolset("secret_security", "Secret security related tools, such as GitHub Secret Scanning").
+	secretProtection := toolsets.NewToolset("secret_protection", "Secret protection related tools, such as GitHub Secret Scanning").
 		AddReadTools(
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
@@ -87,7 +87,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 	tsg.AddToolset(users)
 	tsg.AddToolset(pullRequests)
 	tsg.AddToolset(codeSecurity)
-	tsg.AddToolset(secretSecurity)
+	tsg.AddToolset(secretProtection)
 	tsg.AddToolset(experiments)
 	// Enable the requested features
 
