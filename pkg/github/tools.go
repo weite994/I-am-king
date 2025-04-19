@@ -73,6 +73,8 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
+			toolsets.NewServerTool(AddPullRequestReviewComment(getClient, t)),
+			toolsets.NewServerTool(UpdatePullRequestComment(getClient, t)),
 
 			// Reviews
 			toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)),
