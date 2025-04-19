@@ -1690,8 +1690,15 @@ func Test_UpdatePullRequestComment(t *testing.T) {
 	}{
 		{
 			name: "successful update",
-			mockedClient: httpMock(
-				NewJSONResponder(200, mockUpdatedComment),
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PatchReposPullsCommentsByOwnerByRepoByCommentId,
+					expectRequestBody(t, map[string]any{
+						"body": "Updated comment text here",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockUpdatedComment),
+					),
+				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner":     "testowner",
@@ -1704,8 +1711,11 @@ func Test_UpdatePullRequestComment(t *testing.T) {
 		},
 		{
 			name: "missing required parameters",
-			mockedClient: httpMock(
-				NewJSONResponder(200, mockUpdatedComment),
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.PatchReposPullsCommentsByOwnerByRepoByCommentId,
+					mockUpdatedComment,
+				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner": "testowner",
@@ -1713,12 +1723,18 @@ func Test_UpdatePullRequestComment(t *testing.T) {
 				// Missing commentId and body
 			},
 			expectError:    true,
-			expectedErrMsg: "commentId is required",
+			expectedErrMsg: "missing required parameter: commentId",
 		},
 		{
 			name: "http error",
-			mockedClient: httpMock(
-				NewStringResponder(400, "Bad Request"),
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PatchReposPullsCommentsByOwnerByRepoByCommentId,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusBadRequest)
+						_, _ = w.Write([]byte(`{"message": "Bad Request"}`))
+					}),
+				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner":     "testowner",
@@ -1740,15 +1756,24 @@ func Test_UpdatePullRequestComment(t *testing.T) {
 
 			// Call handler
 			result, err := handler(context.Background(), request)
-			require.NoError(t, err)
-
-			textContent := getTextResult(t, result)
 
 			if tc.expectError {
-				require.True(t, result.IsError)
-				assert.Contains(t, textContent.Text, tc.expectedErrMsg)
+				if err != nil {
+					// For HTTP errors, the handler returns an error
+					require.Error(t, err)
+					assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				} else {
+					// For validation errors, the handler returns a result with IsError=true
+					require.NoError(t, err)
+					textContent := getTextResult(t, result)
+					require.True(t, result.IsError)
+					assert.Contains(t, textContent.Text, tc.expectedErrMsg)
+				}
 				return
 			}
+
+			require.NoError(t, err)
+			textContent := getTextResult(t, result)
 
 			// Parse the result for success case
 			require.False(t, result.IsError)
