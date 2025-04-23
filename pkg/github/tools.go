@@ -161,6 +161,14 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetMe(getClient, t)),
 		)
 
+	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListGists(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateGist(getClient, t)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
@@ -175,6 +183,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
 	tsg.AddToolset(discussions)
+	tsg.AddToolset(gists)
 
 	return tsg
 }
