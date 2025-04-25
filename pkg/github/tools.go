@@ -167,6 +167,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateGist(getClient, t)),
+			toolsets.NewServerTool(UpdateGist(getClient, t)),
 		)
 
 	// Add toolsets to the group
