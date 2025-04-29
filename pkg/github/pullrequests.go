@@ -963,6 +963,10 @@ func CreateAndSubmitPullRequestReview(getGQLClient GetGQLClientFn, t translation
 func UpdatePullRequestComment(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("update_pull_request_comment",
 			mcp.WithDescription(t("TOOL_UPDATE_PULL_REQUEST_COMMENT_DESCRIPTION", "Update a review comment on a pull request")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_UPDATE_PULL_REQUEST_COMMENT_USER_TITLE", "Update pull request comment"),
+				ReadOnlyHint: toBoolPtr(false),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("Repository owner"),
