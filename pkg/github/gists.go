@@ -17,6 +17,10 @@ import (
 func ListGists(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_gists",
 			mcp.WithDescription(t("TOOL_LIST_GISTS_DESCRIPTION", "List gists for a user")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_GISTS", "List Gists"),
+				ReadOnlyHint: ToBoolPtr(true),
+			}),
 			mcp.WithString("username",
 				mcp.Description("GitHub username (omit for authenticated user's gists)"),
 			),
@@ -89,6 +93,10 @@ func ListGists(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 func CreateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_gist",
 			mcp.WithDescription(t("TOOL_CREATE_GIST_DESCRIPTION", "Create a new gist")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_CREATE_GIST", "Create Gist"),
+				ReadOnlyHint: ToBoolPtr(false),
+			}),
 			mcp.WithString("description",
 				mcp.Description("Description of the gist"),
 			),
@@ -170,6 +178,10 @@ func CreateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 func UpdateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("update_gist",
 			mcp.WithDescription(t("TOOL_UPDATE_GIST_DESCRIPTION", "Update an existing gist")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_UPDATE_GIST", "Update Gist"),
+				ReadOnlyHint: ToBoolPtr(false),
+			}),
 			mcp.WithString("gist_id",
 				mcp.Required(),
 				mcp.Description("ID of the gist to update"),
