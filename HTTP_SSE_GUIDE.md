@@ -2,7 +2,7 @@
 
 > **IMPORTANT NOTE**: This guide specifically covers the HTTP SSE transport for the GitHub MCP Server Binary implementation. While the binary we tested does not natively support HTTP SSE transport (only stdio transport), this guide explains how to create a wrapper to provide HTTP SSE functionality.
 
-This document provides details on creating and using a custom HTTP Server-Sent Events (SSE) wrapper around the GitHub MCP Server Binary implementation. Since the binary itself only supports stdio transport directly, we'll demonstrate how to create a wrapper to provide HTTP SSE functionality, allowing for remote communication over HTTP.
+This document provides details on creating and using a custom HTTP Server-Sent Events (SSE) wrapper around the GitHub MCP Server Binary implementation. Since the binary itself only supports stdio transport directly, we've created a wrapper to provide HTTP SSE functionality, allowing for remote communication over HTTP.
 
 ## What is HTTP SSE Transport?
 
@@ -15,89 +15,39 @@ HTTP Server-Sent Events (SSE) is a server push technology enabling a client to r
 
 ## Creating an HTTP SSE Wrapper
 
-Since the GitHub MCP Server Binary we tested only supports stdio transport directly, we need to create a wrapper to provide HTTP SSE functionality. Here's a Python implementation of such a wrapper:
+Since the GitHub MCP Server Binary we tested only supports stdio transport directly, we've created a wrapper to provide HTTP SSE functionality. Our implementation is available in the repository as `http_mcp_wrapper.py`. Here's a simplified example of how it works:
 
 ```python
 #!/usr/bin/env python3
 """
-HTTP Wrapper for GitHub MCP Server.
+HTTP and SSE Wrapper for GitHub MCP Server.
 
-This script creates a simple HTTP server that forwards requests to the GitHub MCP Server
-using stdio transport and returns the responses as SSE events.
+This script creates an HTTP server that communicates with the GitHub MCP Server
+using stdio transport and returns responses via HTTP or Server-Sent Events (SSE).
 """
 
 import argparse
+import http.server
 import json
 import os
+import socketserver
 import subprocess
+import sys
 import threading
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import uuid
+from urllib.parse import parse_qs, urlparse
 from token_helper import get_github_token
 
-# Process to communicate with
+# Global process to communicate with
 mcp_process = None
 token = None
 verbose = False
 
-class MCPRequestHandler(BaseHTTPRequestHandler):
-    """HTTP Request Handler for GitHub MCP Server requests."""
-    
-    def do_GET(self):
-        """Handle GET requests."""
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"status": "ok"}).encode())
-        else:
-            self.send_response(404)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": "Not found"}).encode())
-    
-    def do_POST(self):
-        """Handle POST requests."""
-        global mcp_process
-        
-        if self.path == "/sse":
-            # Get request body
-            content_length = int(self.headers["Content-Length"])
-            request_body = self.rfile.read(content_length).decode()
-            
-            try:
-                # Parse request body
-                request = json.loads(request_body)
-                
-                # Send request to MCP process
-                request_str = json.dumps(request) + "\n"
-                mcp_process.stdin.write(request_str)
-                mcp_process.stdin.flush()
-                
-                # Read response
-                response_str = mcp_process.stdout.readline()
-                response = json.loads(response_str)
-                
-                # Send response as SSE
-                self.send_response(200)
-                self.send_header("Content-type", "text/event-stream")
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
-                
-                # Send data event
-                event = f"event: data\ndata: {json.dumps(response)}\n\n"
-                self.wfile.write(event.encode())
-                
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-        else:
-            self.send_response(404)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": "Not found"}).encode())
+def log(message, level="INFO"):
+    """Log a message with timestamp."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print(f"[{timestamp}] {level}: {message}", flush=True)
 
 def start_mcp_server():
     """Start the GitHub MCP Server process."""
@@ -120,86 +70,209 @@ def start_mcp_server():
     
     # Start a thread to read stderr
     def read_stderr():
-        while mcp_process.poll() is None:
+        while mcp_process and mcp_process.poll() is None:
             line = mcp_process.stderr.readline()
             if line:
-                print(f"MCP: {line.strip()}")
+                log(f"MCP: {line.strip()}", "MCP")
     
     stderr_thread = threading.Thread(target=read_stderr)
     stderr_thread.daemon = True
     stderr_thread.start()
     
-    return mcp_process.poll() is None
+    return True
 
-def main():
-    """Main function."""
-    global token
+class MCPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    """HTTP Request Handler for GitHub MCP Server requests."""
     
-    parser = argparse.ArgumentParser(description="HTTP Wrapper for GitHub MCP Server")
-    parser.add_argument("--port", type=int, default=7444, help="HTTP server port (default: 7444)")
-    args = parser.parse_args()
+    def do_GET(self):
+        """Handle GET requests."""
+        # Endpoints for regular HTTP requests like /health, /user, etc.
+        # ...
     
-    # Get GitHub token
-    token = get_github_token()
-    if not token:
-        print("GitHub token not found")
-        sys.exit(1)
-    
-    # Start MCP server
-    if not start_mcp_server():
-        print("Failed to start GitHub MCP Server")
-        sys.exit(1)
-    
-    # Create HTTP server
-    server_address = ("", args.port)
-    httpd = HTTPServer(server_address, MCPRequestHandler)
-    
-    print(f"Starting HTTP server on port {args.port}")
-    print("Press Ctrl+C to stop")
-    
-    try:
-        # Start HTTP server
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("Shutting down")
-    finally:
-        # Stop MCP server
-        mcp_process.terminate()
+    def do_POST(self):
+        """Handle POST requests."""
+        # Parse URL and body
+        url = urlparse(self.path)
+        path = url.path
+        
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length).decode("utf-8")
+        data = json.loads(post_data)
+        
+        # SSE endpoint
+        if path == "/sse":
+            # Extract request method and params
+            if "jsonrpc" not in data or "method" not in data:
+                self.send_response(400)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Invalid JSON-RPC request"}).encode())
+                return
+            
+            # Set up SSE response headers
+            self.send_response(200)
+            self.send_header("Content-type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("X-Accel-Buffering", "no")  # For NGINX
+            self.end_headers()
+            
+            # Process the request and stream the response
+            self.handle_sse_request(data)
+            return
+        
+        # Other endpoints...
+        
+    def handle_sse_request(self, request_data):
+        """Handle an SSE request by streaming the response."""
+        # Extract method and params
+        method = request_data.get("method")
+        params = request_data.get("params", {})
+        request_id = request_data.get("id", str(uuid.uuid4()))
+        
+        # Handle different methods (tools/list, tools/call, etc.)
+        if method == "tools/call":
+            # Create the request
+            request = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "tools/call",
+                "params": params
+            }
+            
+            # Send the request and stream the response
+            self.stream_sse_response(request)
+            return
+        
+        # ...
+        
+    def stream_sse_response(self, request):
+        """Stream a response as SSE events."""
+        global mcp_process
+        
+        try:
+            # Send the request to the MCP process
+            request_str = json.dumps(request) + "\n"
+            mcp_process.stdin.write(request_str)
+            mcp_process.stdin.flush()
+            
+            # Read the response
+            response_str = mcp_process.stdout.readline()
+            response = json.loads(response_str)
+            
+            # Send the response as an SSE event
+            event_data = json.dumps(response)
+            self.wfile.write(f"event: data\n".encode())
+            self.wfile.write(f"data: {event_data}\n\n".encode())
+            self.wfile.flush()
+            
+            # End the stream
+            self.wfile.write(f"event: end\n".encode())
+            self.wfile.write(f"data: end\n\n".encode())
+            self.wfile.flush()
+            
+        except Exception as e:
+            # Error handling
+            self.send_sse_error(str(e), request.get("id", "unknown"))
 ```
 
-Save this as `http_wrapper.py` and make it executable:
+Our full implementation in `http_mcp_wrapper.py` includes:
+
+1. A complete HTTP server with multiple endpoints:
+   - `GET /health`: Health check endpoint
+   - `GET /user`: Get authenticated user information
+   - `GET /search/repositories`: Search GitHub repositories
+   - `GET /tools`: List all available tools
+   - `POST /tools/call`: Generic endpoint to call any GitHub MCP tool
+   - `POST /sse`: Server-Sent Events endpoint for streaming responses
+
+2. Robust error handling and process management
+3. Support for both regular HTTP and SSE responses
+4. Proper parsing of the nested JSON response format
+
+To run the wrapper, use our provided script:
 
 ```bash
-chmod +x http_wrapper.py
+./start_http_sse_server.sh [--port PORT] [--verbose]
 ```
 
 ## Running the HTTP SSE Wrapper
 
-To run the wrapper:
+To run the HTTP SSE wrapper:
 
 ```bash
-# Start the HTTP wrapper on port 7444
-python http_wrapper.py --port 7444
+# Start the HTTP wrapper on port 7444 (default)
+./start_http_sse_server.sh
+
+# With verbose logging
+./start_http_sse_server.sh --verbose
+
+# On a custom port
+./start_http_sse_server.sh --port 8000
 ```
 
 This will:
-1. Start the GitHub MCP Server Binary using stdio transport
-2. Create an HTTP server that listens on port 7444
-3. Forward JSON-RPC requests to the GitHub MCP Server Binary
-4. Return responses as SSE events
+1. Activate the Python virtual environment if it exists
+2. Install required dependencies if needed
+3. Start the GitHub MCP Server Binary using stdio transport
+4. Create an HTTP server that listens on the specified port
+5. Forward JSON-RPC requests to the GitHub MCP Server Binary
+6. Return responses as SSE events or regular HTTP responses
+
+To test the HTTP SSE wrapper, you can use our test script:
+
+```bash
+./run_http_sse_test.sh
+
+# With verbose logging
+./run_http_sse_test.sh --verbose
+
+# On a custom port
+./run_http_sse_test.sh --port 8000
+```
+
+This test script will verify the following functionality:
+1. Connection to the HTTP server
+2. Authentication with the GitHub API
+3. Getting user information
+4. Searching repositories
+5. Listing available tools
 
 ## HTTP SSE Client Examples
 
 ### Python Client Example
 
-```python
-import requests
-import json
-import sseclient
+Here's a sample Python client based on our `http_sse_test.py` implementation:
 
-def http_sse_client(server_url, github_token):
-    """Simple HTTP SSE client for GitHub MCP Server."""
+```python
+import json
+import requests
+import sys
+import uuid
+from token_helper import get_github_token  # Our helper for reading tokens
+
+# Make sure you have the SSE client library
+try:
+    import sseclient
+except ImportError:
+    print("The 'sseclient' library is required for this script.")
+    print("Install it with: pip install sseclient-py")
+    sys.exit(1)
+
+def http_sse_client(server_url, github_token, tool_name, arguments, verbose=False):
+    """
+    Send a request to the GitHub MCP Server using HTTP SSE.
     
+    Args:
+        server_url (str): Server URL (e.g. http://localhost:7444)
+        github_token (str): GitHub personal access token
+        tool_name (str): The name of the tool to call (e.g. "get_me")
+        arguments (dict): Tool arguments
+        verbose (bool): Enable verbose output
+        
+    Returns:
+        The parsed response
+    """
     # Set up headers with authorization
     headers = {
         'Accept': 'text/event-stream',
@@ -207,48 +280,137 @@ def http_sse_client(server_url, github_token):
         'Authorization': f'Bearer {github_token}'
     }
     
-    # Create a request to get authenticated user info
+    # Create a unique request ID
+    request_id = str(uuid.uuid4())
+    
+    # Create the JSON-RPC request
     request = {
         "jsonrpc": "2.0",
-        "id": "1",
+        "id": request_id,
         "method": "tools/call",
         "params": {
-            "name": "get_me",
-            "arguments": {}
+            "name": tool_name,
+            "arguments": arguments
         }
     }
     
     # Convert to JSON
     request_json = json.dumps(request)
+    if verbose:
+        print(f"Sending request: {request_json}")
     
-    # Send the request to the SSE endpoint
-    response = requests.post(
-        f"{server_url}/sse",
-        headers=headers,
-        data=request_json,
-        stream=True
-    )
-    
-    # Create an SSE client
-    client = sseclient.SSEClient(response)
-    
-    # Process events
-    for event in client.events():
-        if event.event == "data":
-            data = json.loads(event.data)
-            print(f"Received data: {json.dumps(data, indent=2)}")
-            # Remember to parse the nested content format as described in our findings
-            return data
-        elif event.event == "error":
-            print(f"Error: {event.data}")
+    try:
+        # Send the request to the SSE endpoint
+        response = requests.post(
+            f"{server_url}/sse",
+            headers=headers,
+            data=request_json,
+            stream=True,
+            timeout=10
+        )
+        
+        # Check if the request was successful
+        if response.status_code != 200:
+            print(f"HTTP error: {response.status_code} - {response.text}")
             return None
+        
+        # Create an SSE client
+        client = sseclient.SSEClient(response)
+        
+        # Process events
+        for event in client.events():
+            if event.event == "data":
+                try:
+                    data = json.loads(event.data)
+                    if verbose:
+                        print(f"Received data: {json.dumps(data, indent=2)}")
+                    
+                    # Parse the nested response format
+                    parsed_data = parse_response(data)
+                    return parsed_data
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing response: {e}")
+                    return None
+            elif event.event == "error":
+                print(f"Error event received: {event.data}")
+                return None
+            elif event.event == "end":
+                if verbose:
+                    print("End of stream")
+                break
+        
+        print("No data events received")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Request error: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
+def parse_response(response):
+    """
+    Parse a response from the GitHub MCP Server.
+    
+    This function handles the complex nested response format
+    sometimes returned by the GitHub MCP Server.
+    
+    Args:
+        response (dict): The JSON-RPC response from the server
+        
+    Returns:
+        The parsed result data, which could be a dict, list, or string
+    """
+    if "error" in response:
+        error = response["error"]
+        error_message = error.get("message", "Unknown error")
+        error_code = error.get("code", -1)
+        print(f"ERROR: {error_message} (code {error_code})")
+        return None
+    
+    if "result" not in response:
+        print("No 'result' field found in response")
+        return {}
+    
+    result = response["result"]
+    
+    # Check if result contains content field (the new format)
+    if "content" in result and isinstance(result["content"], list):
+        for item in result["content"]:
+            if item.get("type") == "text":
+                text = item.get("text", "")
+                
+                # Try to parse the text as JSON
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, return the text as is
+                    return text
+    
+    # If no content field or parsing failed, return the result as is
+    return result
 
 # Example usage
 if __name__ == "__main__":
-    server_url = "http://localhost:7444"
-    github_token = "your_github_token"
-    result = http_sse_client(server_url, github_token)
+    server_url = "http://localhost:7444"  # Default server URL
+    github_token = get_github_token()     # Get token from environment or file
+    
+    if not github_token:
+        print("GitHub token not found!")
+        sys.exit(1)
+    
+    # Test the get_me tool
+    print("Testing get_me tool...")
+    user_info = http_sse_client(server_url, github_token, "get_me", {}, verbose=True)
+    
+    if user_info and "login" in user_info:
+        print(f"Successfully authenticated as: {user_info['login']}")
+    else:
+        print("Failed to get user information")
 ```
+
+For a more comprehensive example, see our full `http_sse_test.py` implementation in the repository.
 
 ## Response Format Considerations
 
@@ -330,6 +492,17 @@ Common issues when working with HTTP SSE transport:
 
 ## Conclusion
 
-The HTTP SSE transport provides a way to communicate with the GitHub MCP Server remotely using standard HTTP protocols. It requires the same response parsing logic as the stdio transport but adds the flexibility of remote communication.
+The HTTP SSE transport provides a way to communicate with the GitHub MCP Server remotely using standard HTTP protocols. Our implementation demonstrates how to create a wrapper around the GitHub MCP Server Binary to provide both regular HTTP endpoints and Server-Sent Events for streaming responses.
+
+We've successfully implemented and tested:
+1. A complete HTTP server with multiple endpoints
+2. SSE streaming for GitHub MCP Server responses
+3. Robust error handling and process management
+4. Proper parsing of the nested JSON response format
+
+To use our implementation, simply:
+1. Run `./start_http_sse_server.sh` to start the HTTP SSE server
+2. Test it with `./run_http_sse_test.sh` to verify functionality
+3. Integrate with your own applications using the client example provided
 
 For more information on using the GitHub MCP Server Binary implementation, refer to the [TESTING_GUIDE.md](./TESTING_GUIDE.md) and [GITHUB_MCP_FINDINGS.md](./GITHUB_MCP_FINDINGS.md) documents.
