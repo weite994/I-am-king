@@ -55,29 +55,44 @@ Based on our testing and findings, we've created or updated the following docume
    - Includes robust response parsing and error handling
    - Demonstrates a complete PR workflow
 
-4. **[run_fixed_pr_test2.sh](./run_fixed_pr_test2.sh)**
+4. **[stdio_test.py](./stdio_test.py)**
+   - Tests the GitHub MCP Server using direct stdio transport
+   - Demonstrates response parsing for different tools
+   - Provides comprehensive error handling
+
+5. **[http_wrapper.py](./http_wrapper.py)**
+   - Custom HTTP wrapper for the GitHub MCP Server Binary
+   - Adds HTTP SSE transport capability
+   - Translates between HTTP requests and stdio transport
+
+6. **[run_fixed_pr_test2.sh](./run_fixed_pr_test2.sh)**
    - Script to run the final PR workflow test
 
 ## Key Findings Summary
 
-1. **Response Format Complexity**
+1. **Transport Protocol Limitations**
+   - The GitHub MCP Server Binary implementation we tested only supports stdio transport directly
+   - HTTP SSE transport requires creating a custom wrapper
+   - Both transport methods use the same JSON-RPC communication protocol
+
+2. **Response Format Complexity**
    - Actual data is nested in a JSON string within `content[0].text`
    - This requires double parsing - first the JSON-RPC response, then the nested string
    - Different tools return different structures (direct results vs. nested content)
 
-2. **Tool Name Discrepancies**
+3. **Tool Name Discrepancies**
    - Documentation mentions `get_repo`, but the actual tool is `search_repositories`
    - Always use `list_tools.py` to discover the correct tool names
 
-3. **Response Type Variations**
+4. **Response Type Variations**
    - Different tools return different types (lists, dictionaries with items, single objects)
    - Type checking and defensive programming is essential
 
-4. **Authentication Methods**
+5. **Authentication Methods**
    - Token file is the recommended approach for security
    - Environment variables work but are less secure for persistent use
 
-5. **Best Practices**
+6. **Best Practices**
    - Always discover tools first
    - Implement robust response parsing
    - Use type checking for different response structures
