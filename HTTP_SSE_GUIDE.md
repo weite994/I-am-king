@@ -1,8 +1,8 @@
 # GitHub MCP Server Binary: HTTP SSE Transport Guide
 
-> **IMPORTANT NOTE**: This guide specifically covers the HTTP SSE transport for the GitHub MCP Server Binary implementation. Other implementations might have different behaviors, response formats, or tool names.
+> **IMPORTANT NOTE**: This guide specifically covers the HTTP SSE transport for the GitHub MCP Server Binary implementation. While the binary we tested does not natively support HTTP SSE transport (only stdio transport), this guide explains how to create a wrapper to provide HTTP SSE functionality.
 
-This document provides details on using the HTTP Server-Sent Events (SSE) transport with the GitHub MCP Server Binary implementation. The HTTP SSE transport allows for remote communication with the GitHub MCP Server over HTTP.
+This document provides details on creating and using a custom HTTP Server-Sent Events (SSE) wrapper around the GitHub MCP Server Binary implementation. Since the binary itself only supports stdio transport directly, we'll demonstrate how to create a wrapper to provide HTTP SSE functionality, allowing for remote communication over HTTP.
 
 ## What is HTTP SSE Transport?
 
@@ -13,21 +13,180 @@ HTTP Server-Sent Events (SSE) is a server push technology enabling a client to r
 - It supports asynchronous communication patterns
 - It can be used for remote model context protocol interactions
 
-## Setting Up HTTP SSE Server
+## Creating an HTTP SSE Wrapper
 
-To run the GitHub MCP Server with HTTP SSE transport:
+Since the GitHub MCP Server Binary we tested only supports stdio transport directly, we need to create a wrapper to provide HTTP SSE functionality. Here's a Python implementation of such a wrapper:
 
-```bash
-# Start the server with HTTP SSE transport on port 7444
-./github-mcp-server http --port 7444
+```python
+#!/usr/bin/env python3
+"""
+HTTP Wrapper for GitHub MCP Server.
+
+This script creates a simple HTTP server that forwards requests to the GitHub MCP Server
+using stdio transport and returns the responses as SSE events.
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import threading
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from token_helper import get_github_token
+
+# Process to communicate with
+mcp_process = None
+token = None
+verbose = False
+
+class MCPRequestHandler(BaseHTTPRequestHandler):
+    """HTTP Request Handler for GitHub MCP Server requests."""
+    
+    def do_GET(self):
+        """Handle GET requests."""
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode())
+        else:
+            self.send_response(404)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Not found"}).encode())
+    
+    def do_POST(self):
+        """Handle POST requests."""
+        global mcp_process
+        
+        if self.path == "/sse":
+            # Get request body
+            content_length = int(self.headers["Content-Length"])
+            request_body = self.rfile.read(content_length).decode()
+            
+            try:
+                # Parse request body
+                request = json.loads(request_body)
+                
+                # Send request to MCP process
+                request_str = json.dumps(request) + "\n"
+                mcp_process.stdin.write(request_str)
+                mcp_process.stdin.flush()
+                
+                # Read response
+                response_str = mcp_process.stdout.readline()
+                response = json.loads(response_str)
+                
+                # Send response as SSE
+                self.send_response(200)
+                self.send_header("Content-type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                
+                # Send data event
+                event = f"event: data\ndata: {json.dumps(response)}\n\n"
+                self.wfile.write(event.encode())
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+        else:
+            self.send_response(404)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Not found"}).encode())
+
+def start_mcp_server():
+    """Start the GitHub MCP Server process."""
+    global mcp_process, token
+    
+    # Environment variables
+    env = os.environ.copy()
+    env["GITHUB_PERSONAL_ACCESS_TOKEN"] = token
+    
+    # Start process
+    mcp_process = subprocess.Popen(
+        ["./github-mcp-server", "stdio"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        text=True,
+        bufsize=1  # Line buffered
+    )
+    
+    # Start a thread to read stderr
+    def read_stderr():
+        while mcp_process.poll() is None:
+            line = mcp_process.stderr.readline()
+            if line:
+                print(f"MCP: {line.strip()}")
+    
+    stderr_thread = threading.Thread(target=read_stderr)
+    stderr_thread.daemon = True
+    stderr_thread.start()
+    
+    return mcp_process.poll() is None
+
+def main():
+    """Main function."""
+    global token
+    
+    parser = argparse.ArgumentParser(description="HTTP Wrapper for GitHub MCP Server")
+    parser.add_argument("--port", type=int, default=7444, help="HTTP server port (default: 7444)")
+    args = parser.parse_args()
+    
+    # Get GitHub token
+    token = get_github_token()
+    if not token:
+        print("GitHub token not found")
+        sys.exit(1)
+    
+    # Start MCP server
+    if not start_mcp_server():
+        print("Failed to start GitHub MCP Server")
+        sys.exit(1)
+    
+    # Create HTTP server
+    server_address = ("", args.port)
+    httpd = HTTPServer(server_address, MCPRequestHandler)
+    
+    print(f"Starting HTTP server on port {args.port}")
+    print("Press Ctrl+C to stop")
+    
+    try:
+        # Start HTTP server
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("Shutting down")
+    finally:
+        # Stop MCP server
+        mcp_process.terminate()
 ```
 
-You can also run the server with Docker:
+Save this as `http_wrapper.py` and make it executable:
 
 ```bash
-# Using Docker with HTTP SSE transport
-docker run -p 7444:7444 -e GITHUB_PERSONAL_ACCESS_TOKEN=your_token ghcr.io/github/github-mcp-server http --port 7444
+chmod +x http_wrapper.py
 ```
+
+## Running the HTTP SSE Wrapper
+
+To run the wrapper:
+
+```bash
+# Start the HTTP wrapper on port 7444
+python http_wrapper.py --port 7444
+```
+
+This will:
+1. Start the GitHub MCP Server Binary using stdio transport
+2. Create an HTTP server that listens on port 7444
+3. Forward JSON-RPC requests to the GitHub MCP Server Binary
+4. Return responses as SSE events
 
 ## HTTP SSE Client Examples
 
