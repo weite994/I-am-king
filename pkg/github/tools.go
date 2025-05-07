@@ -27,6 +27,8 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(SearchCode(getClient, t)),
 			toolsets.NewServerTool(GetCommit(getClient, t)),
 			toolsets.NewServerTool(ListBranches(getClient, t)),
+			toolsets.NewServerTool(ListTags(getClient, t)),
+			toolsets.NewServerTool(GetTag(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
@@ -118,6 +120,7 @@ func InitDynamicToolset(s *server.MCPServer, tsg *toolsets.ToolsetGroup, t trans
 			toolsets.NewServerTool(GetToolsetsTools(tsg, t)),
 			toolsets.NewServerTool(EnableToolset(s, tsg, t)),
 		)
+
 	dynamicToolSelection.Enabled = true
 	return dynamicToolSelection
 }
