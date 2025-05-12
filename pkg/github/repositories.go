@@ -695,7 +695,7 @@ func CreateBranch(getClient GetClientFn, t translations.TranslationHelperFunc) (
 				if err != nil {
 					return nil, fmt.Errorf("failed to get repository: %w", err)
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 
 				fromBranch = *repository.DefaultBranch
 			}
@@ -705,7 +705,7 @@ func CreateBranch(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return nil, fmt.Errorf("failed to get reference: %w", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Create new branch
 			newRef := &github.Reference{
@@ -717,7 +717,7 @@ func CreateBranch(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return nil, fmt.Errorf("failed to create branch: %w", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			r, err := json.Marshal(createdRef)
 			if err != nil {
