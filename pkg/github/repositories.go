@@ -414,7 +414,7 @@ func CreateRepository(getClient GetClientFn, t translations.TranslationHelperFun
 // GetFileContents creates a tool to get the contents of a file or directory from a GitHub repository.
 func GetFileContents(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_file_contents",
-			mcp.WithDescription(t("TOOL_GET_FILE_CONTENTS_DESCRIPTION", "Get the contents of a file or directory from a GitHub repository")),
+			mcp.WithDescription(t("TOOL_GET_FILE_CONTENTS_DESCRIPTION", "Get the contents of a file or directory from a GitHub repository. If 'begin' and/or 'end' are provided, only those lines will be returned (1-indexed, inclusive). If the path is a directory, line ranges are ignored and directory listing is returned. If 'begin'/'end' are provided but the path is a directory, an error is returned. If the file content is not base64 encoded, it will not be re-encoded.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_FILE_CONTENTS_USER_TITLE", "Get file or directory contents"),
 				ReadOnlyHint: true,
@@ -489,38 +489,72 @@ func GetFileContents(getClient GetClientFn, t translations.TranslationHelperFunc
 			var result interface{}
 			if fileContent != nil {
 				if fileContent.Content != nil && (begin > 0 || end > 0) {
-					decoded, err := fileContent.GetContent()
-					if err != nil {
-						return nil, fmt.Errorf("failed to decode file content: %w", err)
-					}
-					lines := strings.Split(decoded, "\n")
-					totalLines := len(lines)
-					// Adjust indices for 1-based input
-					startIdx := begin - 1
-					if startIdx < 0 {
-						startIdx = 0
-					}
-					endIdx := end
-					if endIdx <= 0 || endIdx > totalLines {
-						endIdx = totalLines
-					}
-					if startIdx >= totalLines {
-						startIdx = totalLines - 1
-					}
-					if startIdx < 0 {
-						startIdx = 0
-					}
-					if endIdx < startIdx {
-						endIdx = startIdx
-					}
-					ranged := lines[startIdx:endIdx]
-					joined := strings.Join(ranged, "\n")
-					result = &github.RepositoryContent{
-						Content: github.Ptr(base64.StdEncoding.EncodeToString([]byte(joined))),
+					// Only process line ranges for files, not directories
+					if fileContent.Encoding != nil && *fileContent.Encoding == "base64" {
+						decoded, err := fileContent.GetContent()
+						if err != nil {
+							return nil, fmt.Errorf("failed to decode file content: %w", err)
+						}
+						lines := strings.Split(decoded, "\n")
+						totalLines := len(lines)
+						startIdx := begin - 1
+						if startIdx < 0 {
+							startIdx = 0
+						}
+						endIdx := end
+						if endIdx <= 0 || endIdx > totalLines {
+							endIdx = totalLines
+						}
+						if startIdx >= totalLines {
+							startIdx = totalLines - 1
+						}
+						if startIdx < 0 {
+							startIdx = 0
+						}
+						if endIdx < startIdx {
+							endIdx = startIdx
+						}
+						ranged := lines[startIdx:endIdx]
+						joined := strings.Join(ranged, "\n")
+						result = &github.RepositoryContent{
+							Content:  github.Ptr(base64.StdEncoding.EncodeToString([]byte(joined))),
+							Encoding: github.Ptr("base64"),
+						}
+					} else {
+						// If not base64, just return the ranged lines as plain text
+						decoded, err := fileContent.GetContent()
+						if err != nil {
+							return nil, fmt.Errorf("failed to decode file content: %w", err)
+						}
+						lines := strings.Split(decoded, "\n")
+						totalLines := len(lines)
+						startIdx := begin - 1
+						if startIdx < 0 {
+							startIdx = 0
+						}
+						endIdx := end
+						if endIdx <= 0 || endIdx > totalLines {
+							endIdx = totalLines
+						}
+						if startIdx >= totalLines {
+							startIdx = totalLines - 1
+						}
+						if startIdx < 0 {
+							startIdx = 0
+						}
+						if endIdx < startIdx {
+							endIdx = startIdx
+						}
+						ranged := lines[startIdx:endIdx]
+						joined := strings.Join(ranged, "\n")
+						result = joined
 					}
 				} else {
 					result = fileContent
 				}
+			} else if (begin > 0 || end > 0) && dirContent != nil {
+				// If begin/end are provided but path is a directory, return an error
+				return mcp.NewToolResultError("Cannot use 'begin' or 'end' with a directory path. These parameters are only valid for files."), nil
 			} else {
 				result = dirContent
 			}
