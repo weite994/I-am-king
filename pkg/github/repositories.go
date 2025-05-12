@@ -287,7 +287,7 @@ func CreateOrUpdateFile(getClient GetClientFn, t translations.TranslationHelperF
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Convert content to base64
+			// json.Marshal encodes byte arrays with base64, which is required for the API.
 			contentBytes := []byte(content)
 
 			// Create the file options
@@ -666,7 +666,7 @@ func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 
 			// Create a response similar to what the DeleteFile API would return
 			response := map[string]interface{}{
-				"commit": newCommit,
+				"commit":  newCommit,
 				"content": nil,
 			}
 

@@ -1570,12 +1570,12 @@ func Test_DeleteFile(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		mockedClient     *http.Client
-		requestArgs      map[string]interface{}
-		expectError      bool
+		name              string
+		mockedClient      *http.Client
+		requestArgs       map[string]interface{}
+		expectError       bool
 		expectedCommitSHA string
-		expectedErrMsg   string
+		expectedErrMsg    string
 	}{
 		{
 			name: "successful file deletion using Git Data API",
@@ -1597,10 +1597,10 @@ func Test_DeleteFile(t *testing.T) {
 						"base_tree": "def456",
 						"tree": []interface{}{
 							map[string]interface{}{
-								"path":    "docs/example.md",
-								"mode":    "100644",
-								"type":    "blob",
-								"sha":     nil,
+								"path": "docs/example.md",
+								"mode": "100644",
+								"type": "blob",
+								"sha":  nil,
 							},
 						},
 					}).andThen(
@@ -1641,7 +1641,7 @@ func Test_DeleteFile(t *testing.T) {
 				"message": "Delete example file",
 				"branch":  "main",
 			},
-			expectError:        false,
+			expectError:       false,
 			expectedCommitSHA: "jkl012",
 		},
 		{
