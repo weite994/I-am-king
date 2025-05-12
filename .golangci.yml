@@ -20,13 +20,25 @@ linters:
     - gocritic
     - makezero
     - gosec
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - '-QF1008' # Allow embedded structs to be referenced by field
+        - '-ST1000' # Do not require package comments
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
 formatters:
   enable:
-    - gci
     - gofmt
     - goimports
-    - golines
 
 output:
   formats:
