@@ -632,6 +632,14 @@ func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			}
 			defer func() { _ = resp.Body.Close() }()
 
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to get commit: %s", string(body))), nil
+			}
+
 			// Create a tree entry for the file deletion by setting SHA to nil
 			treeEntries := []*github.TreeEntry{
 				{
@@ -649,6 +657,14 @@ func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			}
 			defer func() { _ = resp.Body.Close() }()
 
+			if resp.StatusCode != http.StatusCreated {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to create tree: %s", string(body))), nil
+			}
+
 			// Create a new commit with the new tree
 			commit := &github.Commit{
 				Message: github.Ptr(message),
@@ -661,6 +677,14 @@ func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			}
 			defer func() { _ = resp.Body.Close() }()
 
+			if resp.StatusCode != http.StatusCreated {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to create commit: %s", string(body))), nil
+			}
+
 			// Update the branch reference to point to the new commit
 			ref.Object.SHA = newCommit.SHA
 			_, resp, err = client.Git.UpdateRef(ctx, owner, repo, ref, false)
@@ -668,6 +692,14 @@ func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return nil, fmt.Errorf("failed to update reference: %w", err)
 			}
 			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to update reference: %s", string(body))), nil
+			}
 
 			// Create a response similar to what the DeleteFile API would return
 			response := map[string]interface{}{
