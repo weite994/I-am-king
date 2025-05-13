@@ -558,17 +558,17 @@ func ForkRepository(getClient GetClientFn, t translations.TranslationHelperFunc)
 
 // DeleteFile creates a tool to delete a file in a GitHub repository.
 // This tool uses a more roundabout way of deleting a file than just using the client.Repositories.DeleteFile.
-// This is because REST file deletion endpoint (and client.Repositories.DeleteFile) don't add commit signing to the deletion commit, 
-// unlike how the endpoint backing the create_or_update_files tool does. This appears to be a quirk of the API. 
-// The approach implemented here gets automatic commit signing when used with either the github-actions user or as an app, 
+// This is because REST file deletion endpoint (and client.Repositories.DeleteFile) don't add commit signing to the deletion commit,
+// unlike how the endpoint backing the create_or_update_files tool does. This appears to be a quirk of the API.
+// The approach implemented here gets automatic commit signing when used with either the github-actions user or as an app,
 // both of which suit an LLM well.
 func DeleteFile(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("delete_file",
 			mcp.WithDescription(t("TOOL_DELETE_FILE_DESCRIPTION", "Delete a file from a GitHub repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:           t("TOOL_DELETE_FILE_USER_TITLE", "Delete file"),
-				ReadOnlyHint:    false,
-				DestructiveHint: true,
+				ReadOnlyHint:    toBoolPtr(false),
+				DestructiveHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
