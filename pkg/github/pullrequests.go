@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"reflect"
 
 	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -1074,10 +1077,148 @@ func CreatePendingPullRequestReview(getGQLClient GetGQLClientFn, t translations.
 		}
 }
 
+// Don't look too closely at this, I'm trying out a pattern for more complex param parsing.
+type addPullRequestReviewCommentToPendingReviewParams struct {
+	Owner       string
+	Repo        string
+	PullNumber  int32
+	Path        string
+	Body        string
+	SubjectType string
+	Line        *int32
+	Side        *string
+	StartLine   *int32
+	StartSide   *string
+}
+
+func (p *addPullRequestReviewCommentToPendingReviewParams) parse(args map[string]any) error {
+	requiredFields := []string{"owner", "repo", "pullNumber", "path", "body", "subjectType"}
+	for _, field := range requiredFields {
+		if _, ok := args[field]; !ok {
+			return fmt.Errorf("missing required field: %s", field)
+		}
+	}
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName:    "json",
+		Result:     p,
+		DecodeHook: composeHooks(requireWholeNumberHook, int32BoundsHook),
+	})
+	if err != nil {
+		return fmt.Errorf("error creating decoder: %w", err)
+	}
+
+	if err := decoder.Decode(args); err != nil {
+		return fmt.Errorf("error decoding input: %w", err)
+	}
+
+	if p.PullNumber < 0 {
+		return fmt.Errorf("pull number must be positive")
+	}
+
+	hasLineInfo := p.Line != nil || p.StartLine != nil || p.Side != nil || p.StartSide != nil
+	if p.SubjectType != "LINE" && hasLineInfo {
+		return fmt.Errorf("line numbers or sides can only be used with LINE subject type")
+	}
+
+	hasNoLineNumberOrSide := p.Line == nil || p.Side == nil
+	if p.SubjectType == "LINE" && hasNoLineNumberOrSide {
+		return fmt.Errorf("at least a line number and side must be provided for LINE subject type")
+	}
+
+	if p.Line != nil && *p.Line < 0 {
+		return fmt.Errorf("line number must be positive")
+	}
+
+	if p.StartLine != nil && *p.StartLine < 0 {
+		return fmt.Errorf("start line number must be positive")
+	}
+
+	return nil
+}
+
+var requireWholeNumberHook mapstructure.DecodeHookFuncType = func(from reflect.Type, to reflect.Type, data any) (any, error) {
+	// Only care about source float64s
+	if from.Kind() != reflect.Float64 {
+		return data, nil
+	}
+
+	// Unwrap pointers if necessary
+	target := to
+	if to.Kind() == reflect.Ptr {
+		target = to.Elem()
+	}
+
+	switch target.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v := data.(float64)
+		if v != float64(int64(v)) {
+			return nil, fmt.Errorf("value %v is not a whole number", v)
+		}
+	}
+
+	return data, nil
+}
+
+var int32BoundsHook mapstructure.DecodeHookFuncType = func(_ reflect.Type, to reflect.Type, data any) (any, error) {
+	var isPtr bool
+	var targetType reflect.Type
+
+	if to.Kind() == reflect.Ptr {
+		isPtr = true
+		targetType = to.Elem()
+	} else {
+		targetType = to
+	}
+
+	// Only handle int32 (or *int32) targets
+	if targetType != reflect.TypeOf(int32(0)) {
+		return data, nil
+	}
+
+	var val float64
+	switch v := data.(type) {
+	case float64:
+		if v != float64(int64(v)) {
+			return nil, fmt.Errorf("value %v is not a whole number", v)
+		}
+		val = v
+	case int:
+		val = float64(v)
+	default:
+		return data, nil // Not a numeric type we handle
+	}
+
+	if val < math.MinInt32 || val > math.MaxInt32 {
+		return nil, fmt.Errorf("value %v is out of int32 bounds", val)
+	}
+
+	// Convert and optionally return pointer
+	i := int32(val)
+	if isPtr {
+		return &i, nil
+	}
+	return i, nil
+}
+
+func composeHooks(hooks ...mapstructure.DecodeHookFuncType) mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
+		var err error
+		for _, hook := range hooks {
+			data, err = hook(f, t, data)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return data, nil
+	}
+}
+
 // AddPullRequestReviewCommentToPendingReview creates a tool to add a comment to a pull request review.
 func AddPullRequestReviewCommentToPendingReview(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("add_pull_request_review_comment_to_pending_review",
-			mcp.WithDescription(t("TOOL_ADD_PULL_REQUEST_REVIEW_COMMENT_TO_PENDING_REVIEW_DESCRIPTION", "Add a comment to the requester's latest pending pull request review, a pending review needs to already exist to call this (check with the user if not sure).")),
+			mcp.WithDescription(t("TOOL_ADD_PULL_REQUEST_REVIEW_COMMENT_TO_PENDING_REVIEW_DESCRIPTION", "Add a comment to the requester's latest pending pull request review, a pending review needs to already exist to call this (check with the user if not sure). If you are using the LINE subjectType, consider getting a diff of the Pull Request to be certain of line numbers.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_ADD_PULL_REQUEST_REVIEW_COMMENT_TO_PENDING_REVIEW_USER_TITLE", "Add comment to the requester's latest pending pull request review"),
 				ReadOnlyHint: toBoolPtr(false),
@@ -1120,65 +1261,20 @@ func AddPullRequestReviewCommentToPendingReview(getGQLClient GetGQLClientFn, t t
 				mcp.Description("The line of the blob in the pull request diff that the comment applies to. For multi-line comments, the last line of the range"),
 			),
 			mcp.WithString("side",
-				mcp.Description("The side of the diff to comment on"),
+				mcp.Description("The side of the diff to comment on. LEFT indicates the previous state, RIGHT indicates the new state"),
 				mcp.Enum("LEFT", "RIGHT"),
 			),
 			mcp.WithNumber("startLine",
 				mcp.Description("For multi-line comments, the first line of the range that the comment applies to"),
 			),
 			mcp.WithString("startSide",
-				mcp.Description("For multi-line comments, the starting side of the diff that the comment applies to"),
+				mcp.Description("For multi-line comments, the starting side of the diff that the comment applies to. LEFT indicates the previous state, RIGHT indicates the new state"),
 				mcp.Enum("LEFT", "RIGHT"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			repo, err := requiredParam[string](request, "repo")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			pullNumber, err := RequiredInt32Param(request, "pullNumber")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			path, err := requiredParam[string](request, "path")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			body, err := requiredParam[string](request, "body")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			subjectType, err := requiredParam[string](request, "subjectType")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			line, err := OptionalInt32Param(request, "line")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			side, err := OptionalParam[string](request, "side")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			startLine, err := OptionalInt32Param(request, "startLine")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			startSide, err := OptionalParam[string](request, "startSide")
-			if err != nil {
+			var params addPullRequestReviewCommentToPendingReviewParams
+			if err := params.parse(request.Params.Arguments); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
@@ -1213,11 +1309,11 @@ func AddPullRequestReviewCommentToPendingReview(getGQLClient GetGQLClientFn, t t
 				} `graphql:"repository(owner: $owner, name: $name)"`
 			}
 
-			vars := map[string]interface{}{
+			vars := map[string]any{
 				"author": githubv4.String(getViewerQuery.Viewer.Login),
-				"owner":  githubv4.String(owner),
-				"name":   githubv4.String(repo),
-				"number": githubv4.Int(pullNumber),
+				"owner":  githubv4.String(params.Owner),
+				"name":   githubv4.String(params.Repo),
+				"number": githubv4.Int(params.PullNumber),
 			}
 
 			if err := client.Query(context.Background(), &getLatestReviewForViewerQuery, vars); err != nil {
@@ -1248,13 +1344,13 @@ func AddPullRequestReviewCommentToPendingReview(getGQLClient GetGQLClientFn, t t
 				ctx,
 				&addPullRequestReviewThreadMutation,
 				githubv4.AddPullRequestReviewThreadInput{
-					Path:                githubv4.String(path),
-					Body:                githubv4.String(body),
-					SubjectType:         newGQLStringlike[githubv4.PullRequestReviewThreadSubjectType](subjectType),
-					Line:                githubv4.NewInt(githubv4.Int(line)),
-					Side:                newGQLStringlike[githubv4.DiffSide](side),
-					StartLine:           githubv4.NewInt(githubv4.Int(startLine)),
-					StartSide:           newGQLStringlike[githubv4.DiffSide](startSide),
+					Path:                githubv4.String(params.Path),
+					Body:                githubv4.String(params.Body),
+					SubjectType:         newGQLStringlikePtr[githubv4.PullRequestReviewThreadSubjectType](&params.SubjectType),
+					Line:                newGQLIntPtr(params.Line),
+					Side:                newGQLStringlikePtr[githubv4.DiffSide](params.Side),
+					StartLine:           newGQLIntPtr(params.StartLine),
+					StartSide:           newGQLStringlikePtr[githubv4.DiffSide](params.StartSide),
 					PullRequestReviewID: &review.ID,
 				},
 				nil,
@@ -1544,6 +1640,65 @@ func DeletePendingPullRequestReview(getGQLClient GetGQLClientFn, t translations.
 		}
 }
 
+func GetPullRequestDiff(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+	return mcp.NewTool("get_pull_request_diff",
+			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_DIFF_DESCRIPTION", "Get the diff of a pull request.")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_PULL_REQUEST_DIFF_USER_TITLE", "Get pull request diff"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("pullNumber",
+				mcp.Required(),
+				mcp.Description("Pull request number"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			pullNumber, err := RequiredInt(request, "pullNumber")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			raw, resp, err := client.PullRequests.GetRaw(ctx, owner, repo, pullNumber, github.RawOptions{Type: github.Diff})
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to get pull request diff: %s", string(body))), nil
+			}
+
+			defer func() { _ = resp.Body.Close() }()
+
+			// Return the raw response
+			return mcp.NewToolResultText(string(raw)), nil
+		}
+}
+
 // newGQLString like takes something that approximates a string (of which there are many types in shurcooL/githubv4)
 // and constructs a pointer to it, or nil if the string is empty. This is extremely useful because when we parse
 // params from the MCP request, we need to convert them to types that are pointers of type def strings and it's
@@ -1554,4 +1709,20 @@ func newGQLStringlike[T ~string](s string) *T {
 	}
 	stringlike := T(s)
 	return &stringlike
+}
+
+func newGQLStringlikePtr[T ~string](s *string) *T {
+	if s == nil {
+		return nil
+	}
+	stringlike := T(*s)
+	return &stringlike
+}
+
+func newGQLIntPtr(i *int32) *githubv4.Int {
+	if i == nil {
+		return nil
+	}
+	gi := githubv4.Int(*i)
+	return &gi
 }

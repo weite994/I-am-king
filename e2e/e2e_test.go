@@ -1008,7 +1008,7 @@ func TestPullRequestReviewCommentSubmit(t *testing.T) {
 		"owner":   currentOwner,
 		"repo":    repoName,
 		"path":    "test-file.txt",
-		"content": fmt.Sprintf("Created by e2e test %s", t.Name()),
+		"content": fmt.Sprintf("Created by e2e test %s\nwith multiple lines", t.Name()),
 		"message": "Add test file",
 		"branch":  "test-branch",
 	}
@@ -1065,21 +1065,62 @@ func TestPullRequestReviewCommentSubmit(t *testing.T) {
 	require.True(t, ok, "expected content to be of type TextContent")
 	require.Equal(t, "", textContent.Text, "expected content to be empty")
 
-	// Add a review comment
-	addReviewCommentRequest := mcp.CallToolRequest{}
-	addReviewCommentRequest.Params.Name = "add_pull_request_review_comment_to_pending_review"
-	addReviewCommentRequest.Params.Arguments = map[string]any{
+	// Add a file review comment
+	addFileReviewCommentRequest := mcp.CallToolRequest{}
+	addFileReviewCommentRequest.Params.Name = "add_pull_request_review_comment_to_pending_review"
+	addFileReviewCommentRequest.Params.Arguments = map[string]any{
+		"owner":       currentOwner,
+		"repo":        repoName,
+		"pullNumber":  1,
+		"path":        "test-file.txt",
+		"subjectType": "FILE",
+		"body":        "File review comment",
+	}
+
+	t.Logf("Adding file review comment to pull request in %s/%s...", currentOwner, repoName)
+	resp, err = mcpClient.CallTool(ctx, addFileReviewCommentRequest)
+	require.NoError(t, err, "expected to call 'add_pull_request_review_comment_to_pending_review' tool successfully")
+	require.False(t, resp.IsError, fmt.Sprintf("expected result not to be an error: %+v", resp))
+
+	// Add a single line review comment
+	addSingleLineReviewCommentRequest := mcp.CallToolRequest{}
+	addSingleLineReviewCommentRequest.Params.Name = "add_pull_request_review_comment_to_pending_review"
+	addSingleLineReviewCommentRequest.Params.Arguments = map[string]any{
 		"owner":       currentOwner,
 		"repo":        repoName,
 		"pullNumber":  1,
 		"path":        "test-file.txt",
 		"subjectType": "LINE",
-		"body":        "Very nice!",
+		"body":        "Single line review comment",
 		"line":        1,
+		"side":        "RIGHT",
+		"commitId":    commitId,
 	}
 
-	t.Logf("Adding review comment to pull request in %s/%s...", currentOwner, repoName)
-	resp, err = mcpClient.CallTool(ctx, addReviewCommentRequest)
+	t.Logf("Adding single line review comment to pull request in %s/%s...", currentOwner, repoName)
+	resp, err = mcpClient.CallTool(ctx, addSingleLineReviewCommentRequest)
+	require.NoError(t, err, "expected to call 'add_pull_request_review_comment_to_pending_review' tool successfully")
+	require.False(t, resp.IsError, fmt.Sprintf("expected result not to be an error: %+v", resp))
+
+	// Add a multiline review comment
+	addMultilineReviewCommentRequest := mcp.CallToolRequest{}
+	addMultilineReviewCommentRequest.Params.Name = "add_pull_request_review_comment_to_pending_review"
+	addMultilineReviewCommentRequest.Params.Arguments = map[string]any{
+		"owner":       currentOwner,
+		"repo":        repoName,
+		"pullNumber":  1,
+		"path":        "test-file.txt",
+		"subjectType": "LINE",
+		"body":        "Multiline review comment",
+		"startLine":   1,
+		"line":        2,
+		"startSide":   "RIGHT",
+		"side":        "RIGHT",
+		"commitId":    commitId,
+	}
+
+	t.Logf("Adding multi line review comment to pull request in %s/%s...", currentOwner, repoName)
+	resp, err = mcpClient.CallTool(ctx, addMultilineReviewCommentRequest)
 	require.NoError(t, err, "expected to call 'add_pull_request_review_comment_to_pending_review' tool successfully")
 	require.False(t, resp.IsError, fmt.Sprintf("expected result not to be an error: %+v", resp))
 
@@ -1117,6 +1158,7 @@ func TestPullRequestReviewCommentSubmit(t *testing.T) {
 	require.True(t, ok, "expected content to be of type TextContent")
 
 	var reviews []struct {
+		ID    int    `json:"id"`
 		State string `json:"state"`
 	}
 	err = json.Unmarshal([]byte(textContent.Text), &reviews)
@@ -1125,6 +1167,13 @@ func TestPullRequestReviewCommentSubmit(t *testing.T) {
 	// Check that there is one review
 	require.Len(t, reviews, 1, "expected to find one review")
 	require.Equal(t, "COMMENTED", reviews[0].State, "expected review state to be COMMENTED")
+
+	// Check that there are three review comments
+	// MCP Server doesn't support this, but we can use the GitHub Client
+	ghClient := gogithub.NewClient(nil).WithAuthToken(getE2EToken(t))
+	comments, _, err := ghClient.PullRequests.ListReviewComments(context.Background(), currentOwner, repoName, 1, int64(reviews[0].ID), nil)
+	require.NoError(t, err, "expected to list review comments successfully")
+	require.Equal(t, 3, len(comments), "expected to find three review comments")
 }
 
 func TestPullRequestReviewDeletion(t *testing.T) {
@@ -1314,5 +1363,4 @@ func TestPullRequestReviewDeletion(t *testing.T) {
 	err = json.Unmarshal([]byte(textContent.Text), &noReviews)
 	require.NoError(t, err, "expected to unmarshal text content successfully")
 	require.Len(t, noReviews, 0, "expected to find no reviews")
-
 }
