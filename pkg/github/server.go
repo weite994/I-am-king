@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -11,7 +12,13 @@ import (
 
 // NewServer creates a new GitHub MCP server with the specified GH client and logger.
 
-func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
+func NewServer(
+	version string,
+	getClient GetClientFn,
+	t translations.TranslationHelperFunc,
+	readOnly bool,
+	opts ...server.ServerOption,
+) *server.MCPServer {
 	// Add default options
 	defaultOpts := []server.ServerOption{
 		server.WithToolCapabilities(true),
@@ -27,7 +34,6 @@ func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
 		opts...,
 	)
 
-<<<<<<< HEAD
 	// Add GitHub Resources
 	s.AddResourceTemplate(GetRepositoryResourceContent(getClient, t))
 	s.AddResourceTemplate(GetRepositoryResourceBranchContent(getClient, t))
@@ -89,9 +95,6 @@ func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
 	s.AddTool(GetCodeScanningAlert(getClient, t))
 	s.AddTool(ListCodeScanningAlerts(getClient, t))
 
-=======
-	// Tool/resource initialization has moved to tools.go
->>>>>>> baa8411282f22bb11637964d09d28ddadc641218
 	return s
 }
 
