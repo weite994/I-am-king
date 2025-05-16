@@ -19,7 +19,7 @@ func GetPullRequest(getClient GetClientFn, t translations.TranslationHelperFunc)
 			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_DESCRIPTION", "Get details of a specific pull request in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_PULL_REQUEST_USER_TITLE", "Get pull request details"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -81,7 +81,7 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			mcp.WithDescription(t("TOOL_UPDATE_PULL_REQUEST_DESCRIPTION", "Update an existing pull request in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_UPDATE_PULL_REQUEST_USER_TITLE", "Edit pull request"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -202,7 +202,7 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 			mcp.WithDescription(t("TOOL_LIST_PULL_REQUESTS_DESCRIPTION", "List pull requests in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_LIST_PULL_REQUESTS_USER_TITLE", "List pull requests"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -311,7 +311,7 @@ func MergePullRequest(getClient GetClientFn, t translations.TranslationHelperFun
 			mcp.WithDescription(t("TOOL_MERGE_PULL_REQUEST_DESCRIPTION", "Merge a pull request in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_MERGE_PULL_REQUEST_USER_TITLE", "Merge pull request"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -400,7 +400,7 @@ func GetPullRequestFiles(getClient GetClientFn, t translations.TranslationHelper
 			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_FILES_DESCRIPTION", "Get the files changed in a specific pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_PULL_REQUEST_FILES_USER_TITLE", "Get pull request files"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -463,7 +463,7 @@ func GetPullRequestStatus(getClient GetClientFn, t translations.TranslationHelpe
 			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_STATUS_DESCRIPTION", "Get the status of a specific pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_PULL_REQUEST_STATUS_USER_TITLE", "Get pull request status checks"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -540,7 +540,7 @@ func UpdatePullRequestBranch(getClient GetClientFn, t translations.TranslationHe
 			mcp.WithDescription(t("TOOL_UPDATE_PULL_REQUEST_BRANCH_DESCRIPTION", "Update the branch of a pull request with the latest changes from the base branch.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_UPDATE_PULL_REQUEST_BRANCH_USER_TITLE", "Update pull request branch"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -618,7 +618,7 @@ func GetPullRequestComments(getClient GetClientFn, t translations.TranslationHel
 			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_COMMENTS_DESCRIPTION", "Get comments for a specific pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_PULL_REQUEST_COMMENTS_USER_TITLE", "Get pull request comments"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -686,7 +686,7 @@ func AddPullRequestReviewComment(getClient GetClientFn, t translations.Translati
 			mcp.WithDescription(t("TOOL_ADD_PULL_REQUEST_REVIEW_COMMENT_DESCRIPTION", "Add a review comment to a pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_ADD_PULL_REQUEST_REVIEW_COMMENT_USER_TITLE", "Add review comment to pull request"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -860,7 +860,7 @@ func GetPullRequestReviews(getClient GetClientFn, t translations.TranslationHelp
 			mcp.WithDescription(t("TOOL_GET_PULL_REQUEST_REVIEWS_DESCRIPTION", "Get reviews for a specific pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_PULL_REQUEST_REVIEWS_USER_TITLE", "Get pull request reviews"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -922,7 +922,7 @@ func CreatePullRequestReview(getClient GetClientFn, t translations.TranslationHe
 			mcp.WithDescription(t("TOOL_CREATE_PULL_REQUEST_REVIEW_DESCRIPTION", "Create a review for a pull request.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_CREATE_PULL_REQUEST_REVIEW_USER_TITLE", "Submit pull request review"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -1138,7 +1138,7 @@ func CreatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			mcp.WithDescription(t("TOOL_CREATE_PULL_REQUEST_DESCRIPTION", "Create a new pull request in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_CREATE_PULL_REQUEST_USER_TITLE", "Open new pull request"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: toBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -1244,5 +1244,77 @@ func CreatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			}
 
 			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
+// RequestCopilotReview creates a tool to request a Copilot review for a pull request.
+// Note that this tool will not work on GHES where this feature is unsupported. In future, we should not expose this
+// tool if the configured host does not support it.
+func RequestCopilotReview(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+	return mcp.NewTool("request_copilot_review",
+			mcp.WithDescription(t("TOOL_REQUEST_COPILOT_REVIEW_DESCRIPTION", "Request a GitHub Copilot code review for a pull request. Use this for automated feedback on pull requests, usually before requesting a human reviewer.")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_REQUEST_COPILOT_REVIEW_USER_TITLE", "Request Copilot review"),
+				ReadOnlyHint: toBoolPtr(false),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("pullNumber",
+				mcp.Required(),
+				mcp.Description("Pull request number"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			pullNumber, err := RequiredInt(request, "pullNumber")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			_, resp, err := client.PullRequests.RequestReviewers(
+				ctx,
+				owner,
+				repo,
+				pullNumber,
+				github.ReviewersRequest{
+					// The login name of the copilot reviewer bot
+					Reviewers: []string{"copilot-pull-request-reviewer[bot]"},
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to request copilot review: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusCreated {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to request copilot review: %s", string(body))), nil
+			}
+
+			// Return nothing on success, as there's not much value in returning the Pull Request itself
+			return mcp.NewToolResultText(""), nil
 		}
 }
