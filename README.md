@@ -15,8 +15,10 @@ automation and interaction capabilities for developers and tools.
 ## Prerequisites
 
 1. To run the server in a container, you will need to have [Docker](https://www.docker.com/) installed.
-2. [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
+2. Once Docker is installed, you will also need to ensure Docker is running. The image is public; if you get errors on pull, you may have an expired token and need to `docker logout ghcr.io`.
+3. Lastly you will need to [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
    Each tool requires specific permissions to function. See the [Required Token Permissions](#required-token-permissions) section below for details.
+   The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
 
 ## Required Token Permissions
 
@@ -38,6 +40,11 @@ Each tool requires specific GitHub Personal Access Token permissions to function
     - `repo` - Full control of private repositories (for private repos)
     - `public_repo` - Access public repositories (for public repos)
     - `write:discussion` - Write access to repository discussions (if using discussions)
+
+- **add_sub_issue**, **get_sub_issues**
+  - Required permissions:
+    - `repo` - Full control of private repositories (for private repos)
+    - `public_repo` - Access public repositories (for public repos)
 
 ### Pull Requests
 - **get_pull_request**, **list_pull_requests**, **get_pull_request_files**, **get_pull_request_status**
@@ -238,6 +245,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
   - `parent_issue_number`: Parent issue number (number, required)
   - `child_issue_number`: Child issue number to add as sub-issue (number, required)
+
+- **get_sub_issues** - Get sub-issues of an issue
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issue_number`: Issue number (number, required)
 
 - **list_issues** - List and filter repository issues
 

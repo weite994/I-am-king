@@ -16,9 +16,15 @@ import (
 )
 
 // Custom endpoint patterns for sub-issues
-const (
-	PostReposSubIssuesByOwnerByRepoByParentIssueNumberByChildIssueNumber mock.EndpointPattern = "POST /repos/{owner}/{repo}/issues/{parent_issue_number}/sub-issues/{child_issue_number}"
-	GetReposSubIssuesByOwnerByRepoByIssueNumber                          mock.EndpointPattern = "GET /repos/{owner}/{repo}/issues/{issue_number}/sub-issues"
+var (
+	PostReposSubIssuesByOwnerByRepoByParentIssueNumberByChildIssueNumber = mock.EndpointPattern{
+		Pattern: "POST /repos/{owner}/{repo}/issues/{parent_issue_number}/sub-issues/{child_issue_number}",
+		Method:  "POST",
+	}
+	GetReposSubIssuesByOwnerByRepoByIssueNumber = mock.EndpointPattern{
+		Pattern: "GET /repos/{owner}/{repo}/issues/{issue_number}/sub-issues",
+		Method:  "GET",
+	}
 )
 
 func Test_GetIssue(t *testing.T) {

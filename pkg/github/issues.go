@@ -11,13 +11,7 @@ import (
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/mock"
 	"github.com/mark3labs/mcp-go/server"
-)
-
-const (
-	PostReposSubIssuesByOwnerByRepoByParentIssueNumberByChildIssueNumber mock.EndpointPattern = "POST /repos/{owner}/{repo}/issues/{parent_issue_number}/sub-issues/{child_issue_number}"
-	GetReposSubIssuesByOwnerByRepoByIssueNumber                          mock.EndpointPattern = "GET /repos/{owner}/{repo}/issues/{issue_number}/sub-issues"
 )
 
 // GetIssue creates a tool to get details of a specific issue in a GitHub repository.
