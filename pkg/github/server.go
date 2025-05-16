@@ -1,25 +1,20 @@
 package github
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 
-	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-type GetClientFn func(context.Context) (*github.Client, error)
-
 // NewServer creates a new GitHub MCP server with the specified GH client and logger.
-func NewServer(getClient GetClientFn, version string, readOnly bool, t translations.TranslationHelperFunc, opts ...server.ServerOption) *server.MCPServer {
+
+func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
 	// Add default options
 	defaultOpts := []server.ServerOption{
+		server.WithToolCapabilities(true),
 		server.WithResourceCapabilities(true, true),
 		server.WithLogging(),
 	}
@@ -92,43 +87,8 @@ func NewServer(getClient GetClientFn, version string, readOnly bool, t translati
 	// Add GitHub tools - Code Scanning
 	s.AddTool(GetCodeScanningAlert(getClient, t))
 	s.AddTool(ListCodeScanningAlerts(getClient, t))
+
 	return s
-}
-
-// GetMe creates a tool to get details of the authenticated user.
-func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
-	return mcp.NewTool("get_me",
-			mcp.WithDescription(t("TOOL_GET_ME_DESCRIPTION", "Get details of the authenticated GitHub user. Use this when a request include \"me\", \"my\"...")),
-			mcp.WithString("reason",
-				mcp.Description("Optional: reason the session was created"),
-			),
-		),
-		func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
-			user, resp, err := client.Users.Get(ctx, "")
-			if err != nil {
-				return nil, fmt.Errorf("failed to get user: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if resp.StatusCode != http.StatusOK {
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, fmt.Errorf("failed to read response body: %w", err)
-				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to get user: %s", string(body))), nil
-			}
-
-			r, err := json.Marshal(user)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal user: %w", err)
-			}
-
-			return mcp.NewToolResultText(string(r)), nil
-		}
 }
 
 // OptionalParamOK is a helper function that can be used to fetch a requested parameter from the request.
