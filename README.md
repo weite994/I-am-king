@@ -200,7 +200,7 @@ GITHUB_TOOLSETS="all" ./github-mcp-server
 
 **Note**: This feature is currently in beta and may not be available in all environments. Please test it out and let us know if you encounter any issues.
 
-Instead of starting with all tools enabled, you can turn on dynamic toolset discovery. Dynamic toolsets allow the MCP host to list and enable toolsets in response to a user prompt. This should help to avoid situations where the model gets confused by the shear number of tools available.
+Instead of starting with all tools enabled, you can turn on dynamic toolset discovery. Dynamic toolsets allow the MCP host to list and enable toolsets in response to a user prompt. This should help to avoid situations where the model gets confused by the sheer number of tools available.
 
 ### Using Dynamic Tool Discovery
 
@@ -223,6 +223,27 @@ docker run -i --rm \
 
 The flag `--gh-host` and the environment variable `GITHUB_HOST` can be used to set
 the GitHub Enterprise Server hostname.
+Prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://` which GitHub Enterprise Server does not support.
+
+``` json
+"github": {
+    "command": "docker",
+    "args": [
+    "run",
+    "-i",
+    "--rm",
+    "-e",
+    "GITHUB_PERSONAL_ACCESS_TOKEN",
+    "-e",
+    "GITHUB_HOST",
+    "ghcr.io/github/github-mcp-server"
+    ],
+    "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
+        "GITHUB_HOST": "https://<your GHES domain name>"
+    }
+}
+```
 
 ## i18n / Overriding Descriptions
 
@@ -457,6 +478,13 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `state`: New state ('open' or 'closed') (string, optional)
   - `base`: New base branch name (string, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
+
+- **request_copilot_review** - Request a GitHub Copilot review for a pull request (experimental; subject to GitHub API support)
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - _Note_: Currently, this tool will only work for github.com
 
 ### Repositories
 
