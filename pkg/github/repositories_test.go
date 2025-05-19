@@ -1528,3 +1528,449 @@ func Test_ListBranches(t *testing.T) {
 		})
 	}
 }
+
+func Test_DeleteFile(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := DeleteFile(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "delete_file", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "path")
+	assert.Contains(t, tool.InputSchema.Properties, "message")
+	assert.Contains(t, tool.InputSchema.Properties, "branch")
+	// SHA is no longer required since we're using Git Data API
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "path", "message", "branch"})
+
+	// Setup mock objects for Git Data API
+	mockRef := &github.Reference{
+		Ref: github.Ptr("refs/heads/main"),
+		Object: &github.GitObject{
+			SHA: github.Ptr("abc123"),
+		},
+	}
+
+	mockCommit := &github.Commit{
+		SHA: github.Ptr("abc123"),
+		Tree: &github.Tree{
+			SHA: github.Ptr("def456"),
+		},
+	}
+
+	mockTree := &github.Tree{
+		SHA: github.Ptr("ghi789"),
+	}
+
+	mockNewCommit := &github.Commit{
+		SHA:     github.Ptr("jkl012"),
+		Message: github.Ptr("Delete example file"),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/commit/jkl012"),
+	}
+
+	tests := []struct {
+		name              string
+		mockedClient      *http.Client
+		requestArgs       map[string]interface{}
+		expectError       bool
+		expectedCommitSHA string
+		expectedErrMsg    string
+	}{
+		{
+			name: "successful file deletion using Git Data API",
+			mockedClient: mock.NewMockedHTTPClient(
+				// Get branch reference
+				mock.WithRequestMatch(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					mockRef,
+				),
+				// Get commit
+				mock.WithRequestMatch(
+					mock.GetReposGitCommitsByOwnerByRepoByCommitSha,
+					mockCommit,
+				),
+				// Create tree
+				mock.WithRequestMatchHandler(
+					mock.PostReposGitTreesByOwnerByRepo,
+					expectRequestBody(t, map[string]interface{}{
+						"base_tree": "def456",
+						"tree": []interface{}{
+							map[string]interface{}{
+								"path": "docs/example.md",
+								"mode": "100644",
+								"type": "blob",
+								"sha":  nil,
+							},
+						},
+					}).andThen(
+						mockResponse(t, http.StatusCreated, mockTree),
+					),
+				),
+				// Create commit
+				mock.WithRequestMatchHandler(
+					mock.PostReposGitCommitsByOwnerByRepo,
+					expectRequestBody(t, map[string]interface{}{
+						"message": "Delete example file",
+						"tree":    "ghi789",
+						"parents": []interface{}{"abc123"},
+					}).andThen(
+						mockResponse(t, http.StatusCreated, mockNewCommit),
+					),
+				),
+				// Update reference
+				mock.WithRequestMatchHandler(
+					mock.PatchReposGitRefsByOwnerByRepoByRef,
+					expectRequestBody(t, map[string]interface{}{
+						"sha":   "jkl012",
+						"force": false,
+					}).andThen(
+						mockResponse(t, http.StatusOK, &github.Reference{
+							Ref: github.Ptr("refs/heads/main"),
+							Object: &github.GitObject{
+								SHA: github.Ptr("jkl012"),
+							},
+						}),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":   "owner",
+				"repo":    "repo",
+				"path":    "docs/example.md",
+				"message": "Delete example file",
+				"branch":  "main",
+			},
+			expectError:       false,
+			expectedCommitSHA: "jkl012",
+		},
+		{
+			name: "file deletion fails - branch not found",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Reference not found"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":   "owner",
+				"repo":    "repo",
+				"path":    "docs/nonexistent.md",
+				"message": "Delete nonexistent file",
+				"branch":  "nonexistent-branch",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to get branch reference",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := DeleteFile(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			// Verify results
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Parse the result and get the text content if no error
+			textContent := getTextResult(t, result)
+
+			// Unmarshal and verify the result
+			var response map[string]interface{}
+			err = json.Unmarshal([]byte(textContent.Text), &response)
+			require.NoError(t, err)
+
+			// Verify the response contains the expected commit
+			commit, ok := response["commit"].(map[string]interface{})
+			require.True(t, ok)
+			commitSHA, ok := commit["sha"].(string)
+			require.True(t, ok)
+			assert.Equal(t, tc.expectedCommitSHA, commitSHA)
+		})
+	}
+}
+
+func Test_ListTags(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := ListTags(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "list_tags", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
+
+	// Setup mock tags for success case
+	mockTags := []*github.RepositoryTag{
+		{
+			Name: github.Ptr("v1.0.0"),
+			Commit: &github.Commit{
+				SHA: github.Ptr("v1.0.0-tag-sha"),
+				URL: github.Ptr("https://api.github.com/repos/owner/repo/commits/abc123"),
+			},
+			ZipballURL: github.Ptr("https://github.com/owner/repo/zipball/v1.0.0"),
+			TarballURL: github.Ptr("https://github.com/owner/repo/tarball/v1.0.0"),
+		},
+		{
+			Name: github.Ptr("v0.9.0"),
+			Commit: &github.Commit{
+				SHA: github.Ptr("v0.9.0-tag-sha"),
+				URL: github.Ptr("https://api.github.com/repos/owner/repo/commits/def456"),
+			},
+			ZipballURL: github.Ptr("https://github.com/owner/repo/zipball/v0.9.0"),
+			TarballURL: github.Ptr("https://github.com/owner/repo/tarball/v0.9.0"),
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedTags   []*github.RepositoryTag
+		expectedErrMsg string
+	}{
+		{
+			name: "successful tags list",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposTagsByOwnerByRepo,
+					expectPath(
+						t,
+						"/repos/owner/repo/tags",
+					).andThen(
+						mockResponse(t, http.StatusOK, mockTags),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError:  false,
+			expectedTags: mockTags,
+		},
+		{
+			name: "list tags fails",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposTagsByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusInternalServerError)
+						_, _ = w.Write([]byte(`{"message": "Internal Server Error"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to list tags",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := ListTags(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			// Verify results
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Parse the result and get the text content if no error
+			textContent := getTextResult(t, result)
+
+			// Parse and verify the result
+			var returnedTags []*github.RepositoryTag
+			err = json.Unmarshal([]byte(textContent.Text), &returnedTags)
+			require.NoError(t, err)
+
+			// Verify each tag
+			require.Equal(t, len(tc.expectedTags), len(returnedTags))
+			for i, expectedTag := range tc.expectedTags {
+				assert.Equal(t, *expectedTag.Name, *returnedTags[i].Name)
+				assert.Equal(t, *expectedTag.Commit.SHA, *returnedTags[i].Commit.SHA)
+			}
+		})
+	}
+}
+
+func Test_GetTag(t *testing.T) {
+	// Verify tool definition once
+	mockClient := github.NewClient(nil)
+	tool, _ := GetTag(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "get_tag", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "tag")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "tag"})
+
+	mockTagRef := &github.Reference{
+		Ref: github.Ptr("refs/tags/v1.0.0"),
+		Object: &github.GitObject{
+			SHA: github.Ptr("v1.0.0-tag-sha"),
+		},
+	}
+
+	mockTagObj := &github.Tag{
+		SHA:     github.Ptr("v1.0.0-tag-sha"),
+		Tag:     github.Ptr("v1.0.0"),
+		Message: github.Ptr("Release v1.0.0"),
+		Object: &github.GitObject{
+			Type: github.Ptr("commit"),
+			SHA:  github.Ptr("abc123"),
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedTag    *github.Tag
+		expectedErrMsg string
+	}{
+		{
+			name: "successful tag retrieval",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					expectPath(
+						t,
+						"/repos/owner/repo/git/ref/tags/v1.0.0",
+					).andThen(
+						mockResponse(t, http.StatusOK, mockTagRef),
+					),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitTagsByOwnerByRepoByTagSha,
+					expectPath(
+						t,
+						"/repos/owner/repo/git/tags/v1.0.0-tag-sha",
+					).andThen(
+						mockResponse(t, http.StatusOK, mockTagObj),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"tag":   "v1.0.0",
+			},
+			expectError: false,
+			expectedTag: mockTagObj,
+		},
+		{
+			name: "tag reference not found",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Reference does not exist"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"tag":   "v1.0.0",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to get tag reference",
+		},
+		{
+			name: "tag object not found",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					mockTagRef,
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitTagsByOwnerByRepoByTagSha,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Tag object does not exist"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"tag":   "v1.0.0",
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to get tag object",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := GetTag(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			// Verify results
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Parse the result and get the text content if no error
+			textContent := getTextResult(t, result)
+
+			// Parse and verify the result
+			var returnedTag github.Tag
+			err = json.Unmarshal([]byte(textContent.Text), &returnedTag)
+			require.NoError(t, err)
+
+			assert.Equal(t, *tc.expectedTag.SHA, *returnedTag.SHA)
+			assert.Equal(t, *tc.expectedTag.Tag, *returnedTag.Tag)
+			assert.Equal(t, *tc.expectedTag.Message, *returnedTag.Message)
+			assert.Equal(t, *tc.expectedTag.Object.Type, *returnedTag.Object.Type)
+			assert.Equal(t, *tc.expectedTag.Object.SHA, *returnedTag.Object.SHA)
+		})
+	}
+}

@@ -10,6 +10,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type expectations struct {
+	path        string
+	queryParams map[string]string
+	requestBody any
+}
+
+// expect is a helper function to create a partial mock that expects various
+// request behaviors, such as path, query parameters, and request body.
+func expect(t *testing.T, e expectations) *partialMock {
+	return &partialMock{
+		t:                   t,
+		expectedPath:        e.path,
+		expectedQueryParams: e.queryParams,
+		expectedRequestBody: e.requestBody,
+	}
+}
+
+// expectPath is a helper function to create a partial mock that expects a
+// request with the given path, with the ability to chain a response handler.
+func expectPath(t *testing.T, expectedPath string) *partialMock {
+	return &partialMock{
+		t:            t,
+		expectedPath: expectedPath,
+	}
+}
+
 // expectQueryParams is a helper function to create a partial mock that expects a
 // request with the given query parameters, with the ability to chain a response handler.
 func expectQueryParams(t *testing.T, expectedQueryParams map[string]string) *partialMock {
@@ -29,7 +55,9 @@ func expectRequestBody(t *testing.T, expectedRequestBody any) *partialMock {
 }
 
 type partialMock struct {
-	t                   *testing.T
+	t *testing.T
+
+	expectedPath        string
 	expectedQueryParams map[string]string
 	expectedRequestBody any
 }
@@ -37,12 +65,8 @@ type partialMock struct {
 func (p *partialMock) andThen(responseHandler http.HandlerFunc) http.HandlerFunc {
 	p.t.Helper()
 	return func(w http.ResponseWriter, r *http.Request) {
-		if p.expectedRequestBody != nil {
-			var unmarshaledRequestBody any
-			err := json.NewDecoder(r.Body).Decode(&unmarshaledRequestBody)
-			require.NoError(p.t, err)
-
-			require.Equal(p.t, p.expectedRequestBody, unmarshaledRequestBody)
+		if p.expectedPath != "" {
+			require.Equal(p.t, p.expectedPath, r.URL.Path)
 		}
 
 		if p.expectedQueryParams != nil {
@@ -50,6 +74,14 @@ func (p *partialMock) andThen(responseHandler http.HandlerFunc) http.HandlerFunc
 			for k, v := range p.expectedQueryParams {
 				require.Equal(p.t, v, r.URL.Query().Get(k))
 			}
+		}
+
+		if p.expectedRequestBody != nil {
+			var unmarshaledRequestBody any
+			err := json.NewDecoder(r.Body).Decode(&unmarshaledRequestBody)
+			require.NoError(p.t, err)
+
+			require.Equal(p.t, p.expectedRequestBody, unmarshaledRequestBody)
 		}
 
 		responseHandler(w, r)
@@ -62,6 +94,14 @@ func mockResponse(t *testing.T, code int, body interface{}) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(code)
+		// Some tests do not expect to return a JSON object, such as fetching a raw pull request diff,
+		// so allow strings to be returned directly.
+		s, ok := body.(string)
+		if ok {
+			_, _ = w.Write([]byte(s))
+			return
+		}
+
 		b, err := json.Marshal(body)
 		require.NoError(t, err)
 		_, _ = w.Write(b)
