@@ -714,7 +714,11 @@ func GetIssueComments(getClient GetClientFn, t translations.TranslationHelperFun
 // GetIssueTimeline creates a tool to get timeline for a GitHub issue.
 func GetIssueTimeline(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_issue_timeline",
-			mcp.WithDescription(t("TOOL_GET_ISSUE_TIMELINE_DESCRIPTION", "Get timeline for a GitHub issue")),
+			mcp.WithDescription(t("TOOL_GET_ISSUE_TIMELINE_DESCRIPTION", "Get timeline of a specific issue in a GitHub repository.")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_ISSUE_TIMELINE_USER_TITLE", "Get issue timeline"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("Repository owner"),
@@ -783,7 +787,11 @@ func GetIssueTimeline(getClient GetClientFn, t translations.TranslationHelperFun
 // GetIssueEvents creates a tool to get events for a GitHub issue.
 func GetIssueEvents(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_issue_events",
-			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENTS_DESCRIPTION", "Get list of events for a GitHub issue")),
+			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENTS_DESCRIPTION", "Get a list of events for a specific issue in a GitHub repository.")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_ISSUE_EVENTS_USER_TITLE", "Get issue events"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("Repository owner"),
@@ -852,7 +860,11 @@ func GetIssueEvents(getClient GetClientFn, t translations.TranslationHelperFunc)
 // GetIssueEvent creates a tool to get an event for a GitHub issue.
 func GetIssueEvent(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_issue_event",
-			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENT_DESCRIPTION", "Get single event for a GitHub issue")),
+			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENT_DESCRIPTION", "Get a single event for an issue in a GitHub repository.")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_ISSUE_EVENT_USER_TITLE", "Get an issue event"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("Repository owner"),
