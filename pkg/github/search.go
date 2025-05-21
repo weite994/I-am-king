@@ -222,3 +222,73 @@ func SearchUsers(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			return mcp.NewToolResultText(string(r)), nil
 		}
 }
+
+// ListStarredRepositories creates a tool to list repositories starred by the authenticated user.
+func ListStarredRepositories(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("list_starred_repositories",
+			mcp.WithDescription(t("TOOL_LIST_STARRED_REPOSITORIES_DESCRIPTION", "List repositories starred by the authenticated user")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_STARRED_REPOSITORIES_USER_TITLE", "List starred repositories"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
+			mcp.WithString("sort",
+				mcp.Description("How to sort the results ('created' or 'updated')"),
+				mcp.Enum("created", "updated"),
+			),
+			mcp.WithString("direction",
+				mcp.Description("Direction to sort ('asc' or 'desc')"),
+				mcp.Enum("asc", "desc"),
+			),
+			WithPagination(),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			sort, err := OptionalParam[string](request, "sort")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			direction, err := OptionalParam[string](request, "direction")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			pagination, err := OptionalPaginationParams(request)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			opts := &github.ActivityListStarredOptions{
+				Sort:      sort,
+				Direction: direction,
+				ListOptions: github.ListOptions{
+					Page:    pagination.page,
+					PerPage: pagination.perPage,
+				},
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			// Empty string for user parameter means the authenticated user
+			starredRepos, resp, err := client.Activity.ListStarred(ctx, "", opts)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list starred repositories: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != 200 {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to list starred repositories: %s", string(body))), nil
+			}
+
+			r, err := json.Marshal(starredRepos)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}

@@ -559,6 +559,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+- **list_starred_repositories** - List repositories starred by the authenticated user
+  - `sort`: How to sort the results ('created' or 'updated') (string, optional)
+  - `direction`: Direction to sort ('asc' or 'desc') (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
 ### Code Scanning
 
 - **get_code_scanning_alert** - Get a code scanning alert
