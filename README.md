@@ -496,6 +496,11 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+- **toggle_repository_star** - Star or unstar a repository for the authenticated user
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `star`: True to star, false to unstar the repository (boolean, required)
+
 - **create_repository** - Create a new GitHub repository
   - `name`: Repository name (string, required)
   - `description`: Repository description (string, optional)
