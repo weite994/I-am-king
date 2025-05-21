@@ -2118,7 +2118,7 @@ func Test_ToggleRepositoryStar(t *testing.T) {
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
-				"star":  true,
+				"star":  "true",
 			},
 			expectError:    false,
 			expectedResult: "Successfully starred repository owner/repo",
@@ -2139,7 +2139,7 @@ func Test_ToggleRepositoryStar(t *testing.T) {
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
-				"star":  false,
+				"star":  "false",
 			},
 			expectError:    false,
 			expectedResult: "Successfully unstarred repository owner/repo",
@@ -2161,7 +2161,7 @@ func Test_ToggleRepositoryStar(t *testing.T) {
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
-				"star":  true,
+				"star":  "true",
 			},
 			expectError:    true,
 			expectedErrMsg: "failed to star repository",
@@ -2183,10 +2183,21 @@ func Test_ToggleRepositoryStar(t *testing.T) {
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
-				"star":  false,
+				"star":  "false",
 			},
 			expectError:    true,
 			expectedErrMsg: "failed to unstar repository",
+		},
+		{
+			name:         "invalid star parameter",
+			mockedClient: mock.NewMockedHTTPClient(),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"star":  "invalid",
+			},
+			expectError:    false, // We expect a tool error, not a Go error
+			expectedResult: "parameter 'star' must be exactly 'true' or 'false'",
 		},
 	}
 

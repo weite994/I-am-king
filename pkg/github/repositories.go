@@ -616,9 +616,9 @@ func ToggleRepositoryStar(getClient GetClientFn, t translations.TranslationHelpe
 				mcp.Required(),
 				mcp.Description("Repository name"),
 			),
-			mcp.WithBoolean("star",
+			mcp.WithString("star",
 				mcp.Required(),
-				mcp.Description("True to star, false to unstar the repository"),
+				mcp.Description("'true' to star, 'false' to unstar the repository"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -630,9 +630,19 @@ func ToggleRepositoryStar(getClient GetClientFn, t translations.TranslationHelpe
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			star, err := requiredParam[bool](request, "star")
+			starStr, err := requiredParam[string](request, "star")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			var star bool
+			switch starStr {
+			case "true":
+				star = true
+			case "false":
+				star = false
+			default:
+				return mcp.NewToolResultError("parameter 'star' must be exactly 'true' or 'false'"), nil
 			}
 
 			client, err := getClient(ctx)
