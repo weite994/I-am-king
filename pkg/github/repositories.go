@@ -556,6 +556,50 @@ func ForkRepository(getClient GetClientFn, t translations.TranslationHelperFunc)
 		}
 }
 
+// IsRepositoryStarred creates a tool to check if a repository is starred by the authenticated user.
+func IsRepositoryStarred(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("is_repository_starred",
+			mcp.WithDescription(t("TOOL_IS_REPOSITORY_STARRED_DESCRIPTION", "Check if a GitHub repository is starred by the authenticated user")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_IS_REPOSITORY_STARRED_USER_TITLE", "Check if repository is starred"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			isStarred, resp, err := client.Activity.IsStarred(ctx, owner, repo)
+			if err != nil && resp == nil {
+				return nil, fmt.Errorf("failed to check if repository is starred: %w", err)
+			}
+			if resp != nil {
+				defer func() { _ = resp.Body.Close() }()
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf(`{"is_starred": %t}`, isStarred)), nil
+		}
+}
+
 // ToggleRepositoryStar creates a tool to star or unstar a repository.
 func ToggleRepositoryStar(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("toggle_repository_star",

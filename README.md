@@ -496,6 +496,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+- **is_repository_starred** - Check if a repository is starred by the authenticated user
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
 - **toggle_repository_star** - Star or unstar a repository for the authenticated user
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)

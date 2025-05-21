@@ -1964,6 +1964,124 @@ func Test_GetTag(t *testing.T) {
 	}
 }
 
+func Test_IsRepositoryStarred(t *testing.T) {
+	// Verify tool definition
+	mockClient := github.NewClient(nil)
+	tool, _ := IsRepositoryStarred(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "is_repository_starred", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+		isStarred      bool
+	}{
+		{
+			name: "repository is starred",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/user/starred/owner/repo",
+						Method:  "GET",
+					},
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNoContent) // Status code for "is starred" = true
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError: false,
+			isStarred:   true,
+		},
+		{
+			name: "repository is not starred",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/user/starred/owner/repo",
+						Method:  "GET",
+					},
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusNotFound) // Status code for "is starred" = false
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError: false,
+			isStarred:   false,
+		},
+		{
+			name: "check starred fails with unauthorized",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/user/starred/owner/repo",
+						Method:  "GET",
+					},
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+						_, _ = w.Write([]byte(`{"message": "Requires authentication"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectError: false, // The GitHub API returns false for not authenticated, not an error
+			isStarred:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := IsRepositoryStarred(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			// Verify results
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Parse the result and get the text content if no error
+			textContent := getTextResult(t, result)
+
+			// Check if the result contains the correct starred status
+			var expectedResult string
+			if tc.isStarred {
+				expectedResult = `{"is_starred": true}`
+			} else {
+				expectedResult = `{"is_starred": false}`
+			}
+			assert.Contains(t, textContent.Text, expectedResult)
+		})
+	}
+}
+
 func Test_ToggleRepositoryStar(t *testing.T) {
 	// Verify tool definition
 	mockClient := github.NewClient(nil)
