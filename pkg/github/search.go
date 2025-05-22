@@ -284,7 +284,50 @@ func ListStarredRepositories(getClient GetClientFn, t translations.TranslationHe
 				return mcp.NewToolResultError(fmt.Sprintf("failed to list starred repositories: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(starredRepos)
+			// Filter results to only include starred_at, repo.full_name, repo.html_url, repo.description, repo.stargazers_count, repo.language
+			// This saves context tokens, further information can be requested via repository_info tool
+			type SimplifiedRepo struct {
+				FullName        string `json:"full_name,omitempty"`
+				HTMLURL         string `json:"html_url,omitempty"`
+				Description     string `json:"description,omitempty"`
+				StargazersCount int    `json:"stargazers_count,omitempty"`
+				Language        string `json:"language,omitempty"`
+			}
+
+			type SimplifiedStarredRepo struct {
+				StarredAt  *github.Timestamp `json:"starred_at,omitempty"`
+				Repository SimplifiedRepo    `json:"repository,omitempty"`
+			}
+
+			filteredRepos := make([]SimplifiedStarredRepo, 0, len(starredRepos))
+			for _, repo := range starredRepos {
+				simplifiedRepo := SimplifiedStarredRepo{
+					StarredAt:  repo.StarredAt,
+					Repository: SimplifiedRepo{},
+				}
+
+				if repo.Repository != nil {
+					if repo.Repository.FullName != nil {
+						simplifiedRepo.Repository.FullName = *repo.Repository.FullName
+					}
+					if repo.Repository.HTMLURL != nil {
+						simplifiedRepo.Repository.HTMLURL = *repo.Repository.HTMLURL
+					}
+					if repo.Repository.Description != nil {
+						simplifiedRepo.Repository.Description = *repo.Repository.Description
+					}
+					if repo.Repository.StargazersCount != nil {
+						simplifiedRepo.Repository.StargazersCount = *repo.Repository.StargazersCount
+					}
+					if repo.Repository.Language != nil {
+						simplifiedRepo.Repository.Language = *repo.Repository.Language
+					}
+				}
+
+				filteredRepos = append(filteredRepos, simplifiedRepo)
+			}
+
+			r, err := json.Marshal(filteredRepos)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}

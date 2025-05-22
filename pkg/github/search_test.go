@@ -354,12 +354,48 @@ func Test_ListStarredRepositories(t *testing.T) {
 		},
 	}
 
+	type SimplifiedRepo struct {
+		FullName        string `json:"full_name,omitempty"`
+		HTMLURL         string `json:"html_url,omitempty"`
+		Description     string `json:"description,omitempty"`
+		StargazersCount int    `json:"stargazers_count,omitempty"`
+		Language        string `json:"language,omitempty"`
+	}
+
+	type SimplifiedStarredRepo struct {
+		StarredAt  *github.Timestamp `json:"starred_at,omitempty"`
+		Repository SimplifiedRepo    `json:"repository,omitempty"`
+	}
+
+	expectedFilteredRepos := []SimplifiedStarredRepo{
+		{
+			StarredAt: &github.Timestamp{},
+			Repository: SimplifiedRepo{
+				FullName:        "owner/repo-1",
+				HTMLURL:         "https://github.com/owner/repo-1",
+				Description:     "Test repository 1",
+				StargazersCount: 100,
+				Language:        "Go",
+			},
+		},
+		{
+			StarredAt: &github.Timestamp{},
+			Repository: SimplifiedRepo{
+				FullName:        "owner/repo-2",
+				HTMLURL:         "https://github.com/owner/repo-2",
+				Description:     "Test repository 2",
+				StargazersCount: 50,
+				Language:        "JavaScript",
+			},
+		},
+	}
+
 	tests := []struct {
 		name           string
 		mockedClient   *http.Client
 		requestArgs    map[string]interface{}
 		expectError    bool
-		expectedResult []*github.StarredRepository
+		expectedResult []SimplifiedStarredRepo
 		expectedErrMsg string
 	}{
 		{
@@ -384,7 +420,7 @@ func Test_ListStarredRepositories(t *testing.T) {
 				"perPage":   float64(10),
 			},
 			expectError:    false,
-			expectedResult: mockStarredRepos,
+			expectedResult: expectedFilteredRepos,
 		},
 		{
 			name: "list starred repositories with default parameters",
@@ -401,7 +437,7 @@ func Test_ListStarredRepositories(t *testing.T) {
 			),
 			requestArgs:    map[string]interface{}{},
 			expectError:    false,
-			expectedResult: mockStarredRepos,
+			expectedResult: expectedFilteredRepos,
 		},
 		{
 			name: "list starred repositories with sort only",
@@ -421,7 +457,7 @@ func Test_ListStarredRepositories(t *testing.T) {
 				"sort": "updated",
 			},
 			expectError:    false,
-			expectedResult: mockStarredRepos,
+			expectedResult: expectedFilteredRepos,
 		},
 		{
 			name: "list starred repositories fails",
@@ -465,20 +501,17 @@ func Test_ListStarredRepositories(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the result
-			var returnedResult []*github.StarredRepository
+			var returnedResult []SimplifiedStarredRepo
 			err = json.Unmarshal([]byte(textContent.Text), &returnedResult)
 			require.NoError(t, err)
 			assert.Len(t, returnedResult, len(tc.expectedResult))
 
 			for i, repo := range returnedResult {
-				assert.Equal(t, *tc.expectedResult[i].Repository.ID, *repo.Repository.ID)
-				assert.Equal(t, *tc.expectedResult[i].Repository.Name, *repo.Repository.Name)
-				assert.Equal(t, *tc.expectedResult[i].Repository.FullName, *repo.Repository.FullName)
-				assert.Equal(t, *tc.expectedResult[i].Repository.HTMLURL, *repo.Repository.HTMLURL)
-				assert.Equal(t, *tc.expectedResult[i].Repository.Description, *repo.Repository.Description)
-				assert.Equal(t, *tc.expectedResult[i].Repository.StargazersCount, *repo.Repository.StargazersCount)
-				assert.Equal(t, *tc.expectedResult[i].Repository.Language, *repo.Repository.Language)
-				assert.Equal(t, *tc.expectedResult[i].Repository.Fork, *repo.Repository.Fork)
+				assert.Equal(t, tc.expectedResult[i].Repository.FullName, repo.Repository.FullName)
+				assert.Equal(t, tc.expectedResult[i].Repository.HTMLURL, repo.Repository.HTMLURL)
+				assert.Equal(t, tc.expectedResult[i].Repository.Description, repo.Repository.Description)
+				assert.Equal(t, tc.expectedResult[i].Repository.StargazersCount, repo.Repository.StargazersCount)
+				assert.Equal(t, tc.expectedResult[i].Repository.Language, repo.Repository.Language)
 			}
 		})
 	}
