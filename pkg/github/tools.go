@@ -54,6 +54,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(CreateIssue(getClient, t)),
 			toolsets.NewServerTool(AddIssueComment(getClient, t)),
 			toolsets.NewServerTool(UpdateIssue(getClient, t)),
+			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
 		)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
@@ -93,6 +94,19 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
 		)
+
+	notifications := toolsets.NewToolset("notifications", "GitHub Notifications related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListNotifications(getClient, t)),
+			toolsets.NewServerTool(GetNotificationDetails(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(DismissNotification(getClient, t)),
+			toolsets.NewServerTool(MarkAllNotificationsRead(getClient, t)),
+			toolsets.NewServerTool(ManageNotificationSubscription(getClient, t)),
+			toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)),
+		)
+
 	// Keep experiments alive so the system doesn't error out when it's always enabled
 	experiments := toolsets.NewToolset("experiments", "Experimental features that are not considered stable yet")
 
@@ -103,6 +117,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 	tsg.AddToolset(pullRequests)
 	tsg.AddToolset(codeSecurity)
 	tsg.AddToolset(secretProtection)
+	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
 	// Enable the requested features
 
