@@ -94,6 +94,14 @@ func mockResponse(t *testing.T, code int, body interface{}) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(code)
+		// Some tests do not expect to return a JSON object, such as fetching a raw pull request diff,
+		// so allow strings to be returned directly.
+		s, ok := body.(string)
+		if ok {
+			_, _ = w.Write([]byte(s))
+			return
+		}
+
 		b, err := json.Marshal(body)
 		require.NoError(t, err)
 		_, _ = w.Write(b)
@@ -101,14 +109,12 @@ func mockResponse(t *testing.T, code int, body interface{}) http.HandlerFunc {
 }
 
 // createMCPRequest is a helper function to create a MCP request with the given arguments.
-func createMCPRequest(args map[string]interface{}) mcp.CallToolRequest {
+func createMCPRequest(args map[string]any) mcp.CallToolRequest {
 	return mcp.CallToolRequest{
 		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
+			Name      string         `json:"name"`
+			Arguments map[string]any `json:"arguments,omitempty"`
+			Meta      *mcp.Meta      `json:"_meta,omitempty"`
 		}{
 			Arguments: args,
 		},

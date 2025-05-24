@@ -7,13 +7,15 @@ import (
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v69/github"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shurcooL/githubv4"
 )
 
 type GetClientFn func(context.Context) (*github.Client, error)
+type GetGQLClientFn func(context.Context) (*githubv4.Client, error)
 
 var DefaultTools = []string{"all"}
 
-func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn, t translations.TranslationHelperFunc) (*toolsets.ToolsetGroup, error) {
+func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (*toolsets.ToolsetGroup, error) {
 	// Create a new toolset group
 	tsg := toolsets.NewToolsetGroup(readOnly)
 
@@ -49,6 +51,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(CreateIssue(getClient, t)),
 			toolsets.NewServerTool(AddIssueComment(getClient, t)),
 			toolsets.NewServerTool(UpdateIssue(getClient, t)),
+			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
 		)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
@@ -62,15 +65,21 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(GetPullRequestStatus(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestComments(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestReviews(getClient, t)),
+			toolsets.NewServerTool(GetPullRequestDiff(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(MergePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
-			toolsets.NewServerTool(CreatePullRequestReview(getClient, t)),
 			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
-			toolsets.NewServerTool(AddPullRequestReviewComment(getClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
+
+			// Reviews
+			toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)),
+			toolsets.NewServerTool(CreatePendingPullRequestReview(getGQLClient, t)),
+			toolsets.NewServerTool(AddPullRequestReviewCommentToPendingReview(getGQLClient, t)),
+			toolsets.NewServerTool(SubmitPendingPullRequestReview(getGQLClient, t)),
+			toolsets.NewServerTool(DeletePendingPullRequestReview(getGQLClient, t)),
 		)
 	codeSecurity := toolsets.NewToolset("code_security", "Code security related tools, such as GitHub Code Scanning").
 		AddReadTools(
@@ -82,6 +91,19 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
 		)
+
+	notifications := toolsets.NewToolset("notifications", "GitHub Notifications related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListNotifications(getClient, t)),
+			toolsets.NewServerTool(GetNotificationDetails(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(DismissNotification(getClient, t)),
+			toolsets.NewServerTool(MarkAllNotificationsRead(getClient, t)),
+			toolsets.NewServerTool(ManageNotificationSubscription(getClient, t)),
+			toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)),
+		)
+
 	// Keep experiments alive so the system doesn't error out when it's always enabled
 	experiments := toolsets.NewToolset("experiments", "Experimental features that are not considered stable yet")
 
@@ -92,6 +114,7 @@ func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn,
 	tsg.AddToolset(pullRequests)
 	tsg.AddToolset(codeSecurity)
 	tsg.AddToolset(secretProtection)
+	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
 	// Enable the requested features
 
