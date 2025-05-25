@@ -22,6 +22,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TokenProvider is a function that returns the current GitHub token.
+// This allows for dynamic token refresh without restarting the server.
+type TokenProvider func() string
+
 type MCPServerConfig struct {
 	// Version of the server
 	Version string
@@ -30,7 +34,12 @@ type MCPServerConfig struct {
 	Host string
 
 	// GitHub Token to authenticate with the GitHub API
+	// Deprecated: Use TokenProvider for dynamic token support
 	Token string
+
+	// TokenProvider is a function that returns the current GitHub token
+	// If set, this takes precedence over Token
+	TokenProvider TokenProvider
 
 	// EnabledToolsets is a list of toolsets to enable
 	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
@@ -53,8 +62,25 @@ func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 		return nil, fmt.Errorf("failed to parse API host: %w", err)
 	}
 
-	// Construct our REST client
-	restClient := gogithub.NewClient(nil).WithAuthToken(cfg.Token)
+	// Set up token provider - use the provided one or create one from static token
+	tokenProvider := cfg.TokenProvider
+	if tokenProvider == nil {
+		if cfg.Token == "" {
+			return nil, fmt.Errorf("either Token or TokenProvider must be set")
+		}
+		// Create a token provider that returns the static token
+		staticToken := cfg.Token
+		tokenProvider = func() string { return staticToken }
+	}
+
+	// Construct our REST client with a custom transport
+	restHTTPClient := &http.Client{
+		Transport: &tokenProviderTransport{
+			transport:     http.DefaultTransport,
+			tokenProvider: tokenProvider,
+		},
+	}
+	restClient := gogithub.NewClient(restHTTPClient)
 	restClient.UserAgent = fmt.Sprintf("github-mcp-server/%s", cfg.Version)
 	restClient.BaseURL = apiHost.baseRESTURL
 	restClient.UploadURL = apiHost.uploadURL
@@ -63,9 +89,9 @@ func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 	// We're using NewEnterpriseClient here unconditionally as opposed to NewClient because we already
 	// did the necessary API host parsing so that github.com will return the correct URL anyway.
 	gqlHTTPClient := &http.Client{
-		Transport: &bearerAuthTransport{
-			transport: http.DefaultTransport,
-			token:     cfg.Token,
+		Transport: &bearerAuthProviderTransport{
+			transport:     http.DefaultTransport,
+			tokenProvider: tokenProvider,
 		},
 	} // We're going to wrap the Transport later in beforeInit
 	gqlClient := githubv4.NewEnterpriseClient(apiHost.graphqlURL.String(), gqlHTTPClient)
@@ -147,7 +173,12 @@ type StdioServerConfig struct {
 	Host string
 
 	// GitHub Token to authenticate with the GitHub API
+	// Deprecated: Use TokenProvider for dynamic token support
 	Token string
+
+	// TokenProvider is a function that returns the current GitHub token
+	// If set, this takes precedence over Token
+	TokenProvider TokenProvider
 
 	// EnabledToolsets is a list of toolsets to enable
 	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
@@ -183,6 +214,7 @@ func RunStdioServer(cfg StdioServerConfig) error {
 		Version:         cfg.Version,
 		Host:            cfg.Host,
 		Token:           cfg.Token,
+		TokenProvider:   cfg.TokenProvider,
 		EnabledToolsets: cfg.EnabledToolsets,
 		DynamicToolsets: cfg.DynamicToolsets,
 		ReadOnly:        cfg.ReadOnly,
@@ -368,6 +400,7 @@ func (t *userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error
 	return t.transport.RoundTrip(req)
 }
 
+// bearerAuthTransport is deprecated - use bearerAuthProviderTransport
 type bearerAuthTransport struct {
 	transport http.RoundTripper
 	token     string
@@ -376,5 +409,31 @@ type bearerAuthTransport struct {
 func (t *bearerAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
 	req.Header.Set("Authorization", "Bearer "+t.token)
+	return t.transport.RoundTrip(req)
+}
+
+// bearerAuthProviderTransport uses a token provider for dynamic token support
+type bearerAuthProviderTransport struct {
+	transport     http.RoundTripper
+	tokenProvider TokenProvider
+}
+
+func (t *bearerAuthProviderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	token := t.tokenProvider()
+	req.Header.Set("Authorization", "Bearer "+token)
+	return t.transport.RoundTrip(req)
+}
+
+// tokenProviderTransport adds GitHub authentication using a token provider
+type tokenProviderTransport struct {
+	transport     http.RoundTripper
+	tokenProvider TokenProvider
+}
+
+func (t *tokenProviderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	token := t.tokenProvider()
+	req.Header.Set("Authorization", "Bearer "+token)
 	return t.transport.RoundTrip(req)
 }
