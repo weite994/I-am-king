@@ -33,7 +33,7 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 			return mcp.NewToolResultErrorFromErr("failed to get user", err), nil
 		}
 
-		return marshalledTextResult(user), nil
+		return MarshalledTextResult(user), nil
 	})
 
 	return tool, handler
