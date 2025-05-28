@@ -219,11 +219,11 @@ docker run -i --rm \
   ghcr.io/github/github-mcp-server
 ```
 
-## GitHub Enterprise Server
+## GitHub Enterprise Server and Enterprise Cloud with data residency (ghe.com)
 
 The flag `--gh-host` and the environment variable `GITHUB_HOST` can be used to set
-the GitHub Enterprise Server hostname.
-Prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://` which GitHub Enterprise Server does not support.
+the GitHub Enterprise Server or GitHub Enterprise Cloud with data residency hostname.
+Prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://` which GitHub Enterprise Server does not support. For GitHub Enterprise Cloud with data residency use `https://YOURSUBDOMAIN.ghe.com` as the hostname.
 
 ``` json
 "github": {
@@ -240,7 +240,7 @@ Prefix the hostname with the `https://` URI scheme, as it otherwise defaults to 
     ],
     "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
-        "GITHUB_HOST": "https://<your GHES domain name>"
+        "GITHUB_HOST": "https://<your GHES or ghe.com domain name>"
     }
 }
 ```
