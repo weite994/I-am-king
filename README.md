@@ -222,9 +222,10 @@ docker run -i --rm \
 ## GitHub Enterprise Server and Enterprise Cloud with data residency (ghe.com)
 
 The flag `--gh-host` and the environment variable `GITHUB_HOST` can be used to set
-the GitHub Enterprise Server or GitHub Enterprise Cloud with data residency hostname.
-Prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://` which GitHub Enterprise Server does not support. For GitHub Enterprise Cloud with data residency use `https://YOURSUBDOMAIN.ghe.com` as the hostname.
+the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data residency.
 
+- For GitHub Enterprise Server, prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://`, which GitHub Enterprise Server does not support.
+- For GitHub Enterprise Cloud with data residency, use `https://YOURSUBDOMAIN.ghe.com` as the hostname.
 ``` json
 "github": {
     "command": "docker",
