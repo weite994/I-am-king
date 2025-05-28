@@ -216,7 +216,7 @@ func OptionalPaginationParams(r mcp.CallToolRequest) (PaginationParams, error) {
 	}, nil
 }
 
-func marshalledTextResult(v any) *mcp.CallToolResult {
+func MarshalledTextResult(v any) *mcp.CallToolResult {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return mcp.NewToolResultErrorFromErr("failed to marshal text result to json", err)
