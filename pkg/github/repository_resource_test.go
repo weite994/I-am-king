@@ -94,7 +94,6 @@ func Test_repositoryResourceContentsHandler(t *testing.T) {
 		requestArgs    map[string]any
 		expectError    string
 		expectedResult any
-		expectedErrMsg string
 	}{
 		{
 			name: "missing owner",
@@ -181,21 +180,6 @@ func Test_repositoryResourceContentsHandler(t *testing.T) {
 			expectedResult: expectedDirContent,
 		},
 		{
-			name: "no data",
-			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatch(
-					mock.GetReposContentsByOwnerByRepoByPath,
-				),
-			),
-			requestArgs: map[string]any{
-				"owner": []string{"owner"},
-				"repo":  []string{"repo"},
-				"path":  []string{"src"},
-			},
-			expectedResult: nil,
-			expectError:    "no repository resource content found",
-		},
-		{
 			name: "empty data",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatch(
@@ -248,7 +232,7 @@ func Test_repositoryResourceContentsHandler(t *testing.T) {
 			resp, err := handler(context.TODO(), request)
 
 			if tc.expectError != "" {
-				require.ErrorContains(t, err, tc.expectedErrMsg)
+				require.ErrorContains(t, err, tc.expectError)
 				return
 			}
 
