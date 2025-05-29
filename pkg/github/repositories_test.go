@@ -553,9 +553,6 @@ func Test_UpdateRepository(t *testing.T) {
 			assert.Equal(t, *tc.expectedRepo.Archived, *returnedRepo.Archived)
 			assert.Equal(t, *tc.expectedRepo.AllowForking, *returnedRepo.AllowForking)
 			assert.Equal(t, *tc.expectedRepo.Description, *returnedRepo.Description)
-			assert.Equal(t, *tc.expectedRepo.Archived, *returnedRepo.Archived)
-			assert.Equal(t, *tc.expectedRepo.AllowForking, *returnedRepo.AllowForking)
-			assert.Equal(t, *tc.expectedRepo.Description, *returnedRepo.Description)
 		})
 	}
 }
