@@ -23,6 +23,6 @@ WORKDIR /server
 # Copy the binary from the build stage
 COPY --from=build /bin/github-mcp-server .
 # Set the entrypoint to the server binary
-ENTRYPOINT ["./github-mcp-server"]
-# Default command arguments
+ENTRYPOINT ["/server/github-mcp-server"]
+# Default arguments for ENTRYPOINT
 CMD ["stdio"]
