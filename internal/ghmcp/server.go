@@ -47,6 +47,30 @@ type MCPServerConfig struct {
 	Translator translations.TranslationHelperFunc
 }
 
+// MultiUserMCPServerConfig is similar to MCPServerConfig but supports multiple users
+// by extracting auth tokens from each request instead of using a global token
+type MultiUserMCPServerConfig struct {
+	// Version of the server
+	Version string
+
+	// GitHub Host to target for API requests (e.g. github.com or github.enterprise.com)
+	Host string
+
+	// EnabledToolsets is a list of toolsets to enable
+	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
+	EnabledToolsets []string
+
+	// Whether to enable dynamic toolsets
+	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#dynamic-tool-discovery
+	DynamicToolsets bool
+
+	// ReadOnly indicates if we should only offer read-only tools
+	ReadOnly bool
+
+	// Translator provides translated text for the server tooling
+	Translator translations.TranslationHelperFunc
+}
+
 func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 	apiHost, err := parseAPIHost(cfg.Host)
 	if err != nil {
@@ -139,6 +163,138 @@ func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 	return ghServer, nil
 }
 
+// NewMultiUserMCPServer creates an MCP server that supports multiple users by extracting
+// auth tokens from each request instead of using a single global token
+func NewMultiUserMCPServer(cfg MultiUserMCPServerConfig) (*server.MCPServer, error) {
+	apiHost, err := parseAPIHost(cfg.Host)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse API host: %w", err)
+	}
+
+	// Create client factories that extract auth tokens from request context
+	getClientWithToken := func(ctx context.Context, token string) (*gogithub.Client, error) {
+		if token == "" {
+			return nil, fmt.Errorf("missing auth_token parameter in request")
+		}
+
+		// Create a new client for this request with the provided token
+		client := gogithub.NewClient(nil).WithAuthToken(token)
+		client.UserAgent = fmt.Sprintf("github-mcp-server/%s", cfg.Version)
+		client.BaseURL = apiHost.baseRESTURL
+		client.UploadURL = apiHost.uploadURL
+
+		return client, nil
+	}
+
+	getGQLClientWithToken := func(ctx context.Context, token string) (*githubv4.Client, error) {
+		if token == "" {
+			return nil, fmt.Errorf("missing auth_token parameter in request")
+		}
+
+		// Create a new GraphQL client for this request with the provided token
+		httpClient := &http.Client{
+			Transport: &bearerAuthTransport{
+				transport: http.DefaultTransport,
+				token:     token,
+			},
+		}
+		
+		return githubv4.NewEnterpriseClient(apiHost.graphqlURL.String(), httpClient), nil
+	}
+
+	// When a client sends an initialize request, update the user agent to include the client info.
+	var clientInfo mcp.Implementation
+	beforeInit := func(_ context.Context, _ any, message *mcp.InitializeRequest) {
+		clientInfo = message.Params.ClientInfo
+	}
+
+	hooks := &server.Hooks{
+		OnBeforeInitialize: []server.OnBeforeInitializeFunc{beforeInit},
+	}
+
+	ghServer := github.NewServer(cfg.Version, server.WithHooks(hooks))
+
+	enabledToolsets := cfg.EnabledToolsets
+	if cfg.DynamicToolsets {
+		// filter "all" from the enabled toolsets
+		enabledToolsets = make([]string, 0, len(cfg.EnabledToolsets))
+		for _, toolset := range cfg.EnabledToolsets {
+			if toolset != "all" {
+				enabledToolsets = append(enabledToolsets, toolset)
+			}
+		}
+	}
+
+	// Create wrapper functions that extract auth tokens from the context
+	getClient := func(ctx context.Context) (*gogithub.Client, error) {
+		token, ok := ctx.Value("auth_token").(string)
+		if !ok {
+			return nil, fmt.Errorf("auth_token not found in context")
+		}
+		
+		client, err := getClientWithToken(ctx, token)
+		if err != nil {
+			return nil, err
+		}
+
+		// Update user agent if we have client info
+		if clientInfo != (mcp.Implementation{}) {
+			client.UserAgent = fmt.Sprintf(
+				"github-mcp-server/%s (%s/%s)",
+				cfg.Version,
+				clientInfo.Name,
+				clientInfo.Version,
+			)
+		}
+
+		return client, nil
+	}
+
+	getGQLClient := func(ctx context.Context) (*githubv4.Client, error) {
+		token, ok := ctx.Value("auth_token").(string)
+		if !ok {
+			return nil, fmt.Errorf("auth_token not found in context")
+		}
+		
+		client, err := getGQLClientWithToken(ctx, token)
+		if err != nil {
+			return nil, err
+		}
+
+		// Note: We can't easily update the user agent for GraphQL clients in multi-user mode
+		// since githubv4.Client doesn't expose the underlying HTTP client
+		// This is acceptable since the user agent is primarily for debugging/analytics
+
+		return client, nil
+	}
+
+	// Create default toolsets with multi-user support
+	toolsets, err := github.InitMultiUserToolsets(
+		enabledToolsets,
+		cfg.ReadOnly,
+		getClient,
+		getGQLClient,
+		cfg.Translator,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize toolsets: %w", err)
+	}
+
+	context := github.InitMultiUserContextToolset(getClient, cfg.Translator)
+	github.RegisterMultiUserResources(ghServer, getClient, cfg.Translator)
+
+	// Register the tools with the server
+	toolsets.RegisterTools(ghServer)
+	context.RegisterTools(ghServer)
+
+	if cfg.DynamicToolsets {
+		dynamic := github.InitDynamicToolset(ghServer, toolsets, cfg.Translator)
+		dynamic.RegisterTools(ghServer)
+	}
+
+	return ghServer, nil
+}
+
 type StdioServerConfig struct {
 	// Version of the server
 	Version string
@@ -148,6 +304,36 @@ type StdioServerConfig struct {
 
 	// GitHub Token to authenticate with the GitHub API
 	Token string
+
+	// EnabledToolsets is a list of toolsets to enable
+	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
+	EnabledToolsets []string
+
+	// Whether to enable dynamic toolsets
+	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#dynamic-tool-discovery
+	DynamicToolsets bool
+
+	// ReadOnly indicates if we should only register read-only tools
+	ReadOnly bool
+
+	// ExportTranslations indicates if we should export translations
+	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#i18n--overriding-descriptions
+	ExportTranslations bool
+
+	// EnableCommandLogging indicates if we should log commands
+	EnableCommandLogging bool
+
+	// Path to the log file if not stderr
+	LogFilePath string
+}
+
+// MultiUserStdioServerConfig is similar to StdioServerConfig but for multi-user mode
+type MultiUserStdioServerConfig struct {
+	// Version of the server
+	Version string
+
+	// GitHub Host to target for API requests (e.g. github.com or github.enterprise.com)
+	Host string
 
 	// EnabledToolsets is a list of toolsets to enable
 	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
@@ -235,6 +421,75 @@ func RunStdioServer(cfg StdioServerConfig) error {
 	case err := <-errC:
 		if err != nil {
 			return fmt.Errorf("error running server: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// RunMultiUserStdioServer runs a multi-user MCP server via stdio. Not concurrent safe.
+func RunMultiUserStdioServer(cfg MultiUserStdioServerConfig) error {
+	// Create app context
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	t, dumpTranslations := translations.TranslationHelper()
+
+	ghServer, err := NewMultiUserMCPServer(MultiUserMCPServerConfig{
+		Version:         cfg.Version,
+		Host:            cfg.Host,
+		EnabledToolsets: cfg.EnabledToolsets,
+		DynamicToolsets: cfg.DynamicToolsets,
+		ReadOnly:        cfg.ReadOnly,
+		Translator:      t,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create multi-user MCP server: %w", err)
+	}
+
+	stdioServer := server.NewStdioServer(ghServer)
+
+	logrusLogger := logrus.New()
+	if cfg.LogFilePath != "" {
+		file, err := os.OpenFile(cfg.LogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return fmt.Errorf("failed to open log file: %w", err)
+		}
+
+		logrusLogger.SetLevel(logrus.DebugLevel)
+		logrusLogger.SetOutput(file)
+	}
+	stdLogger := log.New(logrusLogger.Writer(), "multiuserstdioserver", 0)
+	stdioServer.SetErrorLogger(stdLogger)
+
+	if cfg.ExportTranslations {
+		// Once server is initialized, all translations are loaded
+		dumpTranslations()
+	}
+
+	// Start listening for messages
+	errC := make(chan error, 1)
+	go func() {
+		in, out := io.Reader(os.Stdin), io.Writer(os.Stdout)
+
+		if cfg.EnableCommandLogging {
+			loggedIO := mcplog.NewIOLogger(in, out, logrusLogger)
+			in, out = loggedIO, loggedIO
+		}
+
+		errC <- stdioServer.Listen(ctx, in, out)
+	}()
+
+	// Output github-mcp-server string
+	_, _ = fmt.Fprintf(os.Stderr, "GitHub Multi-User MCP Server running on stdio\n")
+
+	// Wait for shutdown signal
+	select {
+	case <-ctx.Done():
+		logrusLogger.Infof("shutting down multi-user server...")
+	case err := <-errC:
+		if err != nil {
+			return fmt.Errorf("error running multi-user server: %w", err)
 		}
 	}
 
