@@ -198,7 +198,7 @@ func NewMultiUserMCPServer(cfg MultiUserMCPServerConfig) (*server.MCPServer, err
 				token:     token,
 			},
 		}
-		
+
 		return githubv4.NewEnterpriseClient(apiHost.graphqlURL.String(), httpClient), nil
 	}
 
@@ -231,7 +231,7 @@ func NewMultiUserMCPServer(cfg MultiUserMCPServerConfig) (*server.MCPServer, err
 		if !ok {
 			return nil, fmt.Errorf("auth_token not found in context")
 		}
-		
+
 		client, err := getClientWithToken(ctx, token)
 		if err != nil {
 			return nil, err
@@ -255,7 +255,7 @@ func NewMultiUserMCPServer(cfg MultiUserMCPServerConfig) (*server.MCPServer, err
 		if !ok {
 			return nil, fmt.Errorf("auth_token not found in context")
 		}
-		
+
 		client, err := getGQLClientWithToken(ctx, token)
 		if err != nil {
 			return nil, err
@@ -327,13 +327,16 @@ type StdioServerConfig struct {
 	LogFilePath string
 }
 
-// MultiUserStdioServerConfig is similar to StdioServerConfig but for multi-user mode
-type MultiUserStdioServerConfig struct {
+// MultiUserStreamableHttpServerConfig is similar to StdioServerConfig but for multi-user mode
+type MultiUserStreamableHttpServerConfig struct {
 	// Version of the server
 	Version string
 
 	// GitHub Host to target for API requests (e.g. github.com or github.enterprise.com)
 	Host string
+
+	// Port to run the HTTP server on (e.g. ":8080")
+	Port string
 
 	// EnabledToolsets is a list of toolsets to enable
 	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
@@ -427,8 +430,8 @@ func RunStdioServer(cfg StdioServerConfig) error {
 	return nil
 }
 
-// RunMultiUserStdioServer runs a multi-user MCP server via stdio. Not concurrent safe.
-func RunMultiUserStdioServer(cfg MultiUserStdioServerConfig) error {
+// RunMultiUserStreamableHttpServer runs a multi-user MCP server via streamable HTTP. Not concurrent safe.
+func RunMultiUserStreamableHttpServer(cfg MultiUserStreamableHttpServerConfig) error {
 	// Create app context
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -447,7 +450,7 @@ func RunMultiUserStdioServer(cfg MultiUserStdioServerConfig) error {
 		return fmt.Errorf("failed to create multi-user MCP server: %w", err)
 	}
 
-	stdioServer := server.NewStdioServer(ghServer)
+	streamableHttpServer := server.NewStreamableHTTPServer(ghServer)
 
 	logrusLogger := logrus.New()
 	if cfg.LogFilePath != "" {
@@ -459,29 +462,20 @@ func RunMultiUserStdioServer(cfg MultiUserStdioServerConfig) error {
 		logrusLogger.SetLevel(logrus.DebugLevel)
 		logrusLogger.SetOutput(file)
 	}
-	stdLogger := log.New(logrusLogger.Writer(), "multiuserstdioserver", 0)
-	stdioServer.SetErrorLogger(stdLogger)
 
 	if cfg.ExportTranslations {
 		// Once server is initialized, all translations are loaded
 		dumpTranslations()
 	}
 
-	// Start listening for messages
+	// Start listening for HTTP requests
 	errC := make(chan error, 1)
 	go func() {
-		in, out := io.Reader(os.Stdin), io.Writer(os.Stdout)
-
-		if cfg.EnableCommandLogging {
-			loggedIO := mcplog.NewIOLogger(in, out, logrusLogger)
-			in, out = loggedIO, loggedIO
-		}
-
-		errC <- stdioServer.Listen(ctx, in, out)
+		errC <- streamableHttpServer.Start(cfg.Port)
 	}()
 
 	// Output github-mcp-server string
-	_, _ = fmt.Fprintf(os.Stderr, "GitHub Multi-User MCP Server running on stdio\n")
+	_, _ = fmt.Fprintf(os.Stderr, "GitHub Multi-User MCP Server running on streamable-http at %s\n", cfg.Port)
 
 	// Wait for shutdown signal
 	select {

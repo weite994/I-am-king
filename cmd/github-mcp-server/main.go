@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/github/github-mcp-server/internal/ghmcp"
 	"github.com/github/github-mcp-server/pkg/github"
@@ -61,8 +62,8 @@ var (
 
 	multiUserCmd = &cobra.Command{
 		Use:   "multi-user",
-		Short: "Start multi-user stdio server",
-		Long:  `Start a multi-user server that communicates via standard input/output streams using JSON-RPC messages. Each tool request must include an auth_token parameter.`,
+		Short: "Start multi-user streamable-http server",
+		Long:  `Start a multi-user server that communicates via standard http streams using JSON-RPC messages. Each tool request must include an auth_token parameter.`,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			// If you're wondering why we're not using viper.GetStringSlice("toolsets"),
 			// it's because viper doesn't handle comma-separated values correctly for env
@@ -73,9 +74,18 @@ var (
 				return fmt.Errorf("failed to unmarshal toolsets: %w", err)
 			}
 
-			stdioServerConfig := ghmcp.MultiUserStdioServerConfig{
+			port := viper.GetString("port")
+			if port == "" {
+				port = ":8080" // Default port
+			}
+			if !strings.HasPrefix(port, ":") {
+				port = ":" + port // Add colon if missing
+			}
+
+			streamableHttpServerConfig := ghmcp.MultiUserStreamableHttpServerConfig{
 				Version:              version,
 				Host:                 viper.GetString("host"),
+				Port:                 port,
 				EnabledToolsets:      enabledToolsets,
 				DynamicToolsets:      viper.GetBool("dynamic_toolsets"),
 				ReadOnly:             viper.GetBool("read-only"),
@@ -84,7 +94,7 @@ var (
 				LogFilePath:          viper.GetString("log-file"),
 			}
 
-			return ghmcp.RunMultiUserStdioServer(stdioServerConfig)
+			return ghmcp.RunMultiUserStreamableHttpServer(streamableHttpServerConfig)
 		},
 	}
 )
@@ -102,6 +112,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("enable-command-logging", false, "When enabled, the server will log all command requests and responses to the log file")
 	rootCmd.PersistentFlags().Bool("export-translations", false, "Save translations to a JSON file")
 	rootCmd.PersistentFlags().String("gh-host", "", "Specify the GitHub hostname (for GitHub Enterprise etc.)")
+	rootCmd.PersistentFlags().String("port", "8080", "Port to run the HTTP server on (for streamable-http and multi-user modes)")
 
 	// Bind flag to viper
 	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
@@ -111,6 +122,7 @@ func init() {
 	_ = viper.BindPFlag("enable-command-logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
 	_ = viper.BindPFlag("export-translations", rootCmd.PersistentFlags().Lookup("export-translations"))
 	_ = viper.BindPFlag("host", rootCmd.PersistentFlags().Lookup("gh-host"))
+	_ = viper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
 
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
