@@ -23,4 +23,4 @@ WORKDIR /server
 # Copy the binary from the build stage
 COPY --from=build /bin/github-mcp-server .
 # Command to run the server
-CMD ["./github-mcp-server", "stdio"]
+CMD ["./github-mcp-server", "multi-user", "--toolsets=repos,issues,users,pull_requests"]
