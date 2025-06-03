@@ -11,7 +11,7 @@ import (
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v72/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/shurcooL/githubv4"
@@ -450,12 +450,12 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				opts.Since = timestamp
 			}
 
-			if page, ok := request.Params.Arguments["page"].(float64); ok {
-				opts.Page = int(page)
+			if page, ok := request.GetArguments()["page"].(float64); ok {
+				opts.ListOptions.Page = int(page)
 			}
 
-			if perPage, ok := request.Params.Arguments["perPage"].(float64); ok {
-				opts.PerPage = int(perPage)
+			if perPage, ok := request.GetArguments()["perPage"].(float64); ok {
+				opts.ListOptions.PerPage = int(perPage)
 			}
 
 			client, err := getClient(ctx)
