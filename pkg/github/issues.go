@@ -192,6 +192,12 @@ func SearchIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			// Ensure the query includes either 'is:issue' or 'is:pull-request'
+			if !strings.Contains(query, "is:issue") && !strings.Contains(query, "is:pull-request") {
+				query = query + " is:issue"
+			}
+
 			sort, err := OptionalParam[string](request, "sort")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -450,13 +456,18 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				opts.Since = timestamp
 			}
 
-			if page, ok := request.GetArguments()["page"].(float64); ok {
-				opts.ListOptions.Page = int(page)
+			// Pagination
+			page, err := OptionalIntParamWithDefault(request, "page", 1)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
 			}
+			opts.ListOptions.Page = page
 
-			if perPage, ok := request.GetArguments()["perPage"].(float64); ok {
-				opts.ListOptions.PerPage = int(perPage)
+			perPage, err := OptionalIntParamWithDefault(request, "perPage", 30)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
 			}
+			opts.ListOptions.PerPage = perPage
 
 			client, err := getClient(ctx)
 			if err != nil {
