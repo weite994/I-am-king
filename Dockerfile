@@ -1,28 +1,38 @@
-FROM golang:1.24.3-alpine AS build
-ARG VERSION="dev"
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS uv
 
-# Set the working directory
-WORKDIR /build
+# Install the project into `/app`
+WORKDIR /app
 
-# Install git
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add git
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
 
-# Build the server
-# go build automatically download required module dependencies to /go/pkg/mod
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=bind,target=. \
-    CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o /bin/github-mcp-server cmd/github-mcp-server/main.go
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-# Make a stage to run the app
-FROM gcr.io/distroless/base-debian12
-# Set the working directory
-WORKDIR /server
-# Copy the binary from the build stage
-COPY --from=build /bin/github-mcp-server .
-# Set the entrypoint to the server binary
-ENTRYPOINT ["/server/github-mcp-server"]
-# Default arguments for ENTRYPOINT
-CMD ["stdio"]
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev --no-editable
+
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
+ADD . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
+
+FROM python:3.12-slim-bookworm
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+ 
+COPY --from=uv /root/.local /root/.local
+COPY --from=uv --chown=app:app /app/.venv /app/.venv
+
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
+
+# when running the container, add --db-path and a bind mount to the host's db file
+ENTRYPOINT ["mcp-server-git"]
