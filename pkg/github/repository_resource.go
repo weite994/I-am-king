@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v72/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -201,6 +201,7 @@ func RepositoryResourceContentsHandler(getClient GetClientFn) func(ctx context.C
 			}
 		}
 
+		// This should be unreachable because GetContents should return an error if neither file nor directory content is found.
 		return nil, errors.New("no repository resource content found")
 	}
 }
