@@ -195,6 +195,9 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("run_workflow",
 			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_DESCRIPTION", "Run an Actions workflow")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				ReadOnlyHint: toBoolPtr(false),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The account owner of the repository. The name is not case sensitive."),
@@ -549,6 +552,9 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 func RerunWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("rerun_workflow_run",
 			mcp.WithDescription(t("TOOL_RERUN_WORKFLOW_RUN_DESCRIPTION", "Re-run an entire workflow run")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				ReadOnlyHint: toBoolPtr(false),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The account owner of the repository. The name is not case sensitive."),
@@ -608,6 +614,9 @@ func RerunWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFun
 func RerunFailedJobs(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("rerun_failed_jobs",
 			mcp.WithDescription(t("TOOL_RERUN_FAILED_JOBS_DESCRIPTION", "Re-run only the failed jobs in a workflow run")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				ReadOnlyHint: toBoolPtr(false),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The account owner of the repository. The name is not case sensitive."),
@@ -667,6 +676,9 @@ func RerunFailedJobs(getClient GetClientFn, t translations.TranslationHelperFunc
 func CancelWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("cancel_workflow_run",
 			mcp.WithDescription(t("TOOL_CANCEL_WORKFLOW_RUN_DESCRIPTION", "Cancel a workflow run")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				ReadOnlyHint: toBoolPtr(false),
+			}),
 			mcp.WithString("owner",
 				mcp.Required(),
 				mcp.Description("The account owner of the repository. The name is not case sensitive."),
@@ -868,6 +880,7 @@ func DeleteWorkflowRunLogs(getClient GetClientFn, t translations.TranslationHelp
 	return mcp.NewTool("delete_workflow_run_logs",
 			mcp.WithDescription(t("TOOL_DELETE_WORKFLOW_RUN_LOGS_DESCRIPTION", "Delete logs for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				ReadOnlyHint:    toBoolPtr(false),
 				DestructiveHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
