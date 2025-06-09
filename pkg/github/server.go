@@ -74,16 +74,16 @@ func RequiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
 	}
 
 	// Check if the parameter is of the expected type
-	if _, ok := r.GetArguments()[p].(T); !ok {
+	val, ok := r.GetArguments()[p].(T)
+	if !ok {
 		return zero, fmt.Errorf("parameter %s is not of type %T", p, zero)
 	}
 
-	if r.GetArguments()[p].(T) == zero {
+	if val == zero {
 		return zero, fmt.Errorf("missing required parameter: %s", p)
-
 	}
 
-	return r.GetArguments()[p].(T), nil
+	return val, nil
 }
 
 // RequiredInt is a helper function that can be used to fetch a requested parameter from the request.
