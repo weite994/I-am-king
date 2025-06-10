@@ -209,7 +209,6 @@ func SearchUsers(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			client, err := getClient(ctx)
-
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
