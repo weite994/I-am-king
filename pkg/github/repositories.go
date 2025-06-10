@@ -431,6 +431,9 @@ func GetFileContents(getClient GetClientFn, t translations.TranslationHelperFunc
 			mcp.WithString("branch",
 				mcp.Description("Branch to get contents from"),
 			),
+			mcp.WithBoolean("raw",
+				mcp.Description("Return raw file contents instead of base64 encoded (only applies to files, not directories)"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -449,11 +452,65 @@ func GetFileContents(getClient GetClientFn, t translations.TranslationHelperFunc
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			raw, err := OptionalParam[bool](request, "raw")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 
 			client, err := getClient(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
+
+			// If raw is requested, we need to get the download URL and fetch raw content
+			if raw {
+				// First check if the path is a file by making a regular request
+				opts := &github.RepositoryContentGetOptions{Ref: branch}
+				fileContent, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get file contents: %w", err)
+				}
+				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != 200 {
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read response body: %w", err)
+					}
+					return mcp.NewToolResultError(fmt.Sprintf("failed to get file contents: %s", string(body))), nil
+				}
+
+				// If it's a directory, return an error since raw doesn't apply to directories
+				if dirContent != nil {
+					return mcp.NewToolResultError("raw option only applies to files, not directories"), nil
+				}
+
+				// If it's a file, use the download URL to get raw content
+				if fileContent != nil && fileContent.DownloadURL != nil {
+					// Make HTTP request to download URL to get raw content
+					httpResp, err := http.Get(*fileContent.DownloadURL)
+					if err != nil {
+						return nil, fmt.Errorf("failed to download raw file content: %w", err)
+					}
+					defer func() { _ = httpResp.Body.Close() }()
+
+					if httpResp.StatusCode != 200 {
+						return mcp.NewToolResultError(fmt.Sprintf("failed to download raw file content (status: %d)", httpResp.StatusCode)), nil
+					}
+
+					// Read the raw content
+					rawContent, err := io.ReadAll(httpResp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read raw file content: %w", err)
+					}
+
+					return mcp.NewToolResultText(string(rawContent)), nil
+				}
+
+				return mcp.NewToolResultError("file does not have a download URL"), nil
+			}
+
+			// Regular (non-raw) request
 			opts := &github.RepositoryContentGetOptions{Ref: branch}
 			fileContent, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
 			if err != nil {

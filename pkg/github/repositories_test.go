@@ -25,6 +25,7 @@ func Test_GetFileContents(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "path")
 	assert.Contains(t, tool.InputSchema.Properties, "branch")
+	assert.Contains(t, tool.InputSchema.Properties, "raw")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "path"})
 
 	// Setup mock file content for success case
@@ -171,6 +172,97 @@ func Test_GetFileContents(t *testing.T) {
 					assert.Equal(t, *expected[i].Type, *content.Type)
 				}
 			}
+		})
+	}
+}
+
+func Test_GetFileContents_RawParameter(t *testing.T) {
+	mockDirContent := []*github.RepositoryContent{
+		{
+			Type: github.Ptr("dir"),
+			Name: github.Ptr("testdir"),
+			Path: github.Ptr("testdir"),
+		},
+	}
+
+	tests := []struct {
+		name           string
+		mockedClient   *http.Client
+		requestArgs    map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "raw parameter with directory should fail",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposContentsByOwnerByRepoByPath,
+					mockResponse(t, http.StatusOK, mockDirContent),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"path":  "testdir",
+				"raw":   true,
+			},
+			expectError:    true,
+			expectedErrMsg: "raw option only applies to files, not directories",
+		},
+		{
+			name: "raw file without download URL should fail",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposContentsByOwnerByRepoByPath,
+					mockResponse(t, http.StatusOK, &github.RepositoryContent{
+						Type: github.Ptr("file"),
+						Name: github.Ptr("test.txt"),
+						Path: github.Ptr("test.txt"),
+						// No DownloadURL
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"path":  "test.txt",
+				"raw":   true,
+			},
+			expectError:    true,
+			expectedErrMsg: "file does not have a download URL",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			_, handler := GetFileContents(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(context.Background(), request)
+
+			// Verify results
+			if tc.expectError {
+				if err != nil {
+					assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				} else {
+					// Error should be in the result
+					require.NotNil(t, result)
+					require.True(t, result.IsError)
+					// Check error message in result content
+					textContent := getTextResult(t, result)
+					assert.Contains(t, textContent.Text, tc.expectedErrMsg)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.False(t, result.IsError)
 		})
 	}
 }
