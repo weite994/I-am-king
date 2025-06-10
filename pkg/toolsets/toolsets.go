@@ -40,12 +40,13 @@ func NewServerResourceTemplate(resourceTemplate mcp.ResourceTemplate, handler se
 	}
 }
 
-// ServerResource represents a resource that can be registered with the MCP server.
+// ServerResourceTemplate represents a resource template that can be registered with the MCP server.
 type ServerResourceTemplate struct {
 	resourceTemplate mcp.ResourceTemplate
 	handler          server.ResourceTemplateHandlerFunc
 }
 
+// Toolset represents a collection of MCP functionality that can be enabled or disabled as a group.
 type Toolset struct {
 	Name        string
 	Description string
@@ -220,9 +221,10 @@ func (tg *ToolsetGroup) EnableToolset(name string) error {
 	return nil
 }
 
-func (tg *ToolsetGroup) RegisterTools(s *server.MCPServer) {
+func (tg *ToolsetGroup) RegisterAll(s *server.MCPServer) {
 	for _, toolset := range tg.Toolsets {
 		toolset.RegisterTools(s)
+		toolset.RegisterResourcesTemplates(s)
 	}
 }
 

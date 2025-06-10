@@ -120,8 +120,8 @@ func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 		return nil, fmt.Errorf("failed to enable toolsets: %w", err)
 	}
 
-	// Register the tools with the server
-	tsg.RegisterTools(ghServer)
+	// Register all mcp functionality with the server
+	tsg.RegisterAll(ghServer)
 
 	if cfg.DynamicToolsets {
 		dynamic := github.InitDynamicToolset(ghServer, tsg, cfg.Translator)
