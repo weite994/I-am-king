@@ -106,7 +106,13 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	// Keep experiments alive so the system doesn't error out when it's always enabled
 	experiments := toolsets.NewToolset("experiments", "Experimental features that are not considered stable yet")
 
+	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
+		AddReadTools(
+			toolsets.NewServerTool(GetMe(getClient, t)),
+		)
+
 	// Add toolsets to the group
+	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
 	tsg.AddToolset(issues)
 	tsg.AddToolset(users)
@@ -117,16 +123,6 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(experiments)
 
 	return tsg
-}
-
-func InitContextToolset(getClient GetClientFn, t translations.TranslationHelperFunc) *toolsets.Toolset {
-	// Create a new context toolset
-	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
-		AddReadTools(
-			toolsets.NewServerTool(GetMe(getClient, t)),
-		)
-	contextTools.Enabled = true
-	return contextTools
 }
 
 // InitDynamicToolset creates a dynamic toolset that can be used to enable other toolsets, and so requires the server and toolset group as arguments
