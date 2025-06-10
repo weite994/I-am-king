@@ -38,6 +38,13 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(CreateBranch(getClient, t)),
 			toolsets.NewServerTool(PushFiles(getClient, t)),
 			toolsets.NewServerTool(DeleteFile(getClient, t)),
+		).
+		AddResourceTemplates(
+			toolsets.NewServerResourceTemplate(GetRepositoryResourceContent(getClient, t)),
+			toolsets.NewServerResourceTemplate(GetRepositoryResourceBranchContent(getClient, t)),
+			toolsets.NewServerResourceTemplate(GetRepositoryResourceCommitContent(getClient, t)),
+			toolsets.NewServerResourceTemplate(GetRepositoryResourceTagContent(getClient, t)),
+			toolsets.NewServerResourceTemplate(GetRepositoryResourcePrContent(getClient, t)),
 		)
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(

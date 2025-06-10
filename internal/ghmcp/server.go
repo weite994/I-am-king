@@ -120,8 +120,6 @@ func NewMCPServer(cfg MCPServerConfig) (*server.MCPServer, error) {
 		return nil, fmt.Errorf("failed to enable toolsets: %w", err)
 	}
 
-	github.RegisterResources(ghServer, getClient, cfg.Translator)
-
 	// Register the tools with the server
 	tsg.RegisterTools(ghServer)
 
