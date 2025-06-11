@@ -1100,3 +1100,135 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 			return mcp.NewToolResultText(string(r)), nil
 		}
 }
+
+// GetCompanyStandards creates a tool to get development standards from a company's repository.
+func GetCompanyStandards(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("get_company_standards",
+			mcp.WithDescription(t("TOOL_GET_COMPANY_STANDARDS_DESCRIPTION", "Get development standards and guidelines from a company's repository")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_COMPANY_STANDARDS_USER_TITLE", "Get company development standards"),
+				ReadOnlyHint: toBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner (company/organization name)"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name containing development standards"),
+			),
+			mcp.WithString("standards_path",
+				mcp.Description("Path to standards directory or file (defaults to common paths like 'docs/', 'standards/', 'guidelines/', etc.)"),
+			),
+			mcp.WithString("ref",
+				mcp.Description("Git reference (branch, tag, or commit SHA) to get standards from (defaults to main/master)"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := requiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			repo, err := requiredParam[string](request, "repo")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			standardsPath, err := OptionalParam[string](request, "standards_path")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			ref, err := OptionalParam[string](request, "ref")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			// Common paths to look for development standards
+			commonPaths := []string{
+				"docs/",
+				"standards/",
+				"guidelines/",
+				"dev-standards/",
+				"development-standards/",
+				"coding-standards/",
+				"README.md",
+				"CONTRIBUTING.md",
+				"DEVELOPMENT.md",
+				"STANDARDS.md",
+				"GUIDELINES.md",
+			}
+
+			// If a specific path is provided, use it; otherwise search common paths
+			pathsToSearch := []string{}
+			if standardsPath != "" {
+				pathsToSearch = []string{standardsPath}
+			} else {
+				pathsToSearch = commonPaths
+			}
+
+			var results []map[string]interface{}
+			opts := &github.RepositoryContentGetOptions{Ref: ref}
+
+			for _, path := range pathsToSearch {
+				fileContent, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+				if err != nil {
+					// Continue to next path if this one doesn't exist
+					continue
+				}
+				if resp != nil {
+					defer func() { _ = resp.Body.Close() }()
+				}
+
+				if resp.StatusCode == 200 {
+					var content interface{}
+					var contentType string
+					var actualPath string
+
+					if fileContent != nil {
+						content = fileContent
+						contentType = "file"
+						actualPath = path
+					} else if dirContent != nil {
+						content = dirContent
+						contentType = "directory"
+						actualPath = path
+					}
+
+					if content != nil {
+						results = append(results, map[string]interface{}{
+							"path":         actualPath,
+							"type":         contentType,
+							"content":      content,
+							"source_repo":  fmt.Sprintf("%s/%s", owner, repo),
+							"reference":    ref,
+						})
+					}
+				}
+			}
+
+			if len(results) == 0 {
+				return mcp.NewToolResultError("No development standards found in the specified repository. Try specifying a custom standards_path or ensure the repository contains standard documentation."), nil
+			}
+
+			// Create a structured response
+			response := map[string]interface{}{
+				"company":         owner,
+				"repository":      repo,
+				"reference":       ref,
+				"standards_found": len(results),
+				"standards":       results,
+				"search_note":     "This tool searched common paths for development standards. Use 'standards_path' parameter to specify a custom location.",
+			}
+
+			r, err := json.Marshal(response)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}

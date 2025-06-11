@@ -509,6 +509,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `path`: File path (string, required)
   - `ref`: Git reference (string, optional)
 
+- **get_company_standards** - Get development standards and guidelines from a company's repository
+  - `owner`: Repository owner (company/organization name) (string, required)
+  - `repo`: Repository name containing development standards (string, required)
+  - `standards_path`: Path to standards directory or file (string, optional) - defaults to common paths like 'docs/', 'standards/', 'guidelines/', etc.
+  - `ref`: Git reference (branch, tag, or commit SHA) to get standards from (string, optional) - defaults to main/master
+
 - **fork_repository** - Fork a repository
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -595,83 +601,4 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 
 - **get_notification_details** – Get detailed information for a specific GitHub notification
-  - `notificationID`: The ID of the notification (string, required)
-
-- **dismiss_notification** – Dismiss a notification by marking it as read or done
-  - `threadID`: The ID of the notification thread (string, required)
-  - `state`: The new state of the notification (`read` or `done`)
-
-- **mark_all_notifications_read** – Mark all notifications as read
-  - `lastReadAt`: Describes the last point that notifications were checked (optional, RFC3339/ISO8601 string, default: now)
-  - `owner`: Optional repository owner (string)
-  - `repo`: Optional repository name (string)
-
-- **manage_notification_subscription** – Manage a notification subscription (ignore, watch, or delete) for a notification thread
-  - `notificationID`: The ID of the notification thread (string, required)
-  - `action`: Action to perform: `ignore`, `watch`, or `delete` (string, required)
-
-- **manage_repository_notification_subscription** – Manage a repository notification subscription (ignore, watch, or delete)
-  - `owner`: The account owner of the repository (string, required)
-  - `repo`: The name of the repository (string, required)
-  - `action`: Action to perform: `ignore`, `watch`, or `delete` (string, required)
-
-## Resources
-
-### Repository Content
-
-- **Get Repository Content**
-  Retrieves the content of a repository at a specific path.
-
-  - **Template**: `repo://{owner}/{repo}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Branch**
-  Retrieves the content of a repository at a specific path for a given branch.
-
-  - **Template**: `repo://{owner}/{repo}/refs/heads/{branch}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `branch`: Branch name (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Commit**
-  Retrieves the content of a repository at a specific path for a given commit.
-
-  - **Template**: `repo://{owner}/{repo}/sha/{sha}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `sha`: Commit SHA (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Tag**
-  Retrieves the content of a repository at a specific path for a given tag.
-
-  - **Template**: `repo://{owner}/{repo}/refs/tags/{tag}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `tag`: Tag name (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Pull Request**
-  Retrieves the content of a repository at a specific path for a given pull request.
-
-  - **Template**: `repo://{owner}/{repo}/refs/pull/{prNumber}/head/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `prNumber`: Pull request number (string, required)
-    - `path`: File or directory path (string, optional)
-
-## Library Usage
-
-The exported Go API of this module should currently be considered unstable, and subject to breaking changes. In the future, we may offer stability; please file an issue if there is a use case where this would be valuable.
-
-## License
-
-This project is licensed under the terms of the MIT open source license. Please refer to [MIT](./LICENSE) for the full terms.
+  - `

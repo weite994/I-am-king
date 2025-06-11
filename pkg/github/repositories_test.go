@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v72/github"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1962,4 +1964,118 @@ func Test_GetTag(t *testing.T) {
 			assert.Equal(t, *tc.expectedTag.Object.SHA, *returnedTag.Object.SHA)
 		})
 	}
+}
+
+func Test_GetCompanyStandards(t *testing.T) {
+	// Verify tool definition
+	mockClient := github.NewClient(nil)
+	tool, _ := GetCompanyStandards(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+	assert.Equal(t, "get_company_standards", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "owner")
+	assert.Contains(t, tool.InputSchema.Properties, "repo")
+	assert.Contains(t, tool.InputSchema.Properties, "standards_path")
+	assert.Contains(t, tool.InputSchema.Properties, "ref")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
+
+	// Setup mock content for success case - simulating README.md with development standards
+	mockStandardsContent := &github.RepositoryContent{
+		Type:        github.Ptr("file"),
+		Name:        github.Ptr("README.md"),
+		Path:        github.Ptr("README.md"),
+		Content:     github.Ptr("IyBEZXZlbG9wbWVudCBTdGFuZGFyZHMKClRoaXMgaXMgb3VyIGNvbXBhbnkncyBkZXZlbG9wbWVudCBzdGFuZGFyZHMu"), // Base64 encoded "# Development Standards\n\nThis is our company's development standards."
+		SHA:         github.Ptr("def456"),
+		Size:        github.Ptr(45),
+		HTMLURL:     github.Ptr("https://github.com/chewy/standards/blob/main/README.md"),
+		DownloadURL: github.Ptr("https://raw.githubusercontent.com/chewy/standards/main/README.md"),
+	}
+
+	// Test successful retrieval of standards
+	t.Run("success with default paths", func(t *testing.T) {
+		// Set up multiple mock responses for all the paths the tool will try
+		mockClient := mock.NewMockedHTTPClient(
+			// First path that will succeed (docs/)
+			mock.WithRequestMatchHandler(
+				mock.GetReposContentsByOwnerByRepoByPath,
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Only respond to the docs/ path with success
+					if strings.Contains(r.URL.Path, "/contents/docs") {
+						w.WriteHeader(http.StatusOK)
+						b, _ := json.Marshal(mockStandardsContent)
+						_, _ = w.Write(b)
+					} else {
+						// Return 404 for all other paths
+						w.WriteHeader(http.StatusNotFound)
+						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+					}
+				}),
+			),
+		)
+		client := github.NewClient(mockClient)
+		_, handler := GetCompanyStandards(stubGetClientFn(client), translations.NullTranslationHelper)
+
+		request := createMCPRequest(map[string]interface{}{
+			"owner": "chewy",
+			"repo":  "standards",
+		})
+
+		result, err := handler(context.Background(), request)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError)
+		assert.Len(t, result.Content, 1)
+
+		textContent := getTextResult(t, result)
+		var response map[string]interface{}
+		err = json.Unmarshal([]byte(textContent.Text), &response)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "chewy", response["company"])
+		assert.Equal(t, "standards", response["repository"])
+		assert.Equal(t, float64(1), response["standards_found"]) // JSON numbers are float64
+		assert.Contains(t, response, "standards")
+	})
+
+	// Test with custom standards path
+	t.Run("success with custom standards path", func(t *testing.T) {
+		mockClient := mock.NewMockedHTTPClient(
+			mock.WithRequestMatch(
+				mock.GetReposContentsByOwnerByRepoByPath,
+				mockStandardsContent,
+			),
+		)
+		client := github.NewClient(mockClient)
+		_, handler := GetCompanyStandards(stubGetClientFn(client), translations.NullTranslationHelper)
+
+		request := createMCPRequest(map[string]interface{}{
+			"owner":          "chewy",
+			"repo":           "standards",
+			"standards_path": "docs/development-guidelines.md",
+		})
+
+		result, err := handler(context.Background(), request)
+
+		assert.NoError(t, err)
+		assert.False(t, result.IsError)
+	})
+
+	// Test error case - no standards found
+	t.Run("no standards found", func(t *testing.T) {
+		// Mock client that returns 404 for all requests
+		mockClient := mock.NewMockedHTTPClient()
+		client := github.NewClient(mockClient)
+		_, handler := GetCompanyStandards(stubGetClientFn(client), translations.NullTranslationHelper)
+
+		request := createMCPRequest(map[string]interface{}{
+			"owner": "chewy",
+			"repo":  "empty-repo",
+		})
+
+		result, err := handler(context.Background(), request)
+
+		assert.NoError(t, err)
+		assert.True(t, result.IsError)
+		assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "No development standards found")
+	})
 }
