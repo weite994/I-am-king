@@ -105,7 +105,7 @@ func RequiredInt(r mcp.CallToolRequest, p string) (int, error) {
 // 2. Checks if the parameter is of the expected type.
 // 3. Checks if the parameter is not empty, i.e: non-zero value
 func RequiredInt64(r mcp.CallToolRequest, p string) (int64, error) {
-	v, err := requiredParam[float64](r, p)
+	v, err := RequiredParam[float64](r, p)
 	if err != nil {
 		return 0, err
 	}

@@ -720,7 +720,7 @@ func GetIssueTimeline(getClient GetClientFn, t translations.TranslationHelperFun
 			mcp.WithDescription(t("TOOL_GET_ISSUE_TIMELINE_DESCRIPTION", "Get timeline of a specific issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_ISSUE_TIMELINE_USER_TITLE", "Get issue timeline"),
-				ReadOnlyHint: toBoolPtr(true),
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -737,11 +737,11 @@ func GetIssueTimeline(getClient GetClientFn, t translations.TranslationHelperFun
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -793,7 +793,7 @@ func GetIssueEvents(getClient GetClientFn, t translations.TranslationHelperFunc)
 			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENTS_DESCRIPTION", "Get a list of events for a specific issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_ISSUE_EVENTS_USER_TITLE", "Get issue events"),
-				ReadOnlyHint: toBoolPtr(true),
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -810,11 +810,11 @@ func GetIssueEvents(getClient GetClientFn, t translations.TranslationHelperFunc)
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -866,7 +866,7 @@ func GetIssueEvent(getClient GetClientFn, t translations.TranslationHelperFunc) 
 			mcp.WithDescription(t("TOOL_GET_ISSUE_EVENT_DESCRIPTION", "Get a single event for an issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_ISSUE_EVENT_USER_TITLE", "Get an issue event"),
-				ReadOnlyHint: toBoolPtr(true),
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -882,11 +882,11 @@ func GetIssueEvent(getClient GetClientFn, t translations.TranslationHelperFunc) 
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
