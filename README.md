@@ -509,10 +509,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `path`: File path (string, required)
   - `ref`: Git reference (string, optional)
 
-- **get_company_standards** - Get development standards and guidelines from a company's repository
-  - `owner`: Repository owner (company/organization name) (string, required)
-  - `repo`: Repository name containing development standards (string, required)
-  - `standards_path`: Path to standards directory or file (string, optional) - defaults to common paths like 'docs/', 'standards/', 'guidelines/', etc.
+- **get_chewy_standards** - Get development standards and guidelines from Chewy's repository
+    - `owner`: Repository owner (defaults to Chewy-Inc) (string, optional)
+    - `repo`: Repository name containing development standards (defaults to chewy-tech-standards) (string, optional)
+      - `standards_path`: Path to standards directory or file (string, optional) - defaults to searching the entire repository
   - `ref`: Git reference (branch, tag, or commit SHA) to get standards from (string, optional) - defaults to main/master
 
 - **fork_repository** - Fork a repository

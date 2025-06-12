@@ -1101,38 +1101,44 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 		}
 }
 
-// GetCompanyStandards creates a tool to get development standards from a company's repository.
-func GetCompanyStandards(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
-	return mcp.NewTool("get_company_standards",
-			mcp.WithDescription(t("TOOL_GET_COMPANY_STANDARDS_DESCRIPTION", "Get development standards and guidelines from a company's repository")),
+// GetChewyStandards creates a tool to get development standards from Chewy's repository.
+func GetChewyStandards(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("get_chewy_standards",
+			mcp.WithDescription(t("TOOL_GET_CHEWY_STANDARDS_DESCRIPTION", "Get development standards and guidelines from Chewy's repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
-				Title:        t("TOOL_GET_COMPANY_STANDARDS_USER_TITLE", "Get company development standards"),
+				Title:        t("TOOL_GET_CHEWY_STANDARDS_USER_TITLE", "Get Chewy development standards"),
 				ReadOnlyHint: toBoolPtr(true),
 			}),
 			mcp.WithString("owner",
-				mcp.Required(),
-				mcp.Description("Repository owner (company/organization name)"),
+				mcp.Description("Repository owner (defaults to Chewy-Inc)"),
 			),
 			mcp.WithString("repo",
-				mcp.Required(),
-				mcp.Description("Repository name containing development standards"),
+				mcp.Description("Repository name containing development standards (defaults to chewy-tech-standards)"),
 			),
 			mcp.WithString("standards_path",
-				mcp.Description("Path to standards directory or file (defaults to common paths like 'docs/', 'standards/', 'guidelines/', etc.)"),
+				mcp.Description("Path to standards directory or file (defaults to searching the entire repository)"),
 			),
 			mcp.WithString("ref",
 				mcp.Description("Git reference (branch, tag, or commit SHA) to get standards from (defaults to main/master)"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := OptionalParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			if owner == "" {
+				owner = "Chewy-Inc"
+			}
+
+			repo, err := OptionalParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			if repo == "" {
+				repo = "chewy-tech-standards"
+			}
+
 			standardsPath, err := OptionalParam[string](request, "standards_path")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -1147,65 +1153,77 @@ func GetCompanyStandards(getClient GetClientFn, t translations.TranslationHelper
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			// Common paths to look for development standards
-			commonPaths := []string{
-				"docs/",
-				"standards/",
-				"guidelines/",
-				"dev-standards/",
-				"development-standards/",
-				"coding-standards/",
-				"README.md",
-				"CONTRIBUTING.md",
-				"DEVELOPMENT.md",
-				"STANDARDS.md",
-				"GUIDELINES.md",
-			}
+			// If a specific path is provided, use it; otherwise search the whole repository
+			var pathsToSearch []string
+			var searchWholeRepo bool
 
-			// If a specific path is provided, use it; otherwise search common paths
-			pathsToSearch := []string{}
 			if standardsPath != "" {
 				pathsToSearch = []string{standardsPath}
+				searchWholeRepo = false
 			} else {
-				pathsToSearch = commonPaths
+				// Search the whole repository (starting from root)
+				pathsToSearch = []string{""}
+				searchWholeRepo = true
 			}
 
 			var results []map[string]interface{}
 			opts := &github.RepositoryContentGetOptions{Ref: ref}
 
-			for _, path := range pathsToSearch {
-				fileContent, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+			if searchWholeRepo {
+				// Get the entire repository tree
+				tree, resp, err := client.Git.GetTree(ctx, owner, repo, "HEAD", true)
 				if err != nil {
-					// Continue to next path if this one doesn't exist
-					continue
+					return mcp.NewToolResultError(fmt.Sprintf("Failed to get repository tree: %v", err)), nil
 				}
 				if resp != nil {
 					defer func() { _ = resp.Body.Close() }()
 				}
 
-				if resp.StatusCode == 200 {
-					var content interface{}
-					var contentType string
-					var actualPath string
-
-					if fileContent != nil {
-						content = fileContent
-						contentType = "file"
-						actualPath = path
-					} else if dirContent != nil {
-						content = dirContent
-						contentType = "directory"
-						actualPath = path
+				if resp.StatusCode == 200 && tree != nil {
+					results = append(results, map[string]interface{}{
+						"path":        "",
+						"type":        "repository",
+						"content":     tree,
+						"source_repo": fmt.Sprintf("%s/%s", owner, repo),
+						"reference":   ref,
+					})
+				}
+			} else {
+				// Search specific paths
+				for _, path := range pathsToSearch {
+					fileContent, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+					if err != nil {
+						// Continue to next path if this one doesn't exist
+						continue
+					}
+					if resp != nil {
+						defer func() { _ = resp.Body.Close() }()
 					}
 
-					if content != nil {
-						results = append(results, map[string]interface{}{
-							"path":         actualPath,
-							"type":         contentType,
-							"content":      content,
-							"source_repo":  fmt.Sprintf("%s/%s", owner, repo),
-							"reference":    ref,
-						})
+					if resp.StatusCode == 200 {
+						var content interface{}
+						var contentType string
+						var actualPath string
+
+						if fileContent != nil {
+							content = fileContent
+							contentType = "file"
+							actualPath = path
+						} else if dirContent != nil {
+							content = dirContent
+							contentType = "directory"
+							actualPath = path
+						}
+
+						if content != nil {
+							results = append(results, map[string]interface{}{
+								"path":        actualPath,
+								"type":        contentType,
+								"content":     content,
+								"source_repo": fmt.Sprintf("%s/%s", owner, repo),
+								"reference":   ref,
+							})
+						}
 					}
 				}
 			}
@@ -1215,13 +1233,18 @@ func GetCompanyStandards(getClient GetClientFn, t translations.TranslationHelper
 			}
 
 			// Create a structured response
+			searchNote := "This tool searched the entire repository for development standards."
+			if !searchWholeRepo {
+				searchNote = "This tool searched the specified path for development standards. Leave 'standards_path' empty to search the entire repository."
+			}
+
 			response := map[string]interface{}{
-				"company":         owner,
+				"chewy_org":       owner,
 				"repository":      repo,
 				"reference":       ref,
 				"standards_found": len(results),
 				"standards":       results,
-				"search_note":     "This tool searched common paths for development standards. Use 'standards_path' parameter to specify a custom location.",
+				"search_note":     searchNote,
 			}
 
 			r, err := json.Marshal(response)
