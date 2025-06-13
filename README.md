@@ -49,7 +49,7 @@ For MCP Hosts that have been [configured to use the remote GitHub MCP Server](do
 
 ### Configuration
 
-See [Remote Server Documentation](../docs/remote-server.md) on how to pass configuration settings to the remote GitHub MCP Server.
+See [Remote Server Documentation](docs/remote-server.md) on how to pass configuration settings to the remote GitHub MCP Server.
 
 ---
 
