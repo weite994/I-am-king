@@ -192,6 +192,7 @@ The following sets of tools are available (all are on by default):
 
 | Toolset                 | Description                                                   |
 | ----------------------- | ------------------------------------------------------------- |
+| `actions`               | GitHub Actions workflows and CI/CD operations                |
 | `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | `code_security`         | Code scanning alerts and security features                    |
 | `issues`                | Issue-related tools (create, read, update, comment)           |
