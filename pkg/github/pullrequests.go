@@ -1615,7 +1615,7 @@ func SetPRStatus(getGQLClient GetGQLClientFn, t translations.TranslationHelperFu
 			mcp.WithDescription(t("TOOL_SET_PR_STATUS_DESCRIPTION", "Set pull request status between draft and ready-for-review states. Use this to change a pull request from draft to ready-for-review or vice versa.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_SET_PR_STATUS_USER_TITLE", "Set pull request status"),
-				ReadOnlyHint: toBoolPtr(false),
+				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
