@@ -24,6 +24,7 @@ func ListWorkflows(getClient GetClientFn, t translations.TranslationHelperFunc) 
 	return mcp.NewTool("list_workflows",
 			mcp.WithDescription(t("TOOL_LIST_WORKFLOWS_DESCRIPTION", "List workflows in a repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_WORKFLOWS_USER_TITLE", "List workflows"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -92,6 +93,7 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 	return mcp.NewTool("list_workflow_runs",
 			mcp.WithDescription(t("TOOL_LIST_WORKFLOW_RUNS_DESCRIPTION", "List workflow runs for a specific workflow")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_WORKFLOW_RUNS_USER_TITLE", "List workflow runs"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -239,6 +241,7 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 	return mcp.NewTool("run_workflow",
 			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_DESCRIPTION", "Run an Actions workflow by workflow ID")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_RUN_WORKFLOW_USER_TITLE", "Run workflow"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
@@ -329,6 +332,7 @@ func RunWorkflowByFileName(getClient GetClientFn, t translations.TranslationHelp
 	return mcp.NewTool("run_workflow_by_filename",
 			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_BY_FILENAME_DESCRIPTION", "Run an Actions workflow by workflow filename")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_RUN_WORKFLOW_BY_FILENAME_USER_TITLE", "Run workflow by filename"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
@@ -416,6 +420,7 @@ func GetWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFunc)
 	return mcp.NewTool("get_workflow_run",
 			mcp.WithDescription(t("TOOL_GET_WORKFLOW_RUN_DESCRIPTION", "Get details of a specific workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_WORKFLOW_RUN_USER_TITLE", "Get workflow run"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -471,6 +476,7 @@ func GetWorkflowRunLogs(getClient GetClientFn, t translations.TranslationHelperF
 	return mcp.NewTool("get_workflow_run_logs",
 			mcp.WithDescription(t("TOOL_GET_WORKFLOW_RUN_LOGS_DESCRIPTION", "Download logs for a specific workflow run (EXPENSIVE: downloads ALL logs as ZIP. Consider using get_job_logs with failed_only=true for debugging failed jobs)")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_WORKFLOW_RUN_LOGS_USER_TITLE", "Get workflow run logs"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -536,6 +542,7 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 	return mcp.NewTool("list_workflow_jobs",
 			mcp.WithDescription(t("TOOL_LIST_WORKFLOW_JOBS_DESCRIPTION", "List jobs for a specific workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_WORKFLOW_JOBS_USER_TITLE", "List workflow jobs"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -627,11 +634,12 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 		}
 }
 
-// GetJobLogs creates a tool to download logs for a specific workflow job or get failed job logs efficiently
+// GetJobLogs creates a tool to download logs for a specific workflow job or efficiently get all failed job logs for a workflow run
 func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_job_logs",
 			mcp.WithDescription(t("TOOL_GET_JOB_LOGS_DESCRIPTION", "Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_JOB_LOGS_USER_TITLE", "Get job logs"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -846,6 +854,7 @@ func RerunWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFun
 	return mcp.NewTool("rerun_workflow_run",
 			mcp.WithDescription(t("TOOL_RERUN_WORKFLOW_RUN_DESCRIPTION", "Re-run an entire workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_RERUN_WORKFLOW_RUN_USER_TITLE", "Rerun workflow run"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
@@ -908,6 +917,7 @@ func RerunFailedJobs(getClient GetClientFn, t translations.TranslationHelperFunc
 	return mcp.NewTool("rerun_failed_jobs",
 			mcp.WithDescription(t("TOOL_RERUN_FAILED_JOBS_DESCRIPTION", "Re-run only the failed jobs in a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_RERUN_FAILED_JOBS_USER_TITLE", "Rerun failed jobs"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
@@ -970,6 +980,7 @@ func CancelWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFu
 	return mcp.NewTool("cancel_workflow_run",
 			mcp.WithDescription(t("TOOL_CANCEL_WORKFLOW_RUN_DESCRIPTION", "Cancel a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_CANCEL_WORKFLOW_RUN_USER_TITLE", "Cancel workflow run"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
@@ -1032,6 +1043,7 @@ func ListWorkflowRunArtifacts(getClient GetClientFn, t translations.TranslationH
 	return mcp.NewTool("list_workflow_run_artifacts",
 			mcp.WithDescription(t("TOOL_LIST_WORKFLOW_RUN_ARTIFACTS_DESCRIPTION", "List artifacts for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_WORKFLOW_RUN_ARTIFACTS_USER_TITLE", "List workflow artifacts"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -1109,6 +1121,7 @@ func DownloadWorkflowRunArtifact(getClient GetClientFn, t translations.Translati
 	return mcp.NewTool("download_workflow_run_artifact",
 			mcp.WithDescription(t("TOOL_DOWNLOAD_WORKFLOW_RUN_ARTIFACT_DESCRIPTION", "Get download URL for a workflow run artifact")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_DOWNLOAD_WORKFLOW_RUN_ARTIFACT_USER_TITLE", "Download workflow artifact"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
@@ -1173,6 +1186,7 @@ func DeleteWorkflowRunLogs(getClient GetClientFn, t translations.TranslationHelp
 	return mcp.NewTool("delete_workflow_run_logs",
 			mcp.WithDescription(t("TOOL_DELETE_WORKFLOW_RUN_LOGS_DESCRIPTION", "Delete logs for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:           t("TOOL_DELETE_WORKFLOW_RUN_LOGS_USER_TITLE", "Delete workflow logs"),
 				ReadOnlyHint:    ToBoolPtr(false),
 				DestructiveHint: ToBoolPtr(true),
 			}),
@@ -1236,6 +1250,7 @@ func GetWorkflowRunUsage(getClient GetClientFn, t translations.TranslationHelper
 	return mcp.NewTool("get_workflow_run_usage",
 			mcp.WithDescription(t("TOOL_GET_WORKFLOW_RUN_USAGE_DESCRIPTION", "Get usage metrics for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_GET_WORKFLOW_RUN_USAGE_USER_TITLE", "Get workflow usage"),
 				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
