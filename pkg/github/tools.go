@@ -125,7 +125,6 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(RunWorkflow(getClient, t)),
-			toolsets.NewServerTool(RunWorkflowByFileName(getClient, t)),
 			toolsets.NewServerTool(RerunWorkflowRun(getClient, t)),
 			toolsets.NewServerTool(RerunFailedJobs(getClient, t)),
 			toolsets.NewServerTool(CancelWorkflowRun(getClient, t)),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/github/github-mcp-server/pkg/translations"
@@ -236,10 +237,10 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 		}
 }
 
-// RunWorkflow creates a tool to run an Actions workflow by workflow ID
+// RunWorkflow creates a tool to run an Actions workflow
 func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("run_workflow",
-			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_DESCRIPTION", "Run an Actions workflow by workflow ID")),
+			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_DESCRIPTION", "Run an Actions workflow by workflow ID or filename")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_RUN_WORKFLOW_USER_TITLE", "Run workflow"),
 				ReadOnlyHint: ToBoolPtr(false),
@@ -252,9 +253,9 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				mcp.Required(),
 				mcp.Description(DescriptionRepositoryName),
 			),
-			mcp.WithNumber("workflow_id",
+			mcp.WithString("workflow_id",
 				mcp.Required(),
-				mcp.Description("The workflow ID (numeric identifier)"),
+				mcp.Description("The workflow ID (numeric) or workflow file name (e.g., main.yml, ci.yaml)"),
 			),
 			mcp.WithString("ref",
 				mcp.Required(),
@@ -273,98 +274,7 @@ func RunWorkflow(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			workflowIDInt, err := RequiredInt(request, "workflow_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			workflowID := int64(workflowIDInt)
-			ref, err := RequiredParam[string](request, "ref")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			// Get optional inputs parameter
-			var inputs map[string]interface{}
-			if requestInputs, ok := request.GetArguments()["inputs"]; ok {
-				if inputsMap, ok := requestInputs.(map[string]interface{}); ok {
-					inputs = inputsMap
-				}
-			}
-
-			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
-
-			event := github.CreateWorkflowDispatchEventRequest{
-				Ref:    ref,
-				Inputs: inputs,
-			}
-
-			// Convert workflow ID to string format for the API call
-			workflowIDStr := fmt.Sprintf("%d", workflowID)
-			resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, owner, repo, workflowIDStr, event)
-			if err != nil {
-				return nil, fmt.Errorf("failed to run workflow: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			result := map[string]any{
-				"message":     "Workflow run has been queued",
-				"workflow_id": workflowID,
-				"ref":         ref,
-				"inputs":      inputs,
-				"status":      resp.Status,
-				"status_code": resp.StatusCode,
-			}
-
-			r, err := json.Marshal(result)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal response: %w", err)
-			}
-
-			return mcp.NewToolResultText(string(r)), nil
-		}
-}
-
-// RunWorkflowByFileName creates a tool to run an Actions workflow by filename
-func RunWorkflowByFileName(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
-	return mcp.NewTool("run_workflow_by_filename",
-			mcp.WithDescription(t("TOOL_RUN_WORKFLOW_BY_FILENAME_DESCRIPTION", "Run an Actions workflow by workflow filename")),
-			mcp.WithToolAnnotation(mcp.ToolAnnotation{
-				Title:        t("TOOL_RUN_WORKFLOW_BY_FILENAME_USER_TITLE", "Run workflow by filename"),
-				ReadOnlyHint: ToBoolPtr(false),
-			}),
-			mcp.WithString("owner",
-				mcp.Required(),
-				mcp.Description(DescriptionRepositoryOwner),
-			),
-			mcp.WithString("repo",
-				mcp.Required(),
-				mcp.Description(DescriptionRepositoryName),
-			),
-			mcp.WithString("workflow_file",
-				mcp.Required(),
-				mcp.Description("The workflow file name (e.g., main.yml, ci.yaml)"),
-			),
-			mcp.WithString("ref",
-				mcp.Required(),
-				mcp.Description("The git reference for the workflow. The reference can be a branch or tag name."),
-			),
-			mcp.WithObject("inputs",
-				mcp.Description("Inputs the workflow accepts"),
-			),
-		),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := RequiredParam[string](request, "owner")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			repo, err := RequiredParam[string](request, "repo")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			workflowFile, err := RequiredParam[string](request, "workflow_file")
+			workflowID, err := RequiredParam[string](request, "workflow_id")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -391,7 +301,17 @@ func RunWorkflowByFileName(getClient GetClientFn, t translations.TranslationHelp
 				Inputs: inputs,
 			}
 
-			resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, owner, repo, workflowFile, event)
+			var resp *github.Response
+			var workflowType string
+
+			if workflowIDInt, parseErr := strconv.ParseInt(workflowID, 10, 64); parseErr == nil {
+				resp, err = client.Actions.CreateWorkflowDispatchEventByID(ctx, owner, repo, workflowIDInt, event)
+				workflowType = "workflow_id"
+			} else {
+				resp, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, owner, repo, workflowID, event)
+				workflowType = "workflow_file"
+			}
+
 			if err != nil {
 				return nil, fmt.Errorf("failed to run workflow: %w", err)
 			}
@@ -399,7 +319,8 @@ func RunWorkflowByFileName(getClient GetClientFn, t translations.TranslationHelp
 
 			result := map[string]any{
 				"message":       "Workflow run has been queued",
-				"workflow_file": workflowFile,
+				"workflow_type": workflowType,
+				"workflow_id":   workflowID,
 				"ref":           ref,
 				"inputs":        inputs,
 				"status":        resp.Status,
