@@ -26,26 +26,99 @@ The remote GitHub MCP Server is hosted by GitHub and provides the easiest method
 
 ### Usage with VS Code
 
-For quick installation, use one of the one-click install buttons above. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start.
+For quick installation, use one of the one-click install buttons above. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start. Make sure you're using [VS Code 1.101](https://code.visualstudio.com/updates/v1_101) or [later](https://code.visualstudio.com/updates) for remote MCP and OAuth support.
 
-### Usage in other MCP Hosts
 
-For MCP Hosts that have been [configured to use the remote GitHub MCP Server](docs/host-integration.md), add the following JSON block to the host's configuration:
+Alternatively, to manually configure VS Code, choose the appropriate JSON block from the examples below and add it to your host configuration:
 
+<table>
+<tr><th>Using OAuth</th><th>Using a GitHub PAT</th></tr>
+<tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
+<tr valign=top>
+<td>
+  
 ```json
 {
-  "mcp": {
-    "servers": {
-      "github": {
-        "type": "http",
-        "url": "https://api.githubcopilot.com/mcp/"
-      }
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
     }
   }
 }
 ```
 
+</td>
+<td>
+
+```json
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${input:github_mcp_pat}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "github_mcp_pat",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    }
+  ]
+}
+```
+
+</td>
+</tr>
+</table>
+
+### Usage in other MCP Hosts
+
+For MCP Hosts that are [Remote MCP-compatible](docs/host-integration.md), choose the appropriate JSON block from the examples below and add it to your host configuration:
+
+<table>
+<tr><th>Using OAuth</th><th>Using a GitHub PAT</th></tr>
+<tr valign=top>
+<td>
+  
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  }
+}
+```
+
+</td>
+<td>
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "authorization_token": "Bearer <your GitHub PAT>"
+    }
+  }
+}
+```
+
+</td>
+</tr>
+</table>
+
 > **Note:** The exact configuration format may vary by host. Refer to your host's documentation for the correct syntax and location for remote MCP server setup.
+
+### Configuration
+
+See [Remote Server Documentation](docs/remote-server.md) on how to pass additional configuration settings to the remote GitHub MCP Server.
 
 ---
 
@@ -192,6 +265,7 @@ The following sets of tools are available (all are on by default):
 
 | Toolset                 | Description                                                   |
 | ----------------------- | ------------------------------------------------------------- |
+| `actions`               | GitHub Actions workflows and CI/CD operations                |
 | `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | `code_security`         | Code scanning alerts and security features                    |
 | `issues`                | Issue-related tools (create, read, update, comment)           |
@@ -210,12 +284,12 @@ To specify toolsets you want available to the LLM, you can pass an allow-list in
 1. **Using Command Line Argument**:
 
    ```bash
-   github-mcp-server --toolsets repos,issues,pull_requests,code_security
+   github-mcp-server --toolsets repos,issues,pull_requests,actions,code_security
    ```
 
 2. **Using Environment Variable**:
    ```bash
-   GITHUB_TOOLSETS="repos,issues,pull_requests,code_security" ./github-mcp-server
+   GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security" ./github-mcp-server
    ```
 
 The environment variable `GITHUB_TOOLSETS` takes precedence over the command line argument if both are provided.
@@ -227,7 +301,7 @@ When using Docker, you can pass the toolsets as environment variables:
 ```bash
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
-  -e GITHUB_TOOLSETS="repos,issues,pull_requests,code_security,experiments" \
+  -e GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security,experiments" \
   ghcr.io/github/github-mcp-server
 ```
 
@@ -439,6 +513,14 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+- **assign_copilot_to_issue** - Assign Copilot to a specific issue in a GitHub repository
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issueNumber`: Issue number (number, required)
+  - _Note_: This tool can help with creating a Pull Request with source code changes to resolve the issue. More information can be found at [GitHub Copilot documentation](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot)
+
+
 ### Pull Requests
 
 - **get_pull_request** - Get details of a specific pull request
@@ -497,6 +579,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
 
+- **get_pull_request_diff** - Get the diff of a pull request
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+
 - **create_pull_request_review** - Create a review on a pull request review
 
   - `owner`: Repository owner (string, required)
@@ -508,6 +596,53 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `comments`: Line-specific comments array of objects to place comments on pull request changes (array, optional)
     - For inline comments: provide `path`, `position` (or `line`), and `body`
     - For multi-line comments: provide `path`, `start_line`, `line`, optional `side`/`start_side`, and `body`
+
+- **create_pending_pull_request_review** - Create a pending review for a pull request that can be submitted later
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `commitID`: SHA of commit to review (string, optional)
+
+- **add_pull_request_review_comment_to_pending_review** - Add a comment to the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `path`: The relative path to the file that necessitates a comment (string, required)
+  - `body`: The text of the review comment (string, required)
+  - `subjectType`: The level at which the comment is targeted (string, required)
+    - Enum: "FILE", "LINE"
+  - `line`: The line of the blob in the pull request diff that the comment applies to (number, optional)
+  - `side`: The side of the diff to comment on (string, optional)
+    - Enum: "LEFT", "RIGHT"
+  - `startLine`: For multi-line comments, the first line of the range (number, optional)
+  - `startSide`: For multi-line comments, the starting side of the diff (string, optional)
+    - Enum: "LEFT", "RIGHT"
+
+- **submit_pending_pull_request_review** - Submit the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `event`: The event to perform (string, required)
+    - Enum: "APPROVE", "REQUEST_CHANGES", "COMMENT"
+  - `body`: The text of the review comment (string, optional)
+
+- **delete_pending_pull_request_review** - Delete the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+
+- **create_and_submit_pull_request_review** - Create and submit a review for a pull request without review comments
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `body`: Review comment text (string, required)
+  - `event`: Review action ('APPROVE', 'REQUEST_CHANGES', 'COMMENT') (string, required)
+  - `commitID`: SHA of commit to review (string, optional)
 
 - **create_pull_request** - Create a new pull request
 
@@ -563,6 +698,13 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `content`: File content (string, required)
   - `branch`: Branch name (string, optional)
   - `sha`: File SHA if updating (string, optional)
+
+- **delete_file** - Delete a file from a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `path`: Path to the file to delete (string, required)
+  - `message`: Commit message (string, required)
+  - `branch`: Branch to delete the file from (string, required)
 
 - **list_branches** - List branches in a GitHub repository
   - `owner`: Repository owner (string, required)
@@ -622,6 +764,17 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number, for files in the commit (number, optional)
   - `perPage`: Results per page, for files in the commit (number, optional)
 
+- **get_tag** - Get details about a specific git tag in a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `tag`: Tag name (string, required)
+
+- **list_tags** - List git tags in a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
 - **search_code** - Search for code across GitHub repositories
   - `query`: Search query (string, required)
   - `sort`: Sort field (string, optional)
@@ -637,6 +790,110 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `order`: Sort order (string, optional)
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
+
+### Actions
+
+- **list_workflows** - List workflows in a repository
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **list_workflow_runs** - List workflow runs for a specific workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `workflow_id`: Workflow ID or filename (string, required)
+  - `branch`: Filter by branch name (string, optional)
+  - `event`: Filter by event type (string, optional)
+  - `status`: Filter by run status (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **run_workflow** - Trigger a workflow via workflow_dispatch event
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `workflow_id`: Workflow ID or filename (string, required)
+  - `ref`: Git reference (branch, tag, or SHA) (string, required)
+  - `inputs`: Input parameters for the workflow (object, optional)
+
+- **get_workflow_run** - Get details of a specific workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **get_workflow_run_logs** - Download logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **list_workflow_jobs** - List jobs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `filter`: Filter by job status (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **get_job_logs** - Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `job_id`: Job ID (number, required for single job logs)
+  - `run_id`: Workflow run ID (number, required when using failed_only)
+  - `failed_only`: When true, gets logs for all failed jobs in run_id (boolean, optional)
+  - `return_content`: Returns actual log content instead of URLs (boolean, optional)
+
+- **rerun_workflow_run** - Re-run an entire workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `enable_debug_logging`: Enable debug logging for the re-run (boolean, optional)
+
+- **rerun_failed_jobs** - Re-run only the failed jobs in a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `enable_debug_logging`: Enable debug logging for the re-run (boolean, optional)
+
+- **cancel_workflow_run** - Cancel a running workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **list_workflow_run_artifacts** - List artifacts from a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **download_workflow_run_artifact** - Get download URL for a specific artifact
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `artifact_id`: Artifact ID (number, required)
+
+- **delete_workflow_run_logs** - Delete logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **get_workflow_run_usage** - Get usage metrics for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
 
 ### Code Scanning
 
@@ -679,7 +936,6 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Optional repository name (string)
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
-
 
 - **get_notification_details** – Get detailed information for a specific GitHub notification
   - `notificationID`: The ID of the notification (string, required)
