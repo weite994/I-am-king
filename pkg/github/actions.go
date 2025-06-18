@@ -750,7 +750,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 // downloadLogContent downloads the actual log content from a GitHub logs URL
 func downloadLogContent(logURL string) (string, error) {
-	httpResp, err := http.Get(logURL)
+	httpResp, err := http.Get(logURL) //nolint:gosec // URLs are provided by GitHub API and are safe
 	if err != nil {
 		return "", fmt.Errorf("failed to download logs: %w", err)
 	}
