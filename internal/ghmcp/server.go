@@ -242,6 +242,69 @@ func RunStdioServer(cfg StdioServerConfig) error {
 	return nil
 }
 
+// RunStdioServer is not concurrent safe.
+func RunSSEServer(cfg StdioServerConfig) error {
+	// Create app context
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	t, dumpTranslations := translations.TranslationHelper()
+
+	ghServer, err := NewMCPServer(MCPServerConfig{
+		Version:         cfg.Version,
+		Host:            cfg.Host,
+		Token:           cfg.Token,
+		EnabledToolsets: cfg.EnabledToolsets,
+		DynamicToolsets: cfg.DynamicToolsets,
+		ReadOnly:        cfg.ReadOnly,
+		Translator:      t,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create MCP server: %w", err)
+	}
+
+	sseServer := server.NewSSEServer(ghServer)
+
+	logrusLogger := logrus.New()
+	if cfg.LogFilePath != "" {
+		file, err := os.OpenFile(cfg.LogFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return fmt.Errorf("failed to open log file: %w", err)
+		}
+
+		logrusLogger.SetLevel(logrus.DebugLevel)
+		logrusLogger.SetOutput(file)
+	}
+	// stdLogger := log.New(logrusLogger.Writer(), "stdioserver", 0)
+	// sseServer.SetErrorLogger(stdLogger)
+
+	if cfg.ExportTranslations {
+		// Once server is initialized, all translations are loaded
+		dumpTranslations()
+	}
+
+	// Start listening for messages
+	errC := make(chan error, 1)
+	go func() {
+		errC <- sseServer.Start("0.0.0.0:8080")
+	}()
+
+	// Output github-mcp-server string
+	_, _ = fmt.Fprintf(os.Stderr, "GitHub MCP Server running on sse\n")
+
+	// Wait for shutdown signal
+	select {
+	case <-ctx.Done():
+		logrusLogger.Infof("shutting down server...")
+	case err := <-errC:
+		if err != nil {
+			return fmt.Errorf("error running server: %w", err)
+		}
+	}
+
+	return nil
+}
+
 type apiHost struct {
 	baseRESTURL *url.URL
 	graphqlURL  *url.URL
