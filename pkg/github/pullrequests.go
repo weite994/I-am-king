@@ -299,13 +299,9 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			}
 
 			// Handle reviewers separately
-			var reviewers []string
-			if reviewersArr, ok := request.Params.Arguments["reviewers"].([]interface{}); ok && len(reviewersArr) > 0 {
-				for _, reviewer := range reviewersArr {
-					if reviewerStr, ok := reviewer.(string); ok {
-						reviewers = append(reviewers, reviewerStr)
-					}
-				}
+			reviewers, err := OptionalStringArrayParam(request, "reviewers")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
 			}
 
 			// Create the GitHub client
@@ -322,7 +318,11 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 				var ghResp *github.Response
 				pr, ghResp, err = client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
 				if err != nil {
-					return nil, fmt.Errorf("failed to update pull request: %w", err)
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to update pull request",
+						ghResp,
+						err,
+					), nil
 				}
 				resp = ghResp.Response
 				defer func() {
@@ -343,7 +343,11 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 				var ghResp *github.Response
 				pr, ghResp, err = client.PullRequests.Get(ctx, owner, repo, pullNumber)
 				if err != nil {
-					return nil, fmt.Errorf("failed to get pull request: %w", err)
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to get pull request",
+						ghResp,
+						err,
+					), nil
 				}
 				resp = ghResp.Response
 				defer func() {
@@ -359,14 +363,6 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("failed to get pull request: %s", string(body))), nil
 				}
-				
-			pr, resp, err := client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
-			if err != nil {
-				return ghErrors.NewGitHubAPIErrorResponse(ctx,
-					"failed to update pull request",
-					resp,
-					err,
-				), nil
 			}
 
 			// Add reviewers if specified
@@ -378,7 +374,11 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 				// Use the direct result of RequestReviewers which includes the requested reviewers
 				updatedPR, resp, err := client.PullRequests.RequestReviewers(ctx, owner, repo, pullNumber, reviewersRequest)
 				if err != nil {
-					return nil, fmt.Errorf("failed to request reviewers: %w", err)
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to request reviewers",
+						resp,
+						err,
+					), nil
 				}
 				defer func() {
 					if resp != nil && resp.Body != nil {

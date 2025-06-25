@@ -390,7 +390,7 @@ func Test_UpdatePullRequest(t *testing.T) {
 			}
 
 			// Check reviewers if they exist in the expected PR
-			if tc.expectedPR.RequestedReviewers != nil && len(tc.expectedPR.RequestedReviewers) > 0 {
+			if len(tc.expectedPR.RequestedReviewers) > 0 {
 				assert.NotNil(t, returnedPR.RequestedReviewers)
 				assert.Equal(t, len(tc.expectedPR.RequestedReviewers), len(returnedPR.RequestedReviewers))
 
