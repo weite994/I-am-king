@@ -192,6 +192,9 @@ func SearchIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			if !strings.Contains(query, "is:issue") {
+				query = query + " is:issue"
+			}
 			sort, err := OptionalParam[string](request, "sort")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
