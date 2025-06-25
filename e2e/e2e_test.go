@@ -1488,7 +1488,7 @@ func TestListIssues(t *testing.T) {
 	}
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
-	_, err = mcpClient.CallTool(ctx, createRepoRequest)
+	resp, err := mcpClient.CallTool(ctx, createRepoRequest)
 	require.NoError(t, err, "expected to call 'create_repository' tool successfully")
 	require.False(t, resp.IsError, fmt.Sprintf("expected result not to be an error: %+v", resp))
 
