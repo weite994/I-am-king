@@ -313,7 +313,6 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
-<<<<<<< feat/259/assign-reviewers
 
 			var pr *github.PullRequest
 			var resp *http.Response
@@ -360,7 +359,7 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("failed to get pull request: %s", string(body))), nil
 				}
-=======
+				
 			pr, resp, err := client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
 			if err != nil {
 				return ghErrors.NewGitHubAPIErrorResponse(ctx,
@@ -368,7 +367,6 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 					resp,
 					err,
 				), nil
->>>>>>> main
 			}
 
 			// Add reviewers if specified
