@@ -1,10 +1,11 @@
 package github
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v72/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -33,7 +34,7 @@ func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
 // It returns the value, a boolean indicating if the parameter was present, and an error if the type is wrong.
 func OptionalParamOK[T any](r mcp.CallToolRequest, p string) (value T, ok bool, err error) {
 	// Check if the parameter is present in the request
-	val, exists := r.Params.Arguments[p]
+	val, exists := r.GetArguments()[p]
 	if !exists {
 		// Not present, return zero value, false, no error
 		return
@@ -59,30 +60,30 @@ func isAcceptedError(err error) bool {
 	return errors.As(err, &acceptedError)
 }
 
-// requiredParam is a helper function that can be used to fetch a requested parameter from the request.
+// RequiredParam is a helper function that can be used to fetch a requested parameter from the request.
 // It does the following checks:
 // 1. Checks if the parameter is present in the request.
 // 2. Checks if the parameter is of the expected type.
 // 3. Checks if the parameter is not empty, i.e: non-zero value
-func requiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
+func RequiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
 	var zero T
 
 	// Check if the parameter is present in the request
-	if _, ok := r.Params.Arguments[p]; !ok {
+	if _, ok := r.GetArguments()[p]; !ok {
 		return zero, fmt.Errorf("missing required parameter: %s", p)
 	}
 
 	// Check if the parameter is of the expected type
-	if _, ok := r.Params.Arguments[p].(T); !ok {
+	val, ok := r.GetArguments()[p].(T)
+	if !ok {
 		return zero, fmt.Errorf("parameter %s is not of type %T", p, zero)
 	}
 
-	if r.Params.Arguments[p].(T) == zero {
+	if val == zero {
 		return zero, fmt.Errorf("missing required parameter: %s", p)
-
 	}
 
-	return r.Params.Arguments[p].(T), nil
+	return val, nil
 }
 
 // RequiredInt is a helper function that can be used to fetch a requested parameter from the request.
@@ -91,7 +92,7 @@ func requiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
 // 2. Checks if the parameter is of the expected type.
 // 3. Checks if the parameter is not empty, i.e: non-zero value
 func RequiredInt(r mcp.CallToolRequest, p string) (int, error) {
-	v, err := requiredParam[float64](r, p)
+	v, err := RequiredParam[float64](r, p)
 	if err != nil {
 		return 0, err
 	}
@@ -106,16 +107,16 @@ func OptionalParam[T any](r mcp.CallToolRequest, p string) (T, error) {
 	var zero T
 
 	// Check if the parameter is present in the request
-	if _, ok := r.Params.Arguments[p]; !ok {
+	if _, ok := r.GetArguments()[p]; !ok {
 		return zero, nil
 	}
 
 	// Check if the parameter is of the expected type
-	if _, ok := r.Params.Arguments[p].(T); !ok {
-		return zero, fmt.Errorf("parameter %s is not of type %T, is %T", p, zero, r.Params.Arguments[p])
+	if _, ok := r.GetArguments()[p].(T); !ok {
+		return zero, fmt.Errorf("parameter %s is not of type %T, is %T", p, zero, r.GetArguments()[p])
 	}
 
-	return r.Params.Arguments[p].(T), nil
+	return r.GetArguments()[p].(T), nil
 }
 
 // OptionalIntParam is a helper function that can be used to fetch a requested parameter from the request.
@@ -149,11 +150,11 @@ func OptionalIntParamWithDefault(r mcp.CallToolRequest, p string, d int) (int, e
 // 2. If it is present, iterates the elements and checks each is a string
 func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error) {
 	// Check if the parameter is present in the request
-	if _, ok := r.Params.Arguments[p]; !ok {
+	if _, ok := r.GetArguments()[p]; !ok {
 		return []string{}, nil
 	}
 
-	switch v := r.Params.Arguments[p].(type) {
+	switch v := r.GetArguments()[p].(type) {
 	case nil:
 		return []string{}, nil
 	case []string:
@@ -169,7 +170,7 @@ func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error)
 		}
 		return strSlice, nil
 	default:
-		return []string{}, fmt.Errorf("parameter %s could not be coerced to []string, is %T", p, r.Params.Arguments[p])
+		return []string{}, fmt.Errorf("parameter %s could not be coerced to []string, is %T", p, r.GetArguments()[p])
 	}
 }
 
@@ -213,4 +214,13 @@ func OptionalPaginationParams(r mcp.CallToolRequest) (PaginationParams, error) {
 		page:    page,
 		perPage: perPage,
 	}, nil
+}
+
+func MarshalledTextResult(v any) *mcp.CallToolResult {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return mcp.NewToolResultErrorFromErr("failed to marshal text result to json", err)
+	}
+
+	return mcp.NewToolResultText(string(data))
 }

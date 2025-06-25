@@ -4,13 +4,127 @@ The GitHub MCP Server is a [Model Context Protocol (MCP)](https://modelcontextpr
 server that provides seamless integration with GitHub APIs, enabling advanced
 automation and interaction capabilities for developers and tools.
 
-[![Install with Docker in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&inputs=%5B%7B%22id%22%3A%22github_token%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22GitHub%20Personal%20Access%20Token%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22-e%22%2C%22GITHUB_PERSONAL_ACCESS_TOKEN%22%2C%22ghcr.io%2Fgithub%2Fgithub-mcp-server%22%5D%2C%22env%22%3A%7B%22GITHUB_PERSONAL_ACCESS_TOKEN%22%3A%22%24%7Binput%3Agithub_token%7D%22%7D%7D) [![Install with Docker in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&inputs=%5B%7B%22id%22%3A%22github_token%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22GitHub%20Personal%20Access%20Token%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22-e%22%2C%22GITHUB_PERSONAL_ACCESS_TOKEN%22%2C%22ghcr.io%2Fgithub%2Fgithub-mcp-server%22%5D%2C%22env%22%3A%7B%22GITHUB_PERSONAL_ACCESS_TOKEN%22%3A%22%24%7Binput%3Agithub_token%7D%22%7D%7D&quality=insiders)
-
-## Use Cases
+### Use Cases
 
 - Automating GitHub workflows and processes.
 - Extracting and analyzing data from GitHub repositories.
 - Building AI powered tools and applications that interact with GitHub's ecosystem.
+
+---
+
+## Remote GitHub MCP Server
+
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D) [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D&quality=insiders)
+
+The remote GitHub MCP Server is hosted by GitHub and provides the easiest method for getting up and running. If your MCP host does not support remote MCP servers, don't worry! You can use the [local version of the GitHub MCP Server](https://github.com/github/github-mcp-server?tab=readme-ov-file#local-github-mcp-server) instead.
+
+## Prerequisites
+
+1. An MCP host that supports the latest MCP specification and remote servers, such as [VS Code](https://code.visualstudio.com/).
+
+## Installation
+
+### Usage with VS Code
+
+For quick installation, use one of the one-click install buttons above. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start. Make sure you're using [VS Code 1.101](https://code.visualstudio.com/updates/v1_101) or [later](https://code.visualstudio.com/updates) for remote MCP and OAuth support.
+
+
+Alternatively, to manually configure VS Code, choose the appropriate JSON block from the examples below and add it to your host configuration:
+
+<table>
+<tr><th>Using OAuth</th><th>Using a GitHub PAT</th></tr>
+<tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
+<tr valign=top>
+<td>
+  
+```json
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  }
+}
+```
+
+</td>
+<td>
+
+```json
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${input:github_mcp_pat}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "github_mcp_pat",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    }
+  ]
+}
+```
+
+</td>
+</tr>
+</table>
+
+### Usage in other MCP Hosts
+
+For MCP Hosts that are [Remote MCP-compatible](docs/host-integration.md), choose the appropriate JSON block from the examples below and add it to your host configuration:
+
+<table>
+<tr><th>Using OAuth</th><th>Using a GitHub PAT</th></tr>
+<tr valign=top>
+<td>
+  
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  }
+}
+```
+
+</td>
+<td>
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "authorization_token": "Bearer <your GitHub PAT>"
+    }
+  }
+}
+```
+
+</td>
+</tr>
+</table>
+
+> **Note:** The exact configuration format may vary by host. Refer to your host's documentation for the correct syntax and location for remote MCP server setup.
+
+### Configuration
+
+See [Remote Server Documentation](docs/remote-server.md) on how to pass additional configuration settings to the remote GitHub MCP Server.
+
+---
+
+## Local GitHub MCP Server
+
+[![Install with Docker in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&inputs=%5B%7B%22id%22%3A%22github_token%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22GitHub%20Personal%20Access%20Token%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22-e%22%2C%22GITHUB_PERSONAL_ACCESS_TOKEN%22%2C%22ghcr.io%2Fgithub%2Fgithub-mcp-server%22%5D%2C%22env%22%3A%7B%22GITHUB_PERSONAL_ACCESS_TOKEN%22%3A%22%24%7Binput%3Agithub_token%7D%22%7D%7D) [![Install with Docker in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&inputs=%5B%7B%22id%22%3A%22github_token%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22GitHub%20Personal%20Access%20Token%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22-e%22%2C%22GITHUB_PERSONAL_ACCESS_TOKEN%22%2C%22ghcr.io%2Fgithub%2Fgithub-mcp-server%22%5D%2C%22env%22%3A%7B%22GITHUB_PERSONAL_ACCESS_TOKEN%22%3A%22%24%7Binput%3Agithub_token%7D%22%7D%7D&quality=insiders)
 
 ## Prerequisites
 
@@ -23,9 +137,11 @@ The MCP server can use many of the GitHub APIs, so enable the permissions that y
 
 ### Usage with VS Code
 
-For quick installation, use one of the one-click install buttons at the top of this README. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start.
+For quick installation, use one of the one-click install buttons. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start.
 
-For manual installation, add the following JSON block to your User Settings (JSON) file in VS Code. You can do this by pressing `Ctrl + Shift + P` and typing `Preferences: Open User Settings (JSON)`.
+### Usage in other MCP Hosts
+
+Add the following JSON block to your IDE MCP settings.
 
 ```json
 {
@@ -141,18 +257,25 @@ If you don't have Docker, you can use `go build` to build the binary in the
 
 The GitHub MCP Server supports enabling or disabling specific groups of functionalities via the `--toolsets` flag. This allows you to control which GitHub API capabilities are available to your AI tools. Enabling only the toolsets that you need can help the LLM with tool choice and reduce the context size.
 
+_Toolsets are not limited to Tools. Relevant MCP Resources and Prompts are also included where applicable._
+
 ### Available Toolsets
 
 The following sets of tools are available (all are on by default):
 
 | Toolset                 | Description                                                   |
 | ----------------------- | ------------------------------------------------------------- |
-| `repos`                 | Repository-related tools (file operations, branches, commits) |
-| `issues`                | Issue-related tools (create, read, update, comment)           |
-| `users`                 | Anything relating to GitHub Users                             |
-| `pull_requests`         | Pull request operations (create, merge, review)               |
+| `actions`               | GitHub Actions workflows and CI/CD operations                |
+| `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | `code_security`         | Code scanning alerts and security features                    |
+| `issues`                | Issue-related tools (create, read, update, comment)           |
+| `notifications`         | GitHub Notifications related tools                            |
+| `pull_requests`         | Pull request operations (create, merge, review)               |
+| `repos`                 | Repository-related tools (file operations, branches, commits) |
+| `secret_protection`     | Secret protection related tools, such as GitHub Secret Scanning |
+| `users`                 | Anything relating to GitHub Users                             |
 | `experiments`           | Experimental features (not considered stable)                 |
+
 
 #### Specifying Toolsets
 
@@ -161,12 +284,12 @@ To specify toolsets you want available to the LLM, you can pass an allow-list in
 1. **Using Command Line Argument**:
 
    ```bash
-   github-mcp-server --toolsets repos,issues,pull_requests,code_security
+   github-mcp-server --toolsets repos,issues,pull_requests,actions,code_security
    ```
 
 2. **Using Environment Variable**:
    ```bash
-   GITHUB_TOOLSETS="repos,issues,pull_requests,code_security" ./github-mcp-server
+   GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security" ./github-mcp-server
    ```
 
 The environment variable `GITHUB_TOOLSETS` takes precedence over the command line argument if both are provided.
@@ -178,7 +301,7 @@ When using Docker, you can pass the toolsets as environment variables:
 ```bash
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
-  -e GITHUB_TOOLSETS="repos,issues,pull_requests,code_security,experiments" \
+  -e GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security,experiments" \
   ghcr.io/github/github-mcp-server
 ```
 
@@ -200,7 +323,7 @@ GITHUB_TOOLSETS="all" ./github-mcp-server
 
 **Note**: This feature is currently in beta and may not be available in all environments. Please test it out and let us know if you encounter any issues.
 
-Instead of starting with all tools enabled, you can turn on dynamic toolset discovery. Dynamic toolsets allow the MCP host to list and enable toolsets in response to a user prompt. This should help to avoid situations where the model gets confused by the shear number of tools available.
+Instead of starting with all tools enabled, you can turn on dynamic toolset discovery. Dynamic toolsets allow the MCP host to list and enable toolsets in response to a user prompt. This should help to avoid situations where the model gets confused by the sheer number of tools available.
 
 ### Using Dynamic Tool Discovery
 
@@ -219,10 +342,49 @@ docker run -i --rm \
   ghcr.io/github/github-mcp-server
 ```
 
-## GitHub Enterprise Server
+## Read-Only Mode
+
+To run the server in read-only mode, you can use the `--read-only` flag. This will only offer read-only tools, preventing any modifications to repositories, issues, pull requests, etc.
+
+```bash
+./github-mcp-server --read-only
+```
+
+When using Docker, you can pass the read-only mode as an environment variable:
+
+```bash
+docker run -i --rm \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
+  -e GITHUB_READ_ONLY=1 \
+  ghcr.io/github/github-mcp-server
+```
+
+## GitHub Enterprise Server and Enterprise Cloud with data residency (ghe.com)
 
 The flag `--gh-host` and the environment variable `GITHUB_HOST` can be used to set
-the GitHub Enterprise Server hostname.
+the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data residency.
+
+- For GitHub Enterprise Server, prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://`, which GitHub Enterprise Server does not support.
+- For GitHub Enterprise Cloud with data residency, use `https://YOURSUBDOMAIN.ghe.com` as the hostname.
+``` json
+"github": {
+    "command": "docker",
+    "args": [
+    "run",
+    "-i",
+    "--rm",
+    "-e",
+    "GITHUB_PERSONAL_ACCESS_TOKEN",
+    "-e",
+    "GITHUB_HOST",
+    "ghcr.io/github/github-mcp-server"
+    ],
+    "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
+        "GITHUB_HOST": "https://<your GHES or ghe.com domain name>"
+    }
+}
+```
 
 ## i18n / Overriding Descriptions
 
@@ -330,6 +492,14 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
+- **assign_copilot_to_issue** - Assign Copilot to a specific issue in a GitHub repository
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issueNumber`: Issue number (number, required)
+  - _Note_: This tool can help with creating a Pull Request with source code changes to resolve the issue. More information can be found at [GitHub Copilot documentation](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot)
+
+
 ### Pull Requests
 
 - **get_pull_request** - Get details of a specific pull request
@@ -388,17 +558,58 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
 
-- **create_pull_request_review** - Create a review on a pull request review
+- **get_pull_request_diff** - Get the diff of a pull request
 
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
-  - `body`: Review comment text (string, optional)
+
+- **create_pending_pull_request_review** - Create a pending review for a pull request that can be submitted later
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `commitID`: SHA of commit to review (string, optional)
+
+- **add_pull_request_review_comment_to_pending_review** - Add a comment to the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `path`: The relative path to the file that necessitates a comment (string, required)
+  - `body`: The text of the review comment (string, required)
+  - `subjectType`: The level at which the comment is targeted (string, required)
+    - Enum: "FILE", "LINE"
+  - `line`: The line of the blob in the pull request diff that the comment applies to (number, optional)
+  - `side`: The side of the diff to comment on (string, optional)
+    - Enum: "LEFT", "RIGHT"
+  - `startLine`: For multi-line comments, the first line of the range (number, optional)
+  - `startSide`: For multi-line comments, the starting side of the diff (string, optional)
+    - Enum: "LEFT", "RIGHT"
+
+- **submit_pending_pull_request_review** - Submit the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `event`: The event to perform (string, required)
+    - Enum: "APPROVE", "REQUEST_CHANGES", "COMMENT"
+  - `body`: The text of the review comment (string, optional)
+
+- **delete_pending_pull_request_review** - Delete the requester's latest pending pull request review
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+
+- **create_and_submit_pull_request_review** - Create and submit a review for a pull request without review comments
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - `body`: Review comment text (string, required)
   - `event`: Review action ('APPROVE', 'REQUEST_CHANGES', 'COMMENT') (string, required)
-  - `commitId`: SHA of commit to review (string, optional)
-  - `comments`: Line-specific comments array of objects to place comments on pull request changes (array, optional)
-    - For inline comments: provide `path`, `position` (or `line`), and `body`
-    - For multi-line comments: provide `path`, `start_line`, `line`, optional `side`/`start_side`, and `body`
+  - `commitID`: SHA of commit to review (string, optional)
 
 - **create_pull_request** - Create a new pull request
 
@@ -410,21 +621,6 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `base`: Branch to merge into (string, required)
   - `draft`: Create as draft PR (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
-
-- **add_pull_request_review_comment** - Add a review comment to a pull request or reply to an existing comment
-
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `pull_number`: Pull request number (number, required)
-  - `body`: The text of the review comment (string, required)
-  - `commit_id`: The SHA of the commit to comment on (string, required unless using in_reply_to)
-  - `path`: The relative path to the file that necessitates a comment (string, required unless using in_reply_to)
-  - `line`: The line of the blob in the pull request diff that the comment applies to (number, optional)
-  - `side`: The side of the diff to comment on (LEFT or RIGHT) (string, optional)
-  - `start_line`: For multi-line comments, the first line of the range (number, optional)
-  - `start_side`: For multi-line comments, the starting side of the diff (LEFT or RIGHT) (string, optional)
-  - `subject_type`: The level at which the comment is targeted (line or file) (string, optional)
-  - `in_reply_to`: The ID of the review comment to reply to (number, optional). When specified, only body is required and other parameters are ignored.
 
 - **update_pull_request** - Update an existing pull request in a GitHub repository
 
@@ -438,6 +634,13 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
   - `reviewers`: GitHub usernames to request reviews from (string[], optional)
 
+- **request_copilot_review** - Request a GitHub Copilot review for a pull request (experimental; subject to GitHub API support)
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `pullNumber`: Pull request number (number, required)
+  - _Note_: Currently, this tool will only work for github.com
+
 ### Repositories
 
 - **create_or_update_file** - Create or update a single file in a repository
@@ -448,6 +651,13 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `content`: File content (string, required)
   - `branch`: Branch name (string, optional)
   - `sha`: File SHA if updating (string, optional)
+
+- **delete_file** - Delete a file from a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `path`: Path to the file to delete (string, required)
+  - `message`: Commit message (string, required)
+  - `branch`: Branch to delete the file from (string, required)
 
 - **list_branches** - List branches in a GitHub repository
   - `owner`: Repository owner (string, required)
@@ -496,6 +706,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `sha`: Branch name, tag, or commit SHA (string, optional)
+  - `author`: Author username or email address (string, optional)
   - `path`: Only commits containing this file path (string, optional)
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
@@ -506,6 +717,17 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `sha`: Commit SHA, branch name, or tag name (string, required)
   - `page`: Page number, for files in the commit (number, optional)
   - `perPage`: Results per page, for files in the commit (number, optional)
+
+- **get_tag** - Get details about a specific git tag in a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `tag`: Tag name (string, required)
+
+- **list_tags** - List git tags in a GitHub repository
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
 
 - **search_code** - Search for code across GitHub repositories
   - `query`: Search query (string, required)
@@ -522,6 +744,110 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `order`: Sort order (string, optional)
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
+
+### Actions
+
+- **list_workflows** - List workflows in a repository
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **list_workflow_runs** - List workflow runs for a specific workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `workflow_id`: Workflow ID or filename (string, required)
+  - `branch`: Filter by branch name (string, optional)
+  - `event`: Filter by event type (string, optional)
+  - `status`: Filter by run status (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **run_workflow** - Trigger a workflow via workflow_dispatch event
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `workflow_id`: Workflow ID or filename (string, required)
+  - `ref`: Git reference (branch, tag, or SHA) (string, required)
+  - `inputs`: Input parameters for the workflow (object, optional)
+
+- **get_workflow_run** - Get details of a specific workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **get_workflow_run_logs** - Download logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **list_workflow_jobs** - List jobs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `filter`: Filter by job status (string, optional)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **get_job_logs** - Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `job_id`: Job ID (number, required for single job logs)
+  - `run_id`: Workflow run ID (number, required when using failed_only)
+  - `failed_only`: When true, gets logs for all failed jobs in run_id (boolean, optional)
+  - `return_content`: Returns actual log content instead of URLs (boolean, optional)
+
+- **rerun_workflow_run** - Re-run an entire workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `enable_debug_logging`: Enable debug logging for the re-run (boolean, optional)
+
+- **rerun_failed_jobs** - Re-run only the failed jobs in a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `enable_debug_logging`: Enable debug logging for the re-run (boolean, optional)
+
+- **cancel_workflow_run** - Cancel a running workflow
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **list_workflow_run_artifacts** - List artifacts from a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **download_workflow_run_artifact** - Get download URL for a specific artifact
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `artifact_id`: Artifact ID (number, required)
+
+- **delete_workflow_run_logs** - Delete logs for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
+
+- **get_workflow_run_usage** - Get usage metrics for a workflow run
+
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `run_id`: Workflow run ID (number, required)
 
 ### Code Scanning
 
@@ -553,6 +879,38 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `state`: Alert state (string, optional)
   - `secret_type`: The secret types to be filtered for in a comma-separated list (string, optional)
   - `resolution`: The resolution status (string, optional)
+
+### Notifications
+
+- **list_notifications** – List notifications for a GitHub user
+  - `filter`: Filter to apply to the response (`default`, `include_read_notifications`, `only_participating`)
+  - `since`: Only show notifications updated after the given time (ISO 8601 format)
+  - `before`: Only show notifications updated before the given time (ISO 8601 format)
+  - `owner`: Optional repository owner (string)
+  - `repo`: Optional repository name (string)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **get_notification_details** – Get detailed information for a specific GitHub notification
+  - `notificationID`: The ID of the notification (string, required)
+
+- **dismiss_notification** – Dismiss a notification by marking it as read or done
+  - `threadID`: The ID of the notification thread (string, required)
+  - `state`: The new state of the notification (`read` or `done`)
+
+- **mark_all_notifications_read** – Mark all notifications as read
+  - `lastReadAt`: Describes the last point that notifications were checked (optional, RFC3339/ISO8601 string, default: now)
+  - `owner`: Optional repository owner (string)
+  - `repo`: Optional repository name (string)
+
+- **manage_notification_subscription** – Manage a notification subscription (ignore, watch, or delete) for a notification thread
+  - `notificationID`: The ID of the notification thread (string, required)
+  - `action`: Action to perform: `ignore`, `watch`, or `delete` (string, required)
+
+- **manage_repository_notification_subscription** – Manage a repository notification subscription (ignore, watch, or delete)
+  - `owner`: The account owner of the repository (string, required)
+  - `repo`: The name of the repository (string, required)
+  - `action`: Action to perform: `ignore`, `watch`, or `delete` (string, required)
 
 ## Resources
 

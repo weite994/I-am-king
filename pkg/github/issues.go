@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v69/github"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/google/go-github/v72/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shurcooL/githubv4"
 )
 
 // GetIssue creates a tool to get details of a specific issue in a GitHub repository.
@@ -20,7 +23,7 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
 			mcp.WithDescription(t("TOOL_GET_ISSUE_DESCRIPTION", "Get details of a specific issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_ISSUE_USER_TITLE", "Get issue details"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -36,11 +39,11 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -82,7 +85,7 @@ func AddIssueComment(getClient GetClientFn, t translations.TranslationHelperFunc
 			mcp.WithDescription(t("TOOL_ADD_ISSUE_COMMENT_DESCRIPTION", "Add a comment to a specific issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_ADD_ISSUE_COMMENT_USER_TITLE", "Add comment to issue"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -102,11 +105,11 @@ func AddIssueComment(getClient GetClientFn, t translations.TranslationHelperFunc
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -114,7 +117,7 @@ func AddIssueComment(getClient GetClientFn, t translations.TranslationHelperFunc
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			body, err := requiredParam[string](request, "body")
+			body, err := RequiredParam[string](request, "body")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -156,7 +159,7 @@ func SearchIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			mcp.WithDescription(t("TOOL_SEARCH_ISSUES_DESCRIPTION", "Search for issues in GitHub repositories.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_SEARCH_ISSUES_USER_TITLE", "Search issues"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("q",
 				mcp.Required(),
@@ -185,7 +188,7 @@ func SearchIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			query, err := requiredParam[string](request, "q")
+			query, err := RequiredParam[string](request, "q")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -244,7 +247,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithDescription(t("TOOL_CREATE_ISSUE_DESCRIPTION", "Create a new issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_CREATE_ISSUE_USER_TITLE", "Open new issue"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -264,7 +267,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithArray("assignees",
 				mcp.Description("Usernames to assign to this issue"),
 				mcp.Items(
-					map[string]interface{}{
+					map[string]any{
 						"type": "string",
 					},
 				),
@@ -272,7 +275,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithArray("labels",
 				mcp.Description("Labels to apply to this issue"),
 				mcp.Items(
-					map[string]interface{}{
+					map[string]any{
 						"type": "string",
 					},
 				),
@@ -282,15 +285,15 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			title, err := requiredParam[string](request, "title")
+			title, err := RequiredParam[string](request, "title")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -366,7 +369,7 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			mcp.WithDescription(t("TOOL_LIST_ISSUES_DESCRIPTION", "List issues in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_LIST_ISSUES_USER_TITLE", "List issues"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -402,11 +405,11 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -447,12 +450,12 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				opts.Since = timestamp
 			}
 
-			if page, ok := request.Params.Arguments["page"].(float64); ok {
-				opts.Page = int(page)
+			if page, ok := request.GetArguments()["page"].(float64); ok {
+				opts.ListOptions.Page = int(page)
 			}
 
-			if perPage, ok := request.Params.Arguments["perPage"].(float64); ok {
-				opts.PerPage = int(perPage)
+			if perPage, ok := request.GetArguments()["perPage"].(float64); ok {
+				opts.ListOptions.PerPage = int(perPage)
 			}
 
 			client, err := getClient(ctx)
@@ -488,7 +491,7 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithDescription(t("TOOL_UPDATE_ISSUE_DESCRIPTION", "Update an existing issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_UPDATE_ISSUE_USER_TITLE", "Edit issue"),
-				ReadOnlyHint: false,
+				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -533,11 +536,11 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -634,7 +637,7 @@ func GetIssueComments(getClient GetClientFn, t translations.TranslationHelperFun
 			mcp.WithDescription(t("TOOL_GET_ISSUE_COMMENTS_DESCRIPTION", "Get comments for a specific issue in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_ISSUE_COMMENTS_USER_TITLE", "Get issue comments"),
-				ReadOnlyHint: true,
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -656,11 +659,11 @@ func GetIssueComments(getClient GetClientFn, t translations.TranslationHelperFun
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -711,6 +714,200 @@ func GetIssueComments(getClient GetClientFn, t translations.TranslationHelperFun
 		}
 }
 
+// mvpDescription is an MVP idea for generating tool descriptions from structured data in a shared format.
+// It is not intended for widespread usage and is not a complete implementation.
+type mvpDescription struct {
+	summary        string
+	outcomes       []string
+	referenceLinks []string
+}
+
+func (d *mvpDescription) String() string {
+	var sb strings.Builder
+	sb.WriteString(d.summary)
+	if len(d.outcomes) > 0 {
+		sb.WriteString("\n\n")
+		sb.WriteString("This tool can help with the following outcomes:\n")
+		for _, outcome := range d.outcomes {
+			sb.WriteString(fmt.Sprintf("- %s\n", outcome))
+		}
+	}
+
+	if len(d.referenceLinks) > 0 {
+		sb.WriteString("\n\n")
+		sb.WriteString("More information can be found at:\n")
+		for _, link := range d.referenceLinks {
+			sb.WriteString(fmt.Sprintf("- %s\n", link))
+		}
+	}
+
+	return sb.String()
+}
+
+func AssignCopilotToIssue(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+	description := mvpDescription{
+		summary: "Assign Copilot to a specific issue in a GitHub repository.",
+		outcomes: []string{
+			"a Pull Request created with source code changes to resolve the issue",
+		},
+		referenceLinks: []string{
+			"https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot",
+		},
+	}
+
+	return mcp.NewTool("assign_copilot_to_issue",
+			mcp.WithDescription(t("TOOL_ASSIGN_COPILOT_TO_ISSUE_DESCRIPTION", description.String())),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:          t("TOOL_ASSIGN_COPILOT_TO_ISSUE_USER_TITLE", "Assign Copilot to issue"),
+				ReadOnlyHint:   ToBoolPtr(false),
+				IdempotentHint: ToBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			mcp.WithNumber("issueNumber",
+				mcp.Required(),
+				mcp.Description("Issue number"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var params struct {
+				Owner       string
+				Repo        string
+				IssueNumber int32
+			}
+			if err := mapstructure.Decode(request.Params.Arguments, &params); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getGQLClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+
+			// Firstly, we try to find the copilot bot in the suggested actors for the repository.
+			// Although as I write this, we would expect copilot to be at the top of the list, in future, maybe
+			// it will not be on the first page of responses, thus we will keep paginating until we find it.
+			type botAssignee struct {
+				ID       githubv4.ID
+				Login    string
+				TypeName string `graphql:"__typename"`
+			}
+
+			type suggestedActorsQuery struct {
+				Repository struct {
+					SuggestedActors struct {
+						Nodes []struct {
+							Bot botAssignee `graphql:"... on Bot"`
+						}
+						PageInfo struct {
+							HasNextPage bool
+							EndCursor   string
+						}
+					} `graphql:"suggestedActors(first: 100, after: $endCursor, capabilities: CAN_BE_ASSIGNED)"`
+				} `graphql:"repository(owner: $owner, name: $name)"`
+			}
+
+			variables := map[string]any{
+				"owner":     githubv4.String(params.Owner),
+				"name":      githubv4.String(params.Repo),
+				"endCursor": (*githubv4.String)(nil),
+			}
+
+			var copilotAssignee *botAssignee
+			for {
+				var query suggestedActorsQuery
+				err := client.Query(ctx, &query, variables)
+				if err != nil {
+					return nil, err
+				}
+
+				// Iterate all the returned nodes looking for the copilot bot, which is supposed to have the
+				// same name on each host. We need this in order to get the ID for later assignment.
+				for _, node := range query.Repository.SuggestedActors.Nodes {
+					if node.Bot.Login == "copilot-swe-agent" {
+						copilotAssignee = &node.Bot
+						break
+					}
+				}
+
+				if !query.Repository.SuggestedActors.PageInfo.HasNextPage {
+					break
+				}
+				variables["endCursor"] = githubv4.String(query.Repository.SuggestedActors.PageInfo.EndCursor)
+			}
+
+			// If we didn't find the copilot bot, we can't proceed any further.
+			if copilotAssignee == nil {
+				// The e2e tests depend upon this specific message to skip the test.
+				return mcp.NewToolResultError("copilot isn't available as an assignee for this issue. Please inform the user to visit https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot for more information."), nil
+			}
+
+			// Next let's get the GQL Node ID and current assignees for this issue because the only way to
+			// assign copilot is to use replaceActorsForAssignable which requires the full list.
+			var getIssueQuery struct {
+				Repository struct {
+					Issue struct {
+						ID        githubv4.ID
+						Assignees struct {
+							Nodes []struct {
+								ID githubv4.ID
+							}
+						} `graphql:"assignees(first: 100)"`
+					} `graphql:"issue(number: $number)"`
+				} `graphql:"repository(owner: $owner, name: $name)"`
+			}
+
+			variables = map[string]any{
+				"owner":  githubv4.String(params.Owner),
+				"name":   githubv4.String(params.Repo),
+				"number": githubv4.Int(params.IssueNumber),
+			}
+
+			if err := client.Query(ctx, &getIssueQuery, variables); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("failed to get issue ID: %v", err)), nil
+			}
+
+			// Finally, do the assignment. Just for reference, assigning copilot to an issue that it is already
+			// assigned to seems to have no impact (which is a good thing).
+			var assignCopilotMutation struct {
+				ReplaceActorsForAssignable struct {
+					Typename string `graphql:"__typename"` // Not required but we need a selector or GQL errors
+				} `graphql:"replaceActorsForAssignable(input: $input)"`
+			}
+
+			actorIDs := make([]githubv4.ID, len(getIssueQuery.Repository.Issue.Assignees.Nodes)+1)
+			for i, node := range getIssueQuery.Repository.Issue.Assignees.Nodes {
+				actorIDs[i] = node.ID
+			}
+			actorIDs[len(getIssueQuery.Repository.Issue.Assignees.Nodes)] = copilotAssignee.ID
+
+			if err := client.Mutate(
+				ctx,
+				&assignCopilotMutation,
+				ReplaceActorsForAssignableInput{
+					AssignableID: getIssueQuery.Repository.Issue.ID,
+					ActorIDs:     actorIDs,
+				},
+				nil,
+			); err != nil {
+				return nil, fmt.Errorf("failed to replace actors for assignable: %w", err)
+			}
+
+			return mcp.NewToolResultText("successfully assigned copilot to issue"), nil
+		}
+}
+
+type ReplaceActorsForAssignableInput struct {
+	AssignableID githubv4.ID   `json:"assignableId"`
+	ActorIDs     []githubv4.ID `json:"actorIds"`
+}
+
 // parseISOTimestamp parses an ISO 8601 timestamp string into a time.Time object.
 // Returns the parsed time or an error if parsing fails.
 // Example formats supported: "2023-01-15T14:30:00Z", "2023-01-15"
@@ -733,4 +930,43 @@ func parseISOTimestamp(timestamp string) (time.Time, error) {
 
 	// Return error with supported formats
 	return time.Time{}, fmt.Errorf("invalid ISO 8601 timestamp: %s (supported formats: YYYY-MM-DDThh:mm:ssZ or YYYY-MM-DD)", timestamp)
+}
+
+func AssignCodingAgentPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
+	return mcp.NewPrompt("AssignCodingAgent",
+			mcp.WithPromptDescription(t("PROMPT_ASSIGN_CODING_AGENT_DESCRIPTION", "Assign GitHub Coding Agent to multiple tasks in a GitHub repository.")),
+			mcp.WithArgument("repo", mcp.ArgumentDescription("The repository to assign tasks in (owner/repo)."), mcp.RequiredArgument()),
+		), func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+			repo := request.Params.Arguments["repo"]
+
+			messages := []mcp.PromptMessage{
+				{
+					Role:    "system",
+					Content: mcp.NewTextContent("You are a personal assistant for GitHub the Copilot GitHub Coding Agent. Your task is to help the user assign tasks to the Coding Agent based on their open GitHub issues. You can use `assign_copilot_to_issue` tool to assign the Coding Agent to issues that are suitable for autonomous work, and `search_issues` tool to find issues that match the user's criteria. You can also use `list_issues` to get a list of issues in the repository."),
+				},
+				{
+					Role:    "user",
+					Content: mcp.NewTextContent(fmt.Sprintf("Please go and get a list of the most recent 10 issues from the %s GitHub repository", repo)),
+				},
+				{
+					Role:    "assistant",
+					Content: mcp.NewTextContent(fmt.Sprintf("Sure! I will get a list of the 10 most recent issues for the repo %s.", repo)),
+				},
+				{
+					Role:    "user",
+					Content: mcp.NewTextContent("For each issue, please check if it is a clearly defined coding task with acceptance criteria and a low to medium complexity to identify issues that are suitable for an AI Coding Agent to work on. Then assign each of the identified issues to Copilot."),
+				},
+				{
+					Role:    "assistant",
+					Content: mcp.NewTextContent("Certainly! Let me carefully check which ones are clearly scoped issues that are good to assign to the coding agent, and I will summarize and assign them now."),
+				},
+				{
+					Role:    "user",
+					Content: mcp.NewTextContent("Great, if you are unsure if an issue is good to assign, ask me first, rather than assigning copilot. If you are certain the issue is clear and suitable you can assign it to Copilot without asking."),
+				},
+			}
+			return &mcp.GetPromptResult{
+				Messages: messages,
+			}, nil
+		}
 }
