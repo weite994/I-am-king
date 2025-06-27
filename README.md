@@ -531,10 +531,8 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `query`: Search query using GitHub pull request search syntax (string, required)
   - `owner`: Repository owner (string, optional)
   - `repo`: Repository name (string, optional)
-  - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
-    - Enum: "comments", "reactions", "reactions-+1", "reactions--1", "reactions-smile", "reactions-thinking_face", "reactions-heart", "reactions-tada", "interactions", "created", "updated"
+  - `sort`: Sort field (string, optional)
   - `order`: Sort order (string, optional)
-    - Enum: "asc", "desc"
   - `page`: Page number (number, optional)
   - `perPage`: Results per page (number, optional)
 
@@ -552,6 +550,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `pullNumber`: Pull request number (number, required)
+  - `sort`: Sort field (string, optional)
+  - `direction`: Sort direction (string, optional)
+  - `perPage`: Results per page (number, optional)
+  - `page`: Page number (number, optional)
 
 - **get_pull_request_status** - Get the combined status of all status checks for a pull request
 
