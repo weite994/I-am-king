@@ -63,6 +63,9 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchUsers(getClient, t)),
+			toolsets.NewServerTool(ListUsersPublicSSHKeys(getClient, t)),
+			toolsets.NewServerTool(GetUsersPublicSSHKey(getClient, t)),
+			toolsets.NewServerTool(AddUsersPublicSSHKey(getClient, t)),
 		)
 	orgs := toolsets.NewToolset("orgs", "GitHub Organization related tools").
 		AddReadTools(
