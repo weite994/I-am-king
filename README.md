@@ -28,7 +28,6 @@ The remote GitHub MCP Server is hosted by GitHub and provides the easiest method
 
 For quick installation, use one of the one-click install buttons above. Once you complete that flow, toggle Agent mode (located by the Copilot Chat text input) and the server will start. Make sure you're using [VS Code 1.101](https://code.visualstudio.com/updates/v1_101) or [later](https://code.visualstudio.com/updates) for remote MCP and OAuth support.
 
-
 Alternatively, to manually configure VS Code, choose the appropriate JSON block from the examples below and add it to your host configuration:
 
 <table>
@@ -176,7 +175,6 @@ Add the following JSON block to your IDE MCP settings.
 
 Optionally, you can add a similar example (i.e. without the mcp key) to a file called `.vscode/mcp.json` in your workspace. This will allow you to share the configuration with others.
 
-
 ```json
 {
   "inputs": [
@@ -276,7 +274,6 @@ The following sets of tools are available (all are on by default):
 | `users`                 | Anything relating to GitHub Users                             |
 | `experiments`           | Experimental features (not considered stable)                 |
 
-
 #### Specifying Toolsets
 
 To specify toolsets you want available to the LLM, you can pass an allow-list in two ways:
@@ -288,6 +285,7 @@ To specify toolsets you want available to the LLM, you can pass an allow-list in
    ```
 
 2. **Using Environment Variable**:
+
    ```bash
    GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security" ./github-mcp-server
    ```
@@ -366,6 +364,7 @@ the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data r
 
 - For GitHub Enterprise Server, prefix the hostname with the `https://` URI scheme, as it otherwise defaults to `http://`, which GitHub Enterprise Server does not support.
 - For GitHub Enterprise Cloud with data residency, use `https://YOURSUBDOMAIN.ghe.com` as the hostname.
+
 ``` json
 "github": {
     "command": "docker",
@@ -491,7 +490,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `assignees`: New assignees (string[], optional)
   - `milestone`: New milestone number (number, optional)
 
-- **search_issues** - Search for issues and pull requests
+- **search_issues** - Search for issues
   - `query`: Search query (string, required)
   - `sort`: Sort field (string, optional)
   - `order`: Sort order (string, optional)
@@ -526,6 +525,18 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `direction`: Sort direction (string, optional)
   - `perPage`: Results per page (number, optional)
   - `page`: Page number (number, optional)
+
+- **search_pull_requests** - Search for pull requests in GitHub repositories using pull request search syntax
+
+  - `query`: Search query using GitHub pull request search syntax (string, required)
+  - `owner`: Repository owner (string, optional)
+  - `repo`: Repository name (string, optional)
+  - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
+    - Enum: "comments", "reactions", "reactions-+1", "reactions--1", "reactions-smile", "reactions-thinking_face", "reactions-heart", "reactions-tada", "interactions", "created", "updated"
+  - `order`: Sort order (string, optional)
+    - Enum: "asc", "desc"
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
 
 - **merge_pull_request** - Merge a pull request
 
