@@ -37,7 +37,7 @@ func DefaultConfig() Config {
 // Server represents an SSE server that can be started and stopped
 type Server struct {
 	config    Config
-	mcpServer interface{} // Using interface{} since we don't need to access it directly
+	mcpServer *server.MCPServer
 	sseServer *server.SSEServer
 }
 
@@ -84,10 +84,15 @@ func NewServer(config Config) (*Server, error) {
 	)
 
 	return &Server{
-		config:   config,
+		config:    config,
 		mcpServer: mcpServer,
 		sseServer: sseServer,
 	}, nil
+}
+
+// GetMcpServer get mcp server function
+func (s *Server) GetMcpServer() *server.MCPServer {
+	return s.mcpServer
 }
 
 // Start starts the SSE server
