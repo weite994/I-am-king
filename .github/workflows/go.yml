@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Build and Test Go Project
 on: [push, pull_request]
 
 permissions:
@@ -26,7 +26,9 @@ jobs:
         run: go mod download
 
       - name: Lint code
-        run: script/lint
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
+        with:
+          version: v2.1.6
 
       - name: Run unit tests
         run: go test -race ./...
