@@ -8,6 +8,7 @@ import (
 
 	"github.com/github/github-mcp-server/internal/ghmcp"
 	"github.com/github/github-mcp-server/pkg/github"
+	"github.com/github/github-mcp-server/pkg/ssecmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -24,6 +25,45 @@ var (
 		Short:   "GitHub MCP Server",
 		Long:    `A GitHub MCP server that handles various tools and resources.`,
 		Version: fmt.Sprintf("Version: %s\nCommit: %s\nBuild Date: %s", version, commit, date),
+	}
+
+	// SSE Command - using the flexible ssecmd package
+	sseCmd = &cobra.Command{
+		Use:   "sse",
+		Short: "Start SSE server",
+		Long:  `Start a Server-Sent Events (SSE) server that allows real-time streaming of events to clients over HTTP.`,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			// Get token and validate
+			token := viper.GetString("personal_access_token")
+			if token == "" {
+				return errors.New("GITHUB_PERSONAL_ACCESS_TOKEN not set")
+			}
+
+			// Parse toolsets
+			var enabledToolsets []string
+			if err := viper.UnmarshalKey("toolsets", &enabledToolsets); err != nil {
+				return fmt.Errorf("failed to unmarshal toolsets: %w", err)
+			}
+
+			// Create server with options using the functional options pattern
+			server, err := ssecmd.CreateServerWithOptions(
+				ssecmd.WithToken(token),
+				ssecmd.WithHost(viper.GetString("host")),
+				ssecmd.WithAddress(viper.GetString("address")),
+				ssecmd.WithBasePath(viper.GetString("base-path")),
+				ssecmd.WithLogFilePath(viper.GetString("log-file")),
+				ssecmd.WithDynamicToolsets(viper.GetBool("dynamic_toolsets")),
+				ssecmd.WithReadOnly(viper.GetBool("read-only")),
+				ssecmd.WithEnabledToolsets(enabledToolsets),
+				ssecmd.WithVersion(version),
+			)
+			if err != nil {
+				return err
+			}
+
+			// Start the server
+			return server.Start()
+		},
 	}
 
 	stdioCmd = &cobra.Command{
@@ -85,8 +125,17 @@ func init() {
 	_ = viper.BindPFlag("export-translations", rootCmd.PersistentFlags().Lookup("export-translations"))
 	_ = viper.BindPFlag("host", rootCmd.PersistentFlags().Lookup("gh-host"))
 
+	// Setup flags for SSE command
+	sseCmd.Flags().String("address", "localhost:8080", "Address to listen on for SSE server")
+	sseCmd.Flags().String("base-path", "", "Base path for SSE server URLs")
+	
+	// Bind SSE flags to viper
+	_ = viper.BindPFlag("address", sseCmd.Flags().Lookup("address"))
+	_ = viper.BindPFlag("base-path", sseCmd.Flags().Lookup("base-path"))
+
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
+	rootCmd.AddCommand(sseCmd)
 }
 
 func initConfig() {
