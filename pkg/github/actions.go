@@ -640,10 +640,10 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 
 			if failedOnly && runID > 0 {
 				// Handle failed-only mode: get logs for all failed jobs in the workflow run
-				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent, tailLines)
+				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent, int16(tailLines))
 			} else if jobID > 0 {
 				// Handle single job mode
-				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent, tailLines)
+				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent, int16(tailLines))
 			}
 
 			return mcp.NewToolResultError("Either job_id must be provided for single job logs, or run_id with failed_only=true for failed job logs"), nil
@@ -651,7 +651,7 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 }
 
 // handleFailedJobLogs gets logs for all failed jobs in a workflow run
-func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool, tailLines int) (*mcp.CallToolResult, error) {
+func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool, tailLines int16) (*mcp.CallToolResult, error) {
 	// First, get all jobs for the workflow run
 	jobs, resp, err := client.Actions.ListWorkflowJobs(ctx, owner, repo, runID, &github.ListWorkflowJobsOptions{
 		Filter: "latest",
@@ -716,7 +716,7 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // handleSingleJobLogs gets logs for a single job
-func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool, tailLines int) (*mcp.CallToolResult, error) {
+func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool, tailLines int16) (*mcp.CallToolResult, error) {
 	jobResult, resp, err := getJobLogData(ctx, client, owner, repo, jobID, "", returnContent, tailLines)
 	if err != nil {
 		return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get job logs", resp, err), nil
@@ -731,7 +731,7 @@ func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // getJobLogData retrieves log data for a single job, either as URL or content
-func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool, tailLines int) (map[string]any, *github.Response, error) {
+func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool, tailLines int16) (map[string]any, *github.Response, error) {
 	// Get the download URL for the job logs
 	url, resp, err := client.Actions.GetWorkflowJobLogs(ctx, owner, repo, jobID, 1)
 	if err != nil {
@@ -748,7 +748,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 	if returnContent {
 		// Download and return the actual log content
-		content, httpResp, err := downloadLogContent(url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		content, originalLength, httpResp, err := downloadLogContent(url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
 		if err != nil {
 			// To keep the return value consistent wrap the response as a GitHub Response
 			ghRes := &github.Response{
@@ -758,6 +758,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 		}
 		result["logs_content"] = content
 		result["message"] = "Job logs content retrieved successfully"
+		result["original_length"] = originalLength
 	} else {
 		// Return just the URL
 		result["logs_url"] = url.String()
@@ -769,42 +770,46 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 }
 
 // downloadLogContent downloads the actual log content from a GitHub logs URL
-func downloadLogContent(logURL string, tailLines int) (string, *http.Response, error) {
+func downloadLogContent(logURL string, tailLines int16) (string, int16, *http.Response, error) {
 	httpResp, err := http.Get(logURL) //nolint:gosec // URLs are provided by GitHub API and are safe
 	if err != nil {
-		return "", httpResp, fmt.Errorf("failed to download logs: %w", err)
+		return "", 0, httpResp, fmt.Errorf("failed to download logs: %w", err)
 	}
 	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
-		return "", httpResp, fmt.Errorf("failed to download logs: HTTP %d", httpResp.StatusCode)
+		return "", 0, httpResp, fmt.Errorf("failed to download logs: HTTP %d", httpResp.StatusCode)
 	}
 
 	content, err := io.ReadAll(httpResp.Body)
 	if err != nil {
-		return "", httpResp, fmt.Errorf("failed to read log content: %w", err)
+		return "", 0, httpResp, fmt.Errorf("failed to read log content: %w", err)
 	}
 
 	// Clean up and format the log content for better readability
 	logContent := strings.TrimSpace(string(content))
 
+	trimmedContent, lineCount := trimContent(logContent, tailLines)
+	return trimmedContent, lineCount, httpResp, nil
+}
+
+// trimContent trims the content to a maximum length and returns the trimmed content and an original length
+func trimContent(content string, tailLines int16) (string, int16) {
 	// Truncate to tail_lines if specified
+	lineCount := int16(0)
 	if tailLines > 0 {
-		lineCount := 0
 
 		// Count backwards to find the nth newline from the end
-		for i := len(logContent) - 1; i >= 0 && lineCount < tailLines; i-- {
-			if logContent[i] == '\n' {
+		for i := len(content) - 1; i >= 0 && lineCount < tailLines; i-- {
+			if content[i] == '\n' {
 				lineCount++
 				if lineCount == tailLines {
-					logContent = logContent[i+1:]
-					break
+					content = content[i+1:]
 				}
 			}
 		}
 	}
-
-	return logContent, httpResp, nil
+	return content, lineCount
 }
 
 // RerunWorkflowRun creates a tool to re-run an entire workflow run
