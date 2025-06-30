@@ -790,10 +790,17 @@ func downloadLogContent(logURL string, tailLines int) (string, *http.Response, e
 
 	// Truncate to tail_lines if specified
 	if tailLines > 0 {
-		lines := strings.Split(logContent, "\n")
-		if len(lines) > tailLines {
-			lines = lines[len(lines)-tailLines:]
-			logContent = strings.Join(lines, "\n")
+		lineCount := 0
+
+		// Count backwards to find the nth newline from the end
+		for i := len(logContent) - 1; i >= 0 && lineCount < tailLines; i-- {
+			if logContent[i] == '\n' {
+				lineCount++
+				if lineCount == tailLines {
+					logContent = logContent[i+1:]
+					break
+				}
+			}
 		}
 	}
 
