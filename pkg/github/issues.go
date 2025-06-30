@@ -83,7 +83,7 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
 
 // ListIssueTypes creates a tool to list defined issue types for an organization. This can be used to understand supported issue type values for creating or updating issues.
 func ListIssueTypes(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
-	
+
 	return mcp.NewTool("list_issue_types",
 			mcp.WithDescription(t("TOOL_LIST_ISSUE_TYPES_FOR_ORG", "List supported issue types for repository owner (organization).")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
@@ -105,7 +105,7 @@ func ListIssueTypes(getClient GetClientFn, t translations.TranslationHelperFunc)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
-			issue_types, resp, err := client.Organizations.ListIssueTypes(ctx, owner)
+			issueTypes, resp, err := client.Organizations.ListIssueTypes(ctx, owner)
 			if err != nil {
 				return nil, fmt.Errorf("failed to list issue types: %w", err)
 			}
@@ -119,7 +119,7 @@ func ListIssueTypes(getClient GetClientFn, t translations.TranslationHelperFunc)
 				return mcp.NewToolResultError(fmt.Sprintf("failed to list issue types: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(issue_types)
+			r, err := json.Marshal(issueTypes)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal issue types: %w", err)
 			}
