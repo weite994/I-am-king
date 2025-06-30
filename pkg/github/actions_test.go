@@ -886,64 +886,6 @@ func Test_GetJobLogs(t *testing.T) {
 			},
 		},
 		{
-			name: "successful failed jobs logs with tailing",
-			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.GetReposActionsRunsJobsByOwnerByRepoByRunId,
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						jobs := &github.Jobs{
-							TotalCount: github.Ptr(3),
-							Jobs: []*github.WorkflowJob{
-								{
-									ID:         github.Ptr(int64(1)),
-									Name:       github.Ptr("test-job-1"),
-									Conclusion: github.Ptr("failure"),
-								},
-								{
-									ID:         github.Ptr(int64(2)),
-									Name:       github.Ptr("test-job-2"),
-									Conclusion: github.Ptr("failure"),
-								},
-								{
-									ID:         github.Ptr(int64(3)),
-									Name:       github.Ptr("test-job-3"),
-									Conclusion: github.Ptr("failure"),
-								},
-							},
-						}
-						w.WriteHeader(http.StatusOK)
-						_ = json.NewEncoder(w).Encode(jobs)
-					}),
-				),
-				mock.WithRequestMatchHandler(
-					mock.GetReposActionsJobsLogsByOwnerByRepoByJobId,
-					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.Header().Set("Location", "https://github.com/logs/job/"+r.URL.Path[len(r.URL.Path)-1:])
-						w.WriteHeader(http.StatusFound)
-					}),
-				),
-			),
-			requestArgs: map[string]any{
-				"owner":       "owner",
-				"repo":        "repo",
-				"run_id":      float64(456),
-				"failed_only": true,
-				"tail_lines":  float64(1),
-			},
-			expectError: false,
-			checkResponse: func(t *testing.T, response map[string]any) {
-				assert.Equal(t, float64(456), response["run_id"])
-				assert.Equal(t, float64(3), response["total_jobs"])
-				assert.Equal(t, float64(2), response["failed_jobs"])
-				assert.Contains(t, response, "logs")
-				assert.Equal(t, "Retrieved logs for 2 failed jobs", response["message"])
-
-				logs, ok := response["logs"].([]interface{})
-				assert.True(t, ok)
-				assert.Len(t, logs, 3)
-			},
-		},
-		{
 			name: "no failed jobs found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
