@@ -794,9 +794,9 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number to update (number, required)
   - `repo`: Repository name (string, required)
+  - `reviewers`: GitHub usernames to request reviews from (string[], optional)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
-  - `reviewers`: GitHub usernames to request reviews from (string[], optional)
 
 - **update_pull_request_branch** - Update pull request branch
   - `expectedHeadSha`: The expected SHA of the pull request's HEAD ref (string, optional)
