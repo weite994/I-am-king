@@ -4,6 +4,8 @@ run:
   timeout: 5m
   tests: true
   concurrency: 4
+  skip-dirs:
+    - "../../go/pkg/mod"
 
 linters:
   enable:
@@ -34,6 +36,17 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+  exclusions:
+    paths:
+      - vendor
+      - .git
+      - .vscode
+      - .idea
+      - .DS_Store
+      - go.sum
+      - go.mod
+      - LICENSE
+      - README.md
 
 formatters:
   enable:
