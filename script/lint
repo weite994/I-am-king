@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eEuo pipefail
+PROJECT_DIR="$( cd "$( dirname "$0" )/.." && pwd )"
 
 # Install golangci-lint if not already installed
 if ! command -v golangci-lint &> /dev/null; then
@@ -8,6 +9,5 @@ if ! command -v golangci-lint &> /dev/null; then
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 fi
 
-golangci-lint run "$@"
-
+golangci-lint run "$@" -c "${PROJECT_DIR}/.golangci.yml" --timeout 10m
 
