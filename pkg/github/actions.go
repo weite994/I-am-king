@@ -586,7 +586,7 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			),
 			mcp.WithNumber("tail_lines",
 				mcp.Description("Number of lines to return from the end of the log"),
-				mcp.DefaultNumber(50),
+				mcp.DefaultNumber(500),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -620,9 +620,9 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			// Default to 50 lines if not specified
+			// Default to 500 lines if not specified
 			if tailLines == 0 {
-				tailLines = 50
+				tailLines = 500
 			}
 
 			client, err := getClient(ctx)
