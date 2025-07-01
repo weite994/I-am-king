@@ -122,9 +122,9 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetDiscussion(getGQLClient, t)),
 			toolsets.NewServerTool(GetDiscussionComments(getGQLClient, t)),
 			toolsets.NewServerTool(ListDiscussionCategories(getGQLClient, t)),
-    )
-	
-  actions := toolsets.NewToolset("actions", "GitHub Actions workflows and CI/CD operations").
+		)
+
+	actions := toolsets.NewToolset("actions", "GitHub Actions workflows and CI/CD operations").
 		AddReadTools(
 			toolsets.NewServerTool(ListWorkflows(getClient, t)),
 			toolsets.NewServerTool(ListWorkflowRuns(getClient, t)),
@@ -166,13 +166,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(experiments)
 	tsg.AddToolset(discussions)
 
-	// Enable the requested features
-
-	if err := tsg.EnableToolsets(passedToolsets); err != nil {
-		return nil, err
-	}
-
-	return tsg, nil
+	return tsg
 }
 
 // InitDynamicToolset creates a dynamic toolset that can be used to enable other toolsets, and so requires the server and toolset group as arguments
