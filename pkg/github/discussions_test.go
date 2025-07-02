@@ -3,6 +3,8 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,76 +17,40 @@ import (
 )
 
 var (
+	discussionsGeneral = []map[string]any{
+		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/1", "category": map[string]any{"name": "General"}},
+		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/3", "category": map[string]any{"name": "General"}},
+	}
 	discussionsAll = []map[string]any{
-		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "category": map[string]any{"name": "news"}, "url": "https://github.com/owner/repo/discussions/1"},
-		{"number": 2, "title": "Discussion 2 title", "createdAt": "2023-02-01T00:00:00Z", "category": map[string]any{"name": "updates"}, "url": "https://github.com/owner/repo/discussions/2"},
-		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "category": map[string]any{"name": "questions"}, "url": "https://github.com/owner/repo/discussions/3"},
+		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/1", "category": map[string]any{"name": "General"}},
+		{"number": 2, "title": "Discussion 2 title", "createdAt": "2023-02-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/2", "category": map[string]any{"name": "Questions"}},
+		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/3", "category": map[string]any{"name": "General"}},
 	}
 	mockResponseListAll = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
 			"discussions": map[string]any{"nodes": discussionsAll},
 		},
 	})
-	mockResponseCategory = githubv4mock.DataResponse(map[string]any{
+	mockResponseListGeneral = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsAll[:1]}, // Only return the first discussion for category test
+			"discussions": map[string]any{"nodes": discussionsGeneral},
 		},
 	})
 	mockErrorRepoNotFound = githubv4mock.ErrorResponse("repository not found")
 )
 
 func Test_ListDiscussions(t *testing.T) {
+	mockClient := githubv4.NewClient(nil)
 	// Verify tool definition and schema
-	toolDef, _ := ListDiscussions(nil, translations.NullTranslationHelper)
+	toolDef, _ := ListDiscussions(stubGetGQLClientFn(mockClient), translations.NullTranslationHelper)
 	assert.Equal(t, "list_discussions", toolDef.Name)
 	assert.NotEmpty(t, toolDef.Description)
 	assert.Contains(t, toolDef.InputSchema.Properties, "owner")
 	assert.Contains(t, toolDef.InputSchema.Properties, "repo")
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
-	// mock for the call to list all categories: query struct, variables, response
-	var qCat struct {
-		Repository struct {
-			DiscussionCategories struct {
-				Nodes []struct {
-					ID   githubv4.ID
-					Name githubv4.String
-				}
-				PageInfo struct {
-					HasNextPage githubv4.Boolean
-					EndCursor   githubv4.String
-				}
-			} `graphql:"discussionCategories(first: 100, after: $after)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	varsCat := map[string]interface{}{
-		"owner": githubv4.String("owner"),
-		"repo":  githubv4.String("repo"),
-		"after": githubv4.String(""),
-	}
-
-	varsCatInvalid := map[string]interface{}{
-		"owner": githubv4.String("invalid"),
-		"repo":  githubv4.String("repo"),
-		"after": githubv4.String(""),
-	}
-
-	mockRespCat := githubv4mock.DataResponse(map[string]any{
-		"repository": map[string]any{
-			"discussionCategories": map[string]any{
-				"nodes": []map[string]any{
-					{"id": "123", "name": "CategoryOne"},
-					{"id": "456", "name": "CategoryTwo"},
-				},
-			},
-		},
-	})
-
-	mockRespCatInvalid := githubv4mock.ErrorResponse("repository not found")
-
-	// mock for the call to ListDiscussions: query struct, variables, response
-	var q struct {
+	// mock for the call to ListDiscussions without category filter
+	var qDiscussions struct {
 		Repository struct {
 			Discussions struct {
 				Nodes []struct {
@@ -96,174 +62,98 @@ func Test_ListDiscussions(t *testing.T) {
 					} `graphql:"category"`
 					URL githubv4.String `graphql:"url"`
 				}
-			} `graphql:"discussions(categoryId: $categoryId, orderBy: {field: $sort, direction: $direction}, first: $first, after: $after, last: $last, before: $before, answered: $answered)"`
+			} `graphql:"discussions(first: 100)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
+
+	// mock for the call to get discussions with category filter
+	var qDiscussionsFiltered struct {
+		Repository struct {
+			Discussions struct {
+				Nodes []struct {
+					Number    githubv4.Int
+					Title     githubv4.String
+					CreatedAt githubv4.DateTime
+					Category  struct {
+						Name githubv4.String
+					} `graphql:"category"`
+					URL githubv4.String `graphql:"url"`
+				}
+			} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
 		} `graphql:"repository(owner: $owner, name: $repo)"`
 	}
 
 	varsListAll := map[string]interface{}{
+		"owner": githubv4.String("owner"),
+		"repo":  githubv4.String("repo"),
+	}
+
+	varsRepoNotFound := map[string]interface{}{
+		"owner": githubv4.String("owner"),
+		"repo":  githubv4.String("nonexistent-repo"),
+	}
+
+	varsDiscussionsFiltered := map[string]interface{}{
 		"owner":      githubv4.String("owner"),
 		"repo":       githubv4.String("repo"),
-		"categoryId": githubv4.ID(""),
-		"sort":       githubv4.DiscussionOrderField(""),
-		"direction":  githubv4.OrderDirection(""),
-		"first":      githubv4.Int(0),
-		"last":       githubv4.Int(0),
-		"after":      githubv4.String(""),
-		"before":     githubv4.String(""),
-		"answered":   githubv4.Boolean(false),
+		"categoryId": githubv4.ID("DIC_kwDOABC123"),
 	}
-
-	varsListInvalid := map[string]interface{}{
-		"owner":      githubv4.String("invalid"),
-		"repo":       githubv4.String("repo"),
-		"categoryId": githubv4.ID(""),
-		"sort":       githubv4.DiscussionOrderField(""),
-		"direction":  githubv4.OrderDirection(""),
-		"first":      githubv4.Int(0),
-		"last":       githubv4.Int(0),
-		"after":      githubv4.String(""),
-		"before":     githubv4.String(""),
-		"answered":   githubv4.Boolean(false),
-	}
-
-	varsListWithCategory := map[string]interface{}{
-		"owner":      githubv4.String("owner"),
-		"repo":       githubv4.String("repo"),
-		"categoryId": githubv4.ID("123"),
-		"sort":       githubv4.DiscussionOrderField(""),
-		"direction":  githubv4.OrderDirection(""),
-		"first":      githubv4.Int(0),
-		"last":       githubv4.Int(0),
-		"after":      githubv4.String(""),
-		"before":     githubv4.String(""),
-		"answered":   githubv4.Boolean(false),
-	}
-
-	catMatcher := githubv4mock.NewQueryMatcher(qCat, varsCat, mockRespCat)
-	catMatcherInvalid := githubv4mock.NewQueryMatcher(qCat, varsCatInvalid, mockRespCatInvalid)
 
 	tests := []struct {
-		name        string
-		vars        map[string]interface{}
-		reqParams   map[string]interface{}
-		response    githubv4mock.GQLResponse
-		expectError bool
-		expectedIDs []int64
-		errContains string
-		catMatcher  githubv4mock.Matcher
+		name          string
+		reqParams     map[string]interface{}
+		expectError   bool
+		errContains   string
+		expectedCount int
 	}{
 		{
-			name: "list all discussions",
-			vars: varsListAll,
+			name: "list all discussions without category filter",
 			reqParams: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
 			},
-			response:    mockResponseListAll,
-			expectError: false,
-			expectedIDs: []int64{1, 2, 3},
-			catMatcher:  catMatcher,
+			expectError:   false,
+			expectedCount: 3, // All discussions
 		},
 		{
-			name: "invalid owner or repo",
-			vars: varsListInvalid,
-			reqParams: map[string]interface{}{
-				"owner": "invalid",
-				"repo":  "repo",
-			},
-			response:    mockErrorRepoNotFound,
-			expectError: true,
-			errContains: "repository not found",
-			catMatcher:  catMatcherInvalid,
-		},
-		{
-			name: "list discussions with category",
-			vars: varsListWithCategory,
+			name: "filter by category ID",
 			reqParams: map[string]interface{}{
 				"owner":    "owner",
 				"repo":     "repo",
-				"category": "CategoryOne", // This should match the ID "123" in the mock response
+				"category": "DIC_kwDOABC123",
 			},
-			response:    mockResponseCategory,
-			expectError: false,
-			expectedIDs: []int64{1},
-			catMatcher:  catMatcher,
+			expectError:   false,
+			expectedCount: 2, // Only General discussions (matching the category ID)
 		},
 		{
-			name: "list discussions with since date",
-			vars: varsListAll,
+			name: "repository not found error",
 			reqParams: map[string]interface{}{
 				"owner": "owner",
-				"repo":  "repo",
-				"since": "2023-01-10T00:00:00Z",
+				"repo":  "nonexistent-repo",
 			},
-			response:    mockResponseListAll,
-			expectError: false,
-			expectedIDs: []int64{2, 3},
-			catMatcher:  catMatcher,
-		},
-		{
-			name: "both first and last parameters provided",
-			vars: varsListAll, // vars don't matter since error occurs before GraphQL call
-			reqParams: map[string]interface{}{
-				"owner": "owner",
-				"repo":  "repo",
-				"first": int32(10),
-				"last":  int32(5),
-			},
-			response:    mockResponseListAll, // response doesn't matter since error occurs before GraphQL call
 			expectError: true,
-			errContains: "only one of 'first' or 'last' may be specified",
-			catMatcher:  catMatcher,
-		},
-		{
-			name: "after with last parameters provided",
-			vars: varsListAll, // vars don't matter since error occurs before GraphQL call
-			reqParams: map[string]interface{}{
-				"owner": "owner",
-				"repo":  "repo",
-				"after": "cursor123",
-				"last":  int32(5),
-			},
-			response:    mockResponseListAll, // response doesn't matter since error occurs before GraphQL call
-			expectError: true,
-			errContains: "'after' cannot be used with 'last'. Did you mean to use 'before' instead?",
-			catMatcher:  catMatcher,
-		},
-		{
-			name: "before with first parameters provided",
-			vars: varsListAll, // vars don't matter since error occurs before GraphQL call
-			reqParams: map[string]interface{}{
-				"owner":  "owner",
-				"repo":   "repo",
-				"before": "cursor456",
-				"first":  int32(10),
-			},
-			response:    mockResponseListAll, // response doesn't matter since error occurs before GraphQL call
-			expectError: true,
-			errContains: "'before' cannot be used with 'first'. Did you mean to use 'after' instead?",
-			catMatcher:  catMatcher,
-		},
-		{
-			name: "both after and before parameters provided",
-			vars: varsListAll, // vars don't matter since error occurs before GraphQL call
-			reqParams: map[string]interface{}{
-				"owner":  "owner",
-				"repo":   "repo",
-				"after":  "cursor123",
-				"before": "cursor456",
-			},
-			response:    mockResponseListAll, // response doesn't matter since error occurs before GraphQL call
-			expectError: true,
-			errContains: "only one of 'after' or 'before' may be specified",
-			catMatcher:  catMatcher,
+			errContains: "repository not found",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			matcher := githubv4mock.NewQueryMatcher(q, tc.vars, tc.response)
-			httpClient := githubv4mock.NewMockedHTTPClient(matcher, tc.catMatcher)
+			var httpClient *http.Client
+
+			switch tc.name {
+			case "list all discussions without category filter":
+				// Simple case - no category filter
+				matcher := githubv4mock.NewQueryMatcher(qDiscussions, varsListAll, mockResponseListAll)
+				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
+			case "filter by category ID":
+				// Simple case - category filter using category ID directly
+				matcher := githubv4mock.NewQueryMatcher(qDiscussionsFiltered, varsDiscussionsFiltered, mockResponseListGeneral)
+				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
+			case "repository not found error":
+				matcher := githubv4mock.NewQueryMatcher(qDiscussions, varsRepoNotFound, mockErrorRepoNotFound)
+				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
+			}
+
 			gqlClient := githubv4.NewClient(httpClient)
 			_, handler := ListDiscussions(stubGetGQLClientFn(gqlClient), translations.NullTranslationHelper)
 
@@ -282,22 +172,14 @@ func Test_ListDiscussions(t *testing.T) {
 			err = json.Unmarshal([]byte(text), &returnedDiscussions)
 			require.NoError(t, err)
 
-			assert.Len(t, returnedDiscussions, len(tc.expectedIDs), "Expected %d discussions, got %d", len(tc.expectedIDs), len(returnedDiscussions))
+			assert.Len(t, returnedDiscussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(returnedDiscussions))
 
-			// If no discussions are expected, skip further checks
-			if len(tc.expectedIDs) == 0 {
-				return
-			}
-
-			// Create a map of expected IDs for easier checking
-			expectedIDMap := make(map[int64]bool)
-			for _, id := range tc.expectedIDs {
-				expectedIDMap[id] = true
-			}
-
-			for _, discussion := range returnedDiscussions {
-				// Check if the discussion Number is in the expected list
-				assert.True(t, expectedIDMap[int64(*discussion.Number)], "Unexpected discussion Number: %d", *discussion.Number)
+			// Verify that all returned discussions have a category label if filtered
+			if _, hasCategory := tc.reqParams["category"]; hasCategory {
+				for _, discussion := range returnedDiscussions {
+					require.NotEmpty(t, discussion.Labels, "Discussion should have category label")
+					assert.True(t, strings.HasPrefix(*discussion.Labels[0].Name, "category:"), "Discussion should have category label prefix")
+				}
 			}
 		})
 	}
@@ -321,6 +203,9 @@ func Test_GetDiscussion(t *testing.T) {
 				State     githubv4.String
 				CreatedAt githubv4.DateTime
 				URL       githubv4.String `graphql:"url"`
+				Category  struct {
+					Name githubv4.String
+				} `graphql:"category"`
 			} `graphql:"discussion(number: $discussionNumber)"`
 		} `graphql:"repository(owner: $owner, name: $repo)"`
 	}
@@ -345,6 +230,7 @@ func Test_GetDiscussion(t *testing.T) {
 					"state":     "open",
 					"url":       "https://github.com/owner/repo/discussions/1",
 					"createdAt": "2025-04-25T12:00:00Z",
+					"category":  map[string]any{"name": "General"},
 				}},
 			}),
 			expectError: false,
@@ -354,6 +240,11 @@ func Test_GetDiscussion(t *testing.T) {
 				Body:      github.Ptr("This is a test discussion"),
 				State:     github.Ptr("open"),
 				CreatedAt: &github.Timestamp{Time: time.Date(2025, 4, 25, 12, 0, 0, 0, time.UTC)},
+				Labels: []*github.Label{
+					{
+						Name: github.Ptr("category:General"),
+					},
+				},
 			},
 		},
 		{
@@ -387,6 +278,9 @@ func Test_GetDiscussion(t *testing.T) {
 			assert.Equal(t, *tc.expected.Number, *out.Number)
 			assert.Equal(t, *tc.expected.Body, *out.Body)
 			assert.Equal(t, *tc.expected.State, *out.State)
+			// Check category label
+			require.Len(t, out.Labels, 1)
+			assert.Equal(t, *tc.expected.Labels[0].Name, *out.Labels[0].Name)
 		})
 	}
 }
@@ -463,16 +357,12 @@ func Test_ListDiscussionCategories(t *testing.T) {
 					ID   githubv4.ID
 					Name githubv4.String
 				}
-			} `graphql:"discussionCategories(first: $first, last: $last, after: $after, before: $before)"`
+			} `graphql:"discussionCategories(first: 100)"`
 		} `graphql:"repository(owner: $owner, name: $repo)"`
 	}
 	vars := map[string]interface{}{
-		"owner":  githubv4.String("owner"),
-		"repo":   githubv4.String("repo"),
-		"first":  githubv4.Int(0),     // Default to 100 categories
-		"last":   githubv4.Int(0),     // Not used, but required by schema
-		"after":  githubv4.String(""), // Not used, but required by schema
-		"before": githubv4.String(""), // Not used, but required by schema
+		"owner": githubv4.String("owner"),
+		"repo":  githubv4.String("repo"),
 	}
 	mockResp := githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{

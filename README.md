@@ -576,17 +576,9 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
 
 - **list_discussions** - List discussions
-  - `after`: Cursor for pagination, use the 'after' field from the previous response (string, optional)
-  - `answered`: Filter by whether discussions have been answered or not (boolean, optional)
-  - `before`: Cursor for pagination, use the 'before' field from the previous response (string, optional)
-  - `category`: Category filter (name) (string, optional)
-  - `direction`: Sort direction (string, optional)
-  - `first`: Number of discussions to return per page (min 1, max 100) (number, optional)
-  - `last`: Number of discussions to return from the end (min 1, max 100) (number, optional)
+  - `category`: Optional filter by discussion category ID. If provided, only discussions with this category are listed. (string, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `sort`: Sort field (string, optional)
 
 </details>
 
