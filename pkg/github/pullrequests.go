@@ -1660,7 +1660,7 @@ func GetPullRequestDiff(getClient GetClientFn, t translations.TranslationHelperF
 				if params.PathPrefix != "" {
 					var filtered []*github.CommitFile
 					for _, file := range files {
-						if file.Filename != nil && len(*file.Filename) >= len(params.PathPrefix) && (*file.Filename)[:len(params.PathPrefix)] == params.PathPrefix {
+						if file.Filename != nil && strings.HasPrefix(*file.Filename, params.PathPrefix) {
 							filtered = append(filtered, file)
 						}
 					}
