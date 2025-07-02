@@ -1720,7 +1720,7 @@ func GetPullRequestDiff(getClient GetClientFn, t translations.TranslationHelperF
 					}
 				} else if params.PathPrefix != "" {
 					for _, file := range allFiles {
-						if file.Filename != nil && len(*file.Filename) >= len(params.PathPrefix) && (*file.Filename)[:len(params.PathPrefix)] == params.PathPrefix {
+						if file.Filename != nil && strings.HasPrefix(*file.Filename, params.PathPrefix) {
 							filteredFiles = append(filteredFiles, file)
 						}
 					}
