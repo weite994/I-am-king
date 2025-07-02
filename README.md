@@ -269,7 +269,7 @@ The following sets of tools are available (all are on by default):
 | `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | `actions` | GitHub Actions workflows and CI/CD operations |
 | `code_security` | Code security related tools, such as GitHub Code Scanning |
-| `discussions`           | GitHub Discussions tools (list, get, comments, categories)    |
+| `discussions` | GitHub Discussions related tools |
 | `experiments` | Experimental features that are not considered stable yet |
 | `issues` | GitHub Issues related tools |
 | `notifications` | GitHub Notifications related tools |
@@ -550,6 +550,43 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 - **get_me** - Get my user profile
   - `reason`: Optional: the reason for requesting the user information (string, optional)
+
+</details>
+
+<details>
+
+<summary>Discussions</summary>
+
+- **get_discussion** - Get discussion
+  - `discussionNumber`: Discussion Number (number, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
+- **get_discussion_comments** - Get discussion comments
+  - `discussionNumber`: Discussion Number (number, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
+- **list_discussion_categories** - List discussion categories
+  - `after`: Cursor for pagination, use the 'after' field from the previous response (string, optional)
+  - `before`: Cursor for pagination, use the 'before' field from the previous response (string, optional)
+  - `first`: Number of categories to return per page (min 1, max 100) (number, optional)
+  - `last`: Number of categories to return from the end (min 1, max 100) (number, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
+- **list_discussions** - List discussions
+  - `after`: Cursor for pagination, use the 'after' field from the previous response (string, optional)
+  - `answered`: Filter by whether discussions have been answered or not (boolean, optional)
+  - `before`: Cursor for pagination, use the 'before' field from the previous response (string, optional)
+  - `category`: Category filter (name) (string, optional)
+  - `direction`: Sort direction (string, optional)
+  - `first`: Number of discussions to return per page (min 1, max 100) (number, optional)
+  - `last`: Number of discussions to return from the end (min 1, max 100) (number, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
+  - `sort`: Sort field (string, optional)
 
 </details>
 
@@ -921,71 +958,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 </details>
 
-- **manage_repository_notification_subscription** – Manage a repository notification subscription (ignore, watch, or delete)
-  - `owner`: The account owner of the repository (string, required)
-  - `repo`: The name of the repository (string, required)
-  - `action`: Action to perform: `ignore`, `watch`, or `delete` (string, required)
-
-### Discussions
- 
-- **list_discussions** - List discussions for a repository
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `category`: Filter by category name (string, optional)
-  - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `first`: Pagination - Number of records to retrieve (number, optional)
-  - `last`: Pagination - Number of records to retrieve from the end (number, optional)
-  - `after`: Pagination - Cursor to start with (string, optional)
-  - `before`: Pagination - Cursor to end with (string, optional)
-  - `sort`: Sort by ('CREATED_AT', 'UPDATED_AT') (string, optional)
-  - `direction`: Sort direction ('ASC', 'DESC') (string, optional)
-  - `answered`: Filter by whether discussions have been answered or not (boolean, optional)
-
-- **get_discussion** - Get a specific discussion by ID
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `discussionNumber`: Discussion number (required)
-
-- **get_discussion_comments** - Get comments from a discussion
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `discussionNumber`: Discussion number (required)
-
-- **list_discussion_categories** - List discussion categories for a repository, with their IDs and names
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `first`: Pagination - Number of categories to return per page (number, optional, min 1, max 100)
-  - `last`: Pagination - Number of categories to return from the end (number, optional, min 1, max 100)
-  - `after`: Pagination - Cursor to start with (string, optional)
-  - `before`: Pagination - Cursor to end with (string, optional)
-
-## Resources
-
-### Repository Content
-
-- **Get Repository Content**
-  Retrieves the content of a repository at a specific path.
-
-  - **Template**: `repo://{owner}/{repo}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Branch**
-  Retrieves the content of a repository at a specific path for a given branch.
-
-  - **Template**: `repo://{owner}/{repo}/refs/heads/{branch}/contents{/path*}`
-  - **Parameters**:
-    - `owner`: Repository owner (string, required)
-    - `repo`: Repository name (string, required)
-    - `branch`: Branch name (string, required)
-    - `path`: File or directory path (string, optional)
-
-- **Get Repository Content for a Specific Commit**
-  Retrieves the content of a repository at a specific path for a given commit.
-
-
+<details>
 
 <summary>Users</summary>
 
