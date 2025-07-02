@@ -148,7 +148,7 @@ func Test_ListDiscussions(t *testing.T) {
 		reqParams   map[string]interface{}
 		response    githubv4mock.GQLResponse
 		expectError bool
-		expectedIds []int64
+		expectedIDs []int64
 		errContains string
 		catMatcher  githubv4mock.Matcher
 	}{
@@ -161,7 +161,7 @@ func Test_ListDiscussions(t *testing.T) {
 			},
 			response:    mockResponseListAll,
 			expectError: false,
-			expectedIds: []int64{1, 2, 3},
+			expectedIDs: []int64{1, 2, 3},
 			catMatcher:  catMatcher,
 		},
 		{
@@ -186,7 +186,7 @@ func Test_ListDiscussions(t *testing.T) {
 			},
 			response:    mockResponseCategory,
 			expectError: false,
-			expectedIds: []int64{1},
+			expectedIDs: []int64{1},
 			catMatcher:  catMatcher,
 		},
 		{
@@ -199,7 +199,7 @@ func Test_ListDiscussions(t *testing.T) {
 			},
 			response:    mockResponseListAll,
 			expectError: false,
-			expectedIds: []int64{2, 3},
+			expectedIDs: []int64{2, 3},
 			catMatcher:  catMatcher,
 		},
 		{
@@ -282,16 +282,16 @@ func Test_ListDiscussions(t *testing.T) {
 			err = json.Unmarshal([]byte(text), &returnedDiscussions)
 			require.NoError(t, err)
 
-			assert.Len(t, returnedDiscussions, len(tc.expectedIds), "Expected %d discussions, got %d", len(tc.expectedIds), len(returnedDiscussions))
+			assert.Len(t, returnedDiscussions, len(tc.expectedIDs), "Expected %d discussions, got %d", len(tc.expectedIDs), len(returnedDiscussions))
 
 			// If no discussions are expected, skip further checks
-			if len(tc.expectedIds) == 0 {
+			if len(tc.expectedIDs) == 0 {
 				return
 			}
 
 			// Create a map of expected IDs for easier checking
 			expectedIDMap := make(map[int64]bool)
-			for _, id := range tc.expectedIds {
+			for _, id := range tc.expectedIDs {
 				expectedIDMap[id] = true
 			}
 
