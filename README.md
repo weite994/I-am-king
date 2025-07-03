@@ -269,6 +269,7 @@ The following sets of tools are available (all are on by default):
 | `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | `actions` | GitHub Actions workflows and CI/CD operations |
 | `code_security` | Code security related tools, such as GitHub Code Scanning |
+| `dependabot` | Dependabot tools |
 | `discussions` | GitHub Discussions related tools |
 | `experiments` | Experimental features that are not considered stable yet |
 | `issues` | GitHub Issues related tools |
@@ -477,15 +478,15 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 - **list_workflow_jobs** - List workflow jobs
   - `filter`: Filters jobs by their completed_at timestamp (string, optional)
   - `owner`: Repository owner (string, required)
-  - `page`: The page number of the results to fetch (number, optional)
-  - `per_page`: The number of results per page (max 100) (number, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `run_id`: The unique identifier of the workflow run (number, required)
 
 - **list_workflow_run_artifacts** - List workflow artifacts
   - `owner`: Repository owner (string, required)
-  - `page`: The page number of the results to fetch (number, optional)
-  - `per_page`: The number of results per page (max 100) (number, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `run_id`: The unique identifier of the workflow run (number, required)
 
@@ -494,16 +495,16 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `branch`: Returns workflow runs associated with a branch. Use the name of the branch. (string, optional)
   - `event`: Returns workflow runs for a specific event type (string, optional)
   - `owner`: Repository owner (string, required)
-  - `page`: The page number of the results to fetch (number, optional)
-  - `per_page`: The number of results per page (max 100) (number, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `status`: Returns workflow runs with the check run status (string, optional)
   - `workflow_id`: The workflow ID or workflow file name (string, required)
 
 - **list_workflows** - List workflows
   - `owner`: Repository owner (string, required)
-  - `page`: The page number of the results to fetch (number, optional)
-  - `per_page`: The number of results per page (max 100) (number, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 - **rerun_failed_jobs** - Rerun failed jobs
@@ -550,6 +551,23 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 - **get_me** - Get my user profile
   - `reason`: Optional: the reason for requesting the user information (string, optional)
+
+</details>
+
+<details>
+
+<summary>Dependabot</summary>
+
+- **get_dependabot_alert** - Get dependabot alert
+  - `alertNumber`: The number of the alert. (number, required)
+  - `owner`: The owner of the repository. (string, required)
+  - `repo`: The name of the repository. (string, required)
+
+- **list_dependabot_alerts** - List dependabot alerts
+  - `owner`: The owner of the repository. (string, required)
+  - `repo`: The name of the repository. (string, required)
+  - `severity`: Filter dependabot alerts by severity (string, optional)
+  - `state`: Filter dependabot alerts by state. Defaults to open (string, optional)
 
 </details>
 
@@ -614,8 +632,8 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 - **get_issue_comments** - Get issue comments
   - `issue_number`: Issue number (number, required)
   - `owner`: Repository owner (string, required)
-  - `page`: Page number (number, optional)
-  - `per_page`: Number of records per page (number, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 - **list_issues** - List issues
@@ -904,7 +922,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
-  - `sha`: SHA or Branch name (string, optional)
+  - `sha`: The commit SHA, branch name, or tag name to list commits from. If not specified, defaults to the repository's default branch. (string, optional)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
