@@ -103,7 +103,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
 		)
-	dependabot := toolsets.NewToolset("dependabot", "Dependabot alerts tools").
+	dependabot := toolsets.NewToolset("dependabot", "Dependabot tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetDependabotAlert(getClient, t)),
 			toolsets.NewServerTool(ListDependabotAlerts(getClient, t)),
