@@ -161,8 +161,6 @@ Add the following JSON block to your IDE MCP settings.
           "run",
           "-i",
           "--rm",
-          "-e",
-          "GITHUB_PERSONAL_ACCESS_TOKEN",
           "ghcr.io/github/github-mcp-server"
         ],
         "env": {
@@ -194,8 +192,6 @@ Optionally, you can add a similar example (i.e. without the mcp key) to a file c
         "run",
         "-i",
         "--rm",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -220,8 +216,6 @@ More about using MCP server tools in VS Code's [agent mode documentation](https:
         "run",
         "-i",
         "--rm",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -377,10 +371,6 @@ the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data r
     "run",
     "-i",
     "--rm",
-    "-e",
-    "GITHUB_PERSONAL_ACCESS_TOKEN",
-    "-e",
-    "GITHUB_HOST",
     "ghcr.io/github/github-mcp-server"
     ],
     "env": {
