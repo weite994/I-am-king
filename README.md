@@ -161,11 +161,9 @@ Add the following JSON block to your IDE MCP settings.
           "run",
           "-i",
           "--rm",
+          "-e", "GITHUB_PERSONAL_ACCESS_TOKEN=${input:github_token}",
           "ghcr.io/github/github-mcp-server"
-        ],
-        "env": {
-          "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
-        }
+        ]
       }
     }
   }
@@ -192,11 +190,9 @@ Optionally, you can add a similar example (i.e. without the mcp key) to a file c
         "run",
         "-i",
         "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN=${input:github_token}",
         "ghcr.io/github/github-mcp-server"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
-      }
+      ]
     }
   }
 }
@@ -216,11 +212,9 @@ More about using MCP server tools in VS Code's [agent mode documentation](https:
         "run",
         "-i",
         "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN=${input:github_token}",
         "ghcr.io/github/github-mcp-server"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
-      }
+      ]
     }
   }
 }
@@ -371,12 +365,10 @@ the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data r
     "run",
     "-i",
     "--rm",
+    "-e", "GITHUB_PERSONAL_ACCESS_TOKEN=${input:github_token}",
+    "-e", "GITHUB_HOST=https://<your GHES or ghe.com domain name>",
     "ghcr.io/github/github-mcp-server"
-    ],
-    "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
-        "GITHUB_HOST": "https://<your GHES or ghe.com domain name>"
-    }
+    ]
 }
 ```
 
