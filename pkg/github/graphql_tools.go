@@ -71,15 +71,16 @@ func ExecuteGraphQLQuery(getClient GetClientFn, t translations.TranslationHelper
 
 				// Try to categorize the error
 				errorStr := err.Error()
-				if strings.Contains(errorStr, "rate limit") {
+				switch {
+				case strings.Contains(errorStr, "rate limit"):
 					result["error_type"] = "rate_limit"
-				} else if strings.Contains(errorStr, "unauthorized") || strings.Contains(errorStr, "authentication") {
+				case strings.Contains(errorStr, "unauthorized") || strings.Contains(errorStr, "authentication"):
 					result["error_type"] = "authentication"
-				} else if strings.Contains(errorStr, "permission") || strings.Contains(errorStr, "forbidden") {
+				case strings.Contains(errorStr, "permission") || strings.Contains(errorStr, "forbidden"):
 					result["error_type"] = "permission"
-				} else if strings.Contains(errorStr, "not found") || strings.Contains(errorStr, "Could not resolve") || strings.Contains(errorStr, "not exist") {
+				case strings.Contains(errorStr, "not found") || strings.Contains(errorStr, "Could not resolve") || strings.Contains(errorStr, "not exist"):
 					result["error_type"] = "not_found"
-				} else {
+				default:
 					result["error_type"] = "execution_error"
 				}
 			} else {
