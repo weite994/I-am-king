@@ -139,6 +139,11 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	// Keep experiments alive so the system doesn't error out when it's always enabled
 	experiments := toolsets.NewToolset("experiments", "Experimental features that are not considered stable yet")
 
+	graphql := toolsets.NewToolset("graphql", "GitHub GraphQL API tools for direct query execution").
+		AddWriteTools(
+			toolsets.NewServerTool(ExecuteGraphQLQuery(getClient, t)),
+		)
+
 	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
 		AddReadTools(
 			toolsets.NewServerTool(GetMe(getClient, t)),
@@ -156,6 +161,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(secretProtection)
 	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
+	tsg.AddToolset(graphql)
 
 	return tsg
 }
