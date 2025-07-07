@@ -40,9 +40,6 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 			Title:        t("TOOL_GET_ME_USER_TITLE", "Get my user profile"),
 			ReadOnlyHint: ToBoolPtr(true),
 		}),
-		mcp.WithString("reason",
-			mcp.Description("Optional: the reason for requesting the user information"),
-		),
 	)
 
 	type args struct{}
