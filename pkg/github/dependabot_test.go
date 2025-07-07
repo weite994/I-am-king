@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/github/github-mcp-server/internal/toolsnaps"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v72/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -13,11 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GetSecretScanningAlert(t *testing.T) {
+func Test_GetDependabotAlert(t *testing.T) {
+	// Verify tool definition
 	mockClient := github.NewClient(nil)
-	tool, _ := GetSecretScanningAlert(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	tool, _ := GetDependabotAlert(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
-	assert.Equal(t, "get_secret_scanning_alert", tool.Name)
+	// Validate tool schema
+	assert.Equal(t, "get_dependabot_alert", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
@@ -25,10 +29,10 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "alertNumber"})
 
 	// Setup mock alert for success case
-	mockAlert := &github.SecretScanningAlert{
+	mockAlert := &github.DependabotAlert{
 		Number:  github.Ptr(42),
 		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/42"),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/security/dependabot/42"),
 	}
 
 	tests := []struct {
@@ -36,14 +40,14 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 		mockedClient   *http.Client
 		requestArgs    map[string]interface{}
 		expectError    bool
-		expectedAlert  *github.SecretScanningAlert
+		expectedAlert  *github.DependabotAlert
 		expectedErrMsg string
 	}{
 		{
 			name: "successful alert fetch",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatch(
-					mock.GetReposSecretScanningAlertsByOwnerByRepoByAlertNumber,
+					mock.GetReposDependabotAlertsByOwnerByRepoByAlertNumber,
 					mockAlert,
 				),
 			),
@@ -59,7 +63,7 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 			name: "alert fetch fails",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.GetReposSecretScanningAlertsByOwnerByRepoByAlertNumber,
+					mock.GetReposDependabotAlertsByOwnerByRepoByAlertNumber,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusNotFound)
 						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
@@ -80,7 +84,7 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := GetSecretScanningAlert(stubGetClientFn(client), translations.NullTranslationHelper)
+			_, handler := GetDependabotAlert(stubGetClientFn(client), translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -104,45 +108,46 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the result
-			var returnedAlert github.Alert
+			var returnedAlert github.DependabotAlert
 			err = json.Unmarshal([]byte(textContent.Text), &returnedAlert)
 			assert.NoError(t, err)
 			assert.Equal(t, *tc.expectedAlert.Number, *returnedAlert.Number)
 			assert.Equal(t, *tc.expectedAlert.State, *returnedAlert.State)
 			assert.Equal(t, *tc.expectedAlert.HTMLURL, *returnedAlert.HTMLURL)
-
 		})
 	}
 }
 
-func Test_ListSecretScanningAlerts(t *testing.T) {
+func Test_ListDependabotAlerts(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := ListSecretScanningAlerts(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	tool, _ := ListDependabotAlerts(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
-	assert.Equal(t, "list_secret_scanning_alerts", tool.Name)
+	assert.Equal(t, "list_dependabot_alerts", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "state")
-	assert.Contains(t, tool.InputSchema.Properties, "secret_type")
-	assert.Contains(t, tool.InputSchema.Properties, "resolution")
+	assert.Contains(t, tool.InputSchema.Properties, "severity")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
 	// Setup mock alerts for success case
-	resolvedAlert := github.SecretScanningAlert{
-		Number:     github.Ptr(2),
-		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/2"),
-		State:      github.Ptr("resolved"),
-		Resolution: github.Ptr("false_positive"),
-		SecretType: github.Ptr("adafruit_io_key"),
+	criticalAlert := github.DependabotAlert{
+		Number:  github.Ptr(1),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/security/dependabot/1"),
+		State:   github.Ptr("open"),
+		SecurityAdvisory: &github.DependabotSecurityAdvisory{
+			Severity: github.Ptr("critical"),
+		},
 	}
-	openAlert := github.SecretScanningAlert{
-		Number:     github.Ptr(2),
-		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/3"),
-		State:      github.Ptr("open"),
-		Resolution: github.Ptr("false_positive"),
-		SecretType: github.Ptr("adafruit_io_key"),
+	highSeverityAlert := github.DependabotAlert{
+		Number:  github.Ptr(2),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/security/dependabot/2"),
+		State:   github.Ptr("fixed"),
+		SecurityAdvisory: &github.DependabotSecurityAdvisory{
+			Severity: github.Ptr("high"),
+		},
 	}
 
 	tests := []struct {
@@ -150,36 +155,56 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 		mockedClient   *http.Client
 		requestArgs    map[string]interface{}
 		expectError    bool
-		expectedAlerts []*github.SecretScanningAlert
+		expectedAlerts []*github.DependabotAlert
 		expectedErrMsg string
 	}{
 		{
-			name: "successful resolved alerts listing",
+			name: "successful open alerts listing",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.GetReposSecretScanningAlertsByOwnerByRepo,
+					mock.GetReposDependabotAlertsByOwnerByRepo,
 					expectQueryParams(t, map[string]string{
-						"state": "resolved",
+						"state": "open",
 					}).andThen(
-						mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert}),
+						mockResponse(t, http.StatusOK, []*github.DependabotAlert{&criticalAlert}),
 					),
 				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
-				"state": "resolved",
+				"state": "open",
 			},
 			expectError:    false,
-			expectedAlerts: []*github.SecretScanningAlert{&resolvedAlert},
+			expectedAlerts: []*github.DependabotAlert{&criticalAlert},
 		},
 		{
-			name: "successful alerts listing",
+			name: "successful severity filtered listing",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.GetReposSecretScanningAlertsByOwnerByRepo,
+					mock.GetReposDependabotAlertsByOwnerByRepo,
+					expectQueryParams(t, map[string]string{
+						"severity": "high",
+					}).andThen(
+						mockResponse(t, http.StatusOK, []*github.DependabotAlert{&highSeverityAlert}),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":    "owner",
+				"repo":     "repo",
+				"severity": "high",
+			},
+			expectError:    false,
+			expectedAlerts: []*github.DependabotAlert{&highSeverityAlert},
+		},
+		{
+			name: "successful all alerts listing",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposDependabotAlertsByOwnerByRepo,
 					expectQueryParams(t, map[string]string{}).andThen(
-						mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert, &openAlert}),
+						mockResponse(t, http.StatusOK, []*github.DependabotAlert{&criticalAlert, &highSeverityAlert}),
 					),
 				),
 			),
@@ -188,13 +213,13 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 				"repo":  "repo",
 			},
 			expectError:    false,
-			expectedAlerts: []*github.SecretScanningAlert{&resolvedAlert, &openAlert},
+			expectedAlerts: []*github.DependabotAlert{&criticalAlert, &highSeverityAlert},
 		},
 		{
 			name: "alerts listing fails",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.GetReposSecretScanningAlertsByOwnerByRepo,
+					mock.GetReposDependabotAlertsByOwnerByRepo,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusUnauthorized)
 						_, _ = w.Write([]byte(`{"message": "Unauthorized access"}`))
@@ -213,7 +238,7 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			client := github.NewClient(tc.mockedClient)
-			_, handler := ListSecretScanningAlerts(stubGetClientFn(client), translations.NullTranslationHelper)
+			_, handler := ListDependabotAlerts(stubGetClientFn(client), translations.NullTranslationHelper)
 
 			request := createMCPRequest(tc.requestArgs)
 
@@ -233,7 +258,7 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the result
-			var returnedAlerts []*github.SecretScanningAlert
+			var returnedAlerts []*github.DependabotAlert
 			err = json.Unmarshal([]byte(textContent.Text), &returnedAlerts)
 			assert.NoError(t, err)
 			assert.Len(t, returnedAlerts, len(tc.expectedAlerts))
@@ -241,8 +266,10 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 				assert.Equal(t, *tc.expectedAlerts[i].Number, *alert.Number)
 				assert.Equal(t, *tc.expectedAlerts[i].HTMLURL, *alert.HTMLURL)
 				assert.Equal(t, *tc.expectedAlerts[i].State, *alert.State)
-				assert.Equal(t, *tc.expectedAlerts[i].Resolution, *alert.Resolution)
-				assert.Equal(t, *tc.expectedAlerts[i].SecretType, *alert.SecretType)
+				if tc.expectedAlerts[i].SecurityAdvisory != nil && tc.expectedAlerts[i].SecurityAdvisory.Severity != nil &&
+					alert.SecurityAdvisory != nil && alert.SecurityAdvisory.Severity != nil {
+					assert.Equal(t, *tc.expectedAlerts[i].SecurityAdvisory.Severity, *alert.SecurityAdvisory.Severity)
+				}
 			}
 		})
 	}
