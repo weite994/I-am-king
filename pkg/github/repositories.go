@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
@@ -495,33 +494,18 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			rawOpts := &raw.ContentOpts{}
-
-			if strings.HasPrefix(ref, "refs/pull/") {
-				prNumber := strings.TrimSuffix(strings.TrimPrefix(ref, "refs/pull/"), "/head")
-				if len(prNumber) > 0 {
-					// fetch the PR from the API to get the latest commit and use SHA
-					githubClient, err := getClient(ctx)
-					if err != nil {
-						return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-					}
-					prNum, err := strconv.Atoi(prNumber)
-					if err != nil {
-						return nil, fmt.Errorf("invalid pull request number: %w", err)
-					}
-					pr, _, err := githubClient.PullRequests.Get(ctx, owner, repo, prNum)
-					if err != nil {
-						return nil, fmt.Errorf("failed to get pull request: %w", err)
-					}
-					sha = pr.GetHead().GetSHA()
-					ref = ""
-				}
+			client, err := getClient(ctx)
+			if err != nil {
+				return mcp.NewToolResultError("failed to get GitHub client"), nil
 			}
 
-			rawOpts.SHA = sha
-			rawOpts.Ref = ref
+			rawOpts, err := resolveGitReference(ctx, client, owner, repo, ref, sha)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 
-			// If the path is (most likely) not to be a directory, we will first try to get the raw content from the GitHub raw content API.
+			// If the path is (most likely) not to be a directory, we will
+			// first try to get the raw content from the GitHub raw content API.
 			if path != "" && !strings.HasSuffix(path, "/") {
 
 				rawClient, err := getRawClient(ctx)
@@ -580,13 +564,8 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				}
 			}
 
-			client, err := getClient(ctx)
-			if err != nil {
-				return mcp.NewToolResultError("failed to get GitHub client"), nil
-			}
-
-			if sha != "" {
-				ref = sha
+			if rawOpts.SHA != "" {
+				ref = rawOpts.SHA
 			}
 			if strings.HasSuffix(path, "/") {
 				opts := &github.RepositoryContentGetOptions{Ref: ref}
@@ -632,7 +611,7 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				if err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("failed to marshal matching files: %s", err)), nil
 				}
-				return mcp.NewToolResultText(fmt.Sprintf("Provided path did not match a file or directory, but possible matches are: %s", matchingFilesJSON)), nil
+				return mcp.NewToolResultText(fmt.Sprintf("Provided path did not match a file or directory, but resolved ref to %s with possible path matches: %s", ref, matchingFilesJSON)), nil
 			}
 
 			return mcp.NewToolResultError("Failed to get file contents. The path does not point to a file or directory, or the file does not exist in the repository."), nil
@@ -1336,4 +1315,36 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 		}
 	}
 	return matchedPaths
+}
+
+// resolveGitReference resolves git references with the following logic:
+// 1. If SHA is provided, it takes precedence
+// 2. If neither is provided, use the default branch as ref
+// 3. Get SHA from the ref
+// Refs can look like `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head`
+// The function returns the resolved ref, SHA and any error.
+func resolveGitReference(ctx context.Context, githubClient *github.Client, owner, repo, ref, sha string) (*raw.ContentOpts, error) {
+	// 1. If SHA is provided, use it directly
+	if sha != "" {
+		return &raw.ContentOpts{Ref: "", SHA: sha}, nil
+	}
+
+	// 2. If neither provided, use the default branch as ref
+	if ref == "" {
+		repoInfo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repository info: %w", err)
+		}
+		ref = fmt.Sprintf("refs/heads/%s", repoInfo.GetDefaultBranch())
+	}
+
+	// 3. Get the SHA from the ref
+	reference, _, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reference for default branch: %w", err)
+	}
+	sha = reference.GetObject().GetSHA()
+
+	// Use provided ref, or it will be empty which defaults to the default branch
+	return &raw.ContentOpts{Ref: ref, SHA: sha}, nil
 }

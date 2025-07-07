@@ -70,6 +70,13 @@ func Test_GetFileContents(t *testing.T) {
 			name: "successful text content fetch",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": ""}}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
 					raw.GetRawReposContentsByOwnerByRepoByBranchByPath,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.Header().Set("Content-Type", "text/markdown")
@@ -94,6 +101,13 @@ func Test_GetFileContents(t *testing.T) {
 			name: "successful file blob content fetch",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": ""}}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
 					raw.GetRawReposContentsByOwnerByRepoByBranchByPath,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.Header().Set("Content-Type", "image/png")
@@ -117,6 +131,20 @@ func Test_GetFileContents(t *testing.T) {
 		{
 			name: "successful directory content fetch",
 			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"name": "repo", "default_branch": "main"}`))
+					}),
+				),
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": ""}}`))
+					}),
+				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposContentsByOwnerByRepoByPath,
 					expectQueryParams(t, map[string]string{}).andThen(
@@ -143,6 +171,13 @@ func Test_GetFileContents(t *testing.T) {
 		{
 			name: "content fetch fails",
 			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposGitRefByOwnerByRepoByRef,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": ""}}`))
+					}),
+				),
 				mock.WithRequestMatchHandler(
 					mock.GetReposContentsByOwnerByRepoByPath,
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -203,7 +238,7 @@ func Test_GetFileContents(t *testing.T) {
 				textContent := getTextResult(t, result)
 				var returnedContents []*github.RepositoryContent
 				err = json.Unmarshal([]byte(textContent.Text), &returnedContents)
-				require.NoError(t, err)
+				require.NoError(t, err, "Failed to unmarshal directory content result: %v", textContent.Text)
 				assert.Len(t, returnedContents, len(expected))
 				for i, content := range returnedContents {
 					assert.Equal(t, *expected[i].Name, *content.Name)
@@ -2046,6 +2081,79 @@ func Test_GetTag(t *testing.T) {
 			assert.Equal(t, *tc.expectedTag.Message, *returnedTag.Message)
 			assert.Equal(t, *tc.expectedTag.Object.Type, *returnedTag.Object.Type)
 			assert.Equal(t, *tc.expectedTag.Object.SHA, *returnedTag.Object.SHA)
+		})
+	}
+}
+
+func Test_ResolveGitReference(t *testing.T) {
+
+	ctx := context.Background()
+	owner := "owner"
+	repo := "repo"
+	mockedClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatchHandler(
+			mock.GetReposByOwnerByRepo,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"name": "repo", "default_branch": "main"}`))
+			}),
+		),
+		mock.WithRequestMatchHandler(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": "123sha456"}}`))
+			}),
+		),
+	)
+
+	tests := []struct {
+		name           string
+		ref            string
+		sha            string
+		expectedOutput *raw.ContentOpts
+	}{
+		{
+			name: "sha takes precedence over ref",
+			ref:  "refs/heads/main",
+			sha:  "123sha456",
+			expectedOutput: &raw.ContentOpts{
+				SHA: "123sha456",
+			},
+		},
+		{
+			name: "use default branch if ref and sha both empty",
+			ref:  "",
+			sha:  "",
+			expectedOutput: &raw.ContentOpts{
+				Ref: "refs/heads/main",
+				SHA: "123sha456",
+			},
+		},
+		{
+			name: "get SHA from ref",
+			ref:  "refs/heads/main",
+			sha:  "",
+			expectedOutput: &raw.ContentOpts{
+				Ref: "refs/heads/main",
+				SHA: "123sha456",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(mockedClient)
+			opts, err := resolveGitReference(ctx, client, owner, repo, tc.ref, tc.sha)
+			require.NoError(t, err)
+
+			if tc.expectedOutput.SHA != "" {
+				assert.Equal(t, tc.expectedOutput.SHA, opts.SHA)
+			}
+			if tc.expectedOutput.Ref != "" {
+				assert.Equal(t, tc.expectedOutput.Ref, opts.Ref)
+			}
 		})
 	}
 }
