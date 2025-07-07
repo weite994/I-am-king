@@ -195,7 +195,6 @@ func GetDiscussion(getGQLClient GetGQLClientFn, t translations.TranslationHelper
 					Discussion struct {
 						Number    githubv4.Int
 						Body      githubv4.String
-						State     githubv4.String
 						CreatedAt githubv4.DateTime
 						URL       githubv4.String `graphql:"url"`
 						Category  struct {
@@ -213,16 +212,13 @@ func GetDiscussion(getGQLClient GetGQLClientFn, t translations.TranslationHelper
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			d := q.Repository.Discussion
-			discussion := &github.Issue{
+			discussion := &github.Discussion{
 				Number:    github.Ptr(int(d.Number)),
 				Body:      github.Ptr(string(d.Body)),
-				State:     github.Ptr(string(d.State)),
 				HTMLURL:   github.Ptr(string(d.URL)),
 				CreatedAt: &github.Timestamp{Time: d.CreatedAt.Time},
-				Labels: []*github.Label{
-					{
-						Name: github.Ptr(fmt.Sprintf("category:%s", string(d.Category.Name))),
-					},
+				DiscussionCategory: &github.DiscussionCategory{
+					Name: github.Ptr(string(d.Category.Name)),
 				},
 			}
 			out, err := json.Marshal(discussion)
