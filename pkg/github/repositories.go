@@ -610,6 +610,31 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				}
 				return mcp.NewToolResultText(string(r)), nil
 			}
+
+			// The path does not point to a file or directory.
+			// Instead let's try to find it in the Git Tree by matching the end of the path.
+
+			// Step 1: Get Git Tree recursively
+			tree, resp, err := client.Git.GetTree(ctx, owner, repo, ref, true)
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to get git tree",
+					resp,
+					err,
+				), nil
+			}
+
+			// Step 2: Filter tree for matching paths
+			const maxMatchingFiles = 3
+			matchingFiles := filterPaths(tree.Entries, path, maxMatchingFiles)
+			if len(matchingFiles) > 0 {
+				matchingFilesJSON, err := json.Marshal(matchingFiles)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("failed to marshal matching files: %s", err)), nil
+				}
+				return mcp.NewToolResultText(fmt.Sprintf("Provided path did not match a file or directory, but possible matches are: %s", matchingFilesJSON)), nil
+			}
+
 			return mcp.NewToolResultError("Failed to get file contents. The path does not point to a file or directory, or the file does not exist in the repository."), nil
 		}
 }
@@ -1292,4 +1317,23 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 
 			return mcp.NewToolResultText(string(r)), nil
 		}
+}
+
+// filterPaths filters the entries in a GitHub tree to find paths that
+// match the given suffix.
+func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []string {
+	matchedPaths := []string{}
+	for _, entry := range entries {
+		if len(matchedPaths) == maxResults {
+			break // Limit the number of results to maxResults
+		}
+		entryPath := entry.GetPath()
+		if entryPath == "" {
+			continue // Skip empty paths
+		}
+		if strings.HasSuffix(entryPath, path) {
+			matchedPaths = append(matchedPaths, entryPath)
+		}
+	}
+	return matchedPaths
 }
