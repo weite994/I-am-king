@@ -200,7 +200,6 @@ func Test_GetDiscussion(t *testing.T) {
 			Discussion struct {
 				Number    githubv4.Int
 				Body      githubv4.String
-				State     githubv4.String
 				CreatedAt githubv4.DateTime
 				URL       githubv4.String `graphql:"url"`
 				Category  struct {
@@ -218,7 +217,7 @@ func Test_GetDiscussion(t *testing.T) {
 		name        string
 		response    githubv4mock.GQLResponse
 		expectError bool
-		expected    *github.Issue
+		expected    *github.Discussion
 		errContains string
 	}{
 		{
@@ -227,23 +226,19 @@ func Test_GetDiscussion(t *testing.T) {
 				"repository": map[string]any{"discussion": map[string]any{
 					"number":    1,
 					"body":      "This is a test discussion",
-					"state":     "open",
 					"url":       "https://github.com/owner/repo/discussions/1",
 					"createdAt": "2025-04-25T12:00:00Z",
 					"category":  map[string]any{"name": "General"},
 				}},
 			}),
 			expectError: false,
-			expected: &github.Issue{
+			expected: &github.Discussion{
 				HTMLURL:   github.Ptr("https://github.com/owner/repo/discussions/1"),
 				Number:    github.Ptr(1),
 				Body:      github.Ptr("This is a test discussion"),
-				State:     github.Ptr("open"),
 				CreatedAt: &github.Timestamp{Time: time.Date(2025, 4, 25, 12, 0, 0, 0, time.UTC)},
-				Labels: []*github.Label{
-					{
-						Name: github.Ptr("category:General"),
-					},
+				DiscussionCategory: &github.DiscussionCategory{
+					Name: github.Ptr("General"),
 				},
 			},
 		},
@@ -272,15 +267,13 @@ func Test_GetDiscussion(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			var out github.Issue
+			var out github.Discussion
 			require.NoError(t, json.Unmarshal([]byte(text), &out))
 			assert.Equal(t, *tc.expected.HTMLURL, *out.HTMLURL)
 			assert.Equal(t, *tc.expected.Number, *out.Number)
 			assert.Equal(t, *tc.expected.Body, *out.Body)
-			assert.Equal(t, *tc.expected.State, *out.State)
 			// Check category label
-			require.Len(t, out.Labels, 1)
-			assert.Equal(t, *tc.expected.Labels[0].Name, *out.Labels[0].Name)
+			assert.Equal(t, *tc.expected.DiscussionCategory.Name, *out.DiscussionCategory.Name)
 		})
 	}
 }
