@@ -186,7 +186,7 @@ func WithPagination() mcp.ToolOption {
 		)(tool)
 
 		mcp.WithNumber("perPage",
-			mcp.Description("Results per page for pagination (min 1, max 100). If unset, defaults to 30."),
+			mcp.Description("Results per page for pagination (min 1, max 100)"),
 			mcp.Min(1),
 			mcp.Max(100),
 		)(tool)
