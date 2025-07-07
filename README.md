@@ -450,7 +450,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `artifact_id`: The unique identifier of the artifact (number, required)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
- 
+
 - **get_job_logs** - Get job logs
   - `failed_only`: When true, gets logs for all failed jobs in run_id (boolean, optional)
   - `job_id`: The unique identifier of the workflow job (required for single job logs) (number, optional)
