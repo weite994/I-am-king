@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -168,17 +167,17 @@ func Test_ListDiscussions(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			var returnedDiscussions []*github.Issue
+			var returnedDiscussions []*github.Discussion
 			err = json.Unmarshal([]byte(text), &returnedDiscussions)
 			require.NoError(t, err)
 
 			assert.Len(t, returnedDiscussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(returnedDiscussions))
 
-			// Verify that all returned discussions have a category label if filtered
+			// Verify that all returned discussions have a category if filtered
 			if _, hasCategory := tc.reqParams["category"]; hasCategory {
 				for _, discussion := range returnedDiscussions {
-					require.NotEmpty(t, discussion.Labels, "Discussion should have category label")
-					assert.True(t, strings.HasPrefix(*discussion.Labels[0].Name, "category:"), "Discussion should have category label prefix")
+					require.NotNil(t, discussion.DiscussionCategory, "Discussion should have category")
+					assert.NotEmpty(t, *discussion.DiscussionCategory.Name, "Discussion should have category name")
 				}
 			}
 		})

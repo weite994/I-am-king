@@ -62,7 +62,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			// Now execute the discussions query
-			var discussions []*github.Issue
+			var discussions []*github.Discussion
 			if categoryID != nil {
 				// Query with category filter (server-side filtering)
 				var query struct {
@@ -89,17 +89,15 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				// Map nodes to GitHub Issue objects
+				// Map nodes to GitHub Discussion objects
 				for _, n := range query.Repository.Discussions.Nodes {
-					di := &github.Issue{
+					di := &github.Discussion{
 						Number:    github.Ptr(int(n.Number)),
 						Title:     github.Ptr(string(n.Title)),
 						HTMLURL:   github.Ptr(string(n.URL)),
 						CreatedAt: &github.Timestamp{Time: n.CreatedAt.Time},
-						Labels: []*github.Label{
-							{
-								Name: github.Ptr(fmt.Sprintf("category:%s", string(n.Category.Name))),
-							},
+						DiscussionCategory: &github.DiscussionCategory{
+							Name: github.Ptr(string(n.Category.Name)),
 						},
 					}
 					discussions = append(discussions, di)
@@ -129,17 +127,15 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				// Map nodes to GitHub Issue objects
+				// Map nodes to GitHub Discussion objects
 				for _, n := range query.Repository.Discussions.Nodes {
-					di := &github.Issue{
+					di := &github.Discussion{
 						Number:    github.Ptr(int(n.Number)),
 						Title:     github.Ptr(string(n.Title)),
 						HTMLURL:   github.Ptr(string(n.URL)),
 						CreatedAt: &github.Timestamp{Time: n.CreatedAt.Time},
-						Labels: []*github.Label{
-							{
-								Name: github.Ptr(fmt.Sprintf("category:%s", string(n.Category.Name))),
-							},
+						DiscussionCategory: &github.DiscussionCategory{
+							Name: github.Ptr(string(n.Category.Name)),
 						},
 					}
 					discussions = append(discussions, di)
