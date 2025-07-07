@@ -24,9 +24,9 @@ These are one time installations required to be able to test your changes locall
 3. Make sure linter passes on your machine: `golangci-lint run`
 4. Create a new branch: `git checkout -b my-branch-name`
 5. Add your changes and tests, and make sure the Action workflows still pass
-- Run linter: `script/lint`
-- Update snapshots and run tests: `UPDATE_TOOLSNAPS=true go test ./...`
-- Update readme documentation: `script/generate-docs`
+    - Run linter: `script/lint`
+    - Update snapshots and run tests: `UPDATE_TOOLSNAPS=true go test ./...`
+    - Update readme documentation: `script/generate-docs`
 6. Push to your fork and [submit a pull request][pr] targeting the `main` branch
 7. Pat yourself on the back and wait for your pull request to be reviewed and merged.
 
