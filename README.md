@@ -450,25 +450,15 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `artifact_id`: The unique identifier of the artifact (number, required)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-
-- **get_issue_events** - Get events for a GitHub issue
+ 
+- **get_job_logs** - Get job logs
+  - `failed_only`: When true, gets logs for all failed jobs in run_id (boolean, optional)
+  - `job_id`: The unique identifier of the workflow job (required for single job logs) (number, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `issue_number`: Issue number (number, required)
-  - `page`: Page number (number, optional)
-  - `perPage`: Results per page (number, optional)
-
-- **get_issue_timeline** - Get the timeline of events for a GitHub issue
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `issue_number`: Issue number (number, required)
-  - `page`: Page number (number, optional)
-  - `perPage`: Results per page (number, optional)
-
-- **get_issue_event** - Get a specific event for a GitHub issue
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `event_id`: Event ID (number, required)
+  - `return_content`: Returns actual log content instead of URLs (boolean, optional)
+  - `run_id`: Workflow run ID (required when using failed_only) (number, optional)
+  - `tail_lines`: Number of lines to return from the end of the log (number, optional)
 
 - **get_workflow_run** - Get workflow run
   - `owner`: Repository owner (string, required)
@@ -676,6 +666,25 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
+ 
+- **get_issue_events** - Get events for a GitHub issue
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issue_number`: Issue number (number, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **get_issue_timeline** - Get the timeline of events for a GitHub issue
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `issue_number`: Issue number (number, required)
+  - `page`: Page number (number, optional)
+  - `perPage`: Results per page (number, optional)
+
+- **get_issue_event** - Get a specific event for a GitHub issue
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `event_id`: Event ID (number, required)
 
 </details>
 
