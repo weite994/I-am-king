@@ -3,7 +3,7 @@
     "title": "Get my user profile",
     "readOnlyHint": true
   },
-  "description": "Get details of the authenticated GitHub user. Use this when a request includes \"me\", \"my\". The output will not change unless the user changes their profile, so only call this once.",
+  "description": "Get details of the authenticated GitHub user. Use this when a request is about the user's own profile for GitHub. Or when it is necessary to get information to build other tool calls.",
   "inputSchema": {
     "properties": {},
     "type": "object"
