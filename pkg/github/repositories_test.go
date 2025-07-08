@@ -2117,6 +2117,26 @@ func Test_filterPaths(t *testing.T) {
 			maxResults: -1,
 			expected:   []string{"folder/", "nested/folder/"},
 		},
+		{
+			name: "dir and file match",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("name"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("name"), Type: github.Ptr("blob")},
+			},
+			path:       "name", // No trailing slash can match both files and directories
+			maxResults: -1,
+			expected:   []string{"name/", "name"},
+		},
+		{
+			name: "dir only match",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("name"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("name"), Type: github.Ptr("blob")},
+			},
+			path:       "name/", // Trialing slash ensures only directories are matched
+			maxResults: -1,
+			expected:   []string{"name/"},
+		},
 	}
 
 	for _, tc := range tests {

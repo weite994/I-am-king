@@ -1295,12 +1295,21 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 // It returns a slice of strings containing the matching paths.
 // Directories are returned with a trailing slash.
 func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []string {
-	path = strings.TrimSuffix(path, "/") // Normalize path to avoid double slashes
+	// Remove trailing slash for matching purposes, but flag whether we
+	// only want directories.
+	dirOnly := false
+	if strings.HasSuffix(path, "/") {
+		dirOnly = true
+		path = strings.TrimSuffix(path, "/")
+	}
 
 	matchedPaths := []string{}
 	for _, entry := range entries {
 		if len(matchedPaths) == maxResults {
 			break // Limit the number of results to maxResults
+		}
+		if dirOnly && entry.GetType() != "tree" {
+			continue // Skip non-directory entries if dirOnly is true
 		}
 		entryPath := entry.GetPath()
 		if entryPath == "" {
@@ -1308,7 +1317,7 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 		}
 		if strings.HasSuffix(entryPath, path) {
 			if entry.GetType() == "tree" {
-				entryPath += "/" // show directories with a trailing slash
+				entryPath += "/" // Return directories with a trailing slash
 			}
 			matchedPaths = append(matchedPaths, entryPath)
 		}
