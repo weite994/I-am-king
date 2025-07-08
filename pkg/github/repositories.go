@@ -602,7 +602,11 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				if err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("failed to marshal matching files: %s", err)), nil
 				}
-				return mcp.NewToolResultText(fmt.Sprintf("Path did not point to a file or directory, but resolved ref to %s with possible path matches: %s", ref, matchingFilesJSON)), nil
+				resolvedRefs, err := json.Marshal(rawOpts)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("failed to marshal resolved refs: %s", err)), nil
+				}
+				return mcp.NewToolResultText(fmt.Sprintf("Path did not point to a file or directory, but resolved git ref to %s with possible path matches: %s", resolvedRefs, matchingFilesJSON)), nil
 			}
 
 			return mcp.NewToolResultError("Failed to get file contents. The path does not point to a file or directory, or the file does not exist in the repository."), nil
