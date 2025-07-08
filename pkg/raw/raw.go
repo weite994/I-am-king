@@ -25,9 +25,13 @@ func NewClient(client *gogithub.Client, rawURL *url.URL) *Client {
 	return &Client{client: client, url: rawURL}
 }
 
-func (c *Client) newRequest(method string, urlStr string, body interface{}, opts ...gogithub.RequestOption) (*http.Request, error) {
+func (c *Client) newRequest(ctx context.Context, method string, urlStr string, body interface{}, opts ...gogithub.RequestOption) (*http.Request, error) {
 	req, err := c.client.NewRequest(method, urlStr, body, opts...)
-	return req, err
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	return req, nil
 }
 
 func (c *Client) refURL(owner, repo, ref, path string) string {
@@ -37,9 +41,9 @@ func (c *Client) refURL(owner, repo, ref, path string) string {
 	return c.url.JoinPath(owner, repo, ref, path).String()
 }
 
-func (c *Client) URLFromOpts(opts *RawContentOpts, owner, repo, path string) string {
+func (c *Client) URLFromOpts(opts *ContentOpts, owner, repo, path string) string {
 	if opts == nil {
-		opts = &RawContentOpts{}
+		opts = &ContentOpts{}
 	}
 	if opts.SHA != "" {
 		return c.commitURL(owner, repo, opts.SHA, path)
@@ -52,15 +56,15 @@ func (c *Client) commitURL(owner, repo, sha, path string) string {
 	return c.url.JoinPath(owner, repo, sha, path).String()
 }
 
-type RawContentOpts struct {
+type ContentOpts struct {
 	Ref string
 	SHA string
 }
 
 // GetRawContent fetches the raw content of a file from a GitHub repository.
-func (c *Client) GetRawContent(ctx context.Context, owner, repo, path string, opts *RawContentOpts) (*http.Response, error) {
+func (c *Client) GetRawContent(ctx context.Context, owner, repo, path string, opts *ContentOpts) (*http.Response, error) {
 	url := c.URLFromOpts(opts, owner, repo, path)
-	req, err := c.newRequest("GET", url, nil)
+	req, err := c.newRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
