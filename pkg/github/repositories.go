@@ -1290,6 +1290,10 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 
 // filterPaths filters the entries in a GitHub tree to find paths that
 // match the given suffix.
+// maxResults limits the number of results returned to first maxResults entries,
+// a maxResults of -1 means no limit.
+// It returns a slice of strings containing the matching paths.
+// Directories are returned with a trailing slash.
 func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []string {
 	path = strings.TrimSuffix(path, "/") // Normalize path to avoid double slashes
 

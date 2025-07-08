@@ -2085,8 +2085,49 @@ func Test_GetTag(t *testing.T) {
 	}
 }
 
-func Test_ResolveGitReference(t *testing.T) {
+func Test_filterPaths(t *testing.T) {
+	tests := []struct {
+		name       string
+		tree       []*github.TreeEntry
+		path       string
+		maxResults int
+		expected   []string
+	}{
+		{
+			name: "file name",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("folder/foo.txt"), Type: github.Ptr("blob")},
+				{Path: github.Ptr("bar.txt"), Type: github.Ptr("blob")},
+				{Path: github.Ptr("nested/folder/foo.txt"), Type: github.Ptr("blob")},
+				{Path: github.Ptr("nested/folder/baz.txt"), Type: github.Ptr("blob")},
+			},
+			path:       "foo.txt",
+			maxResults: -1,
+			expected:   []string{"folder/foo.txt", "nested/folder/foo.txt"},
+		},
+		{
+			name: "dir name",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("bar.txt"), Type: github.Ptr("blob")},
+				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/folder/baz.txt"), Type: github.Ptr("blob")},
+			},
+			path:       "folder/",
+			maxResults: -1,
+			expected:   []string{"folder/", "nested/folder/"},
+		},
+	}
 
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := filterPaths(tc.tree, tc.path, tc.maxResults)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func Test_resolveGitReference(t *testing.T) {
 	ctx := context.Background()
 	owner := "owner"
 	repo := "repo"
