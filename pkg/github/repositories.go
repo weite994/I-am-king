@@ -501,7 +501,7 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 
 			rawOpts, err := resolveGitReference(ctx, client, owner, repo, ref, sha)
 			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
+				return mcp.NewToolResultError(fmt.Sprintf("failed to resolve git reference: %s", err)), nil
 			}
 
 			// If the path is (most likely) not to be a directory, we will
@@ -592,6 +592,7 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 					err,
 				), nil
 			}
+			defer func() { _ = resp.Body.Close() }()
 
 			// Step 2: Filter tree for matching paths
 			const maxMatchingFiles = 3
@@ -601,7 +602,7 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				if err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("failed to marshal matching files: %s", err)), nil
 				}
-				return mcp.NewToolResultText(fmt.Sprintf("Provided path did not match a file or directory, but resolved ref to %s with possible path matches: %s", ref, matchingFilesJSON)), nil
+				return mcp.NewToolResultText(fmt.Sprintf("Path did not point to a file or directory, but resolved ref to %s with possible path matches: %s", ref, matchingFilesJSON)), nil
 			}
 
 			return mcp.NewToolResultError("Failed to get file contents. The path does not point to a file or directory, or the file does not exist in the repository."), nil
@@ -1328,9 +1329,9 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 // resolveGitReference resolves git references with the following logic:
 // 1. If SHA is provided, it takes precedence
 // 2. If neither is provided, use the default branch as ref
-// 3. Get SHA from the ref
+// 3. Get commit SHA from the ref
 // Refs can look like `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head`
-// The function returns the resolved ref, SHA and any error.
+// The function returns the resolved ref, commit SHA and any error.
 func resolveGitReference(ctx context.Context, githubClient *github.Client, owner, repo, ref, sha string) (*raw.ContentOpts, error) {
 	// 1. If SHA is provided, use it directly
 	if sha != "" {
