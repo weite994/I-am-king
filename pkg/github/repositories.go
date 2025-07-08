@@ -570,24 +570,14 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 			if strings.HasSuffix(path, "/") {
 				opts := &github.RepositoryContentGetOptions{Ref: ref}
 				_, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
-				if err != nil {
-					return mcp.NewToolResultError("failed to get file contents"), nil
-				}
-				defer func() { _ = resp.Body.Close() }()
-
-				if resp.StatusCode != 200 {
-					body, err := io.ReadAll(resp.Body)
+				if err == nil && resp.StatusCode == http.StatusOK {
+					defer func() { _ = resp.Body.Close() }()
+					r, err := json.Marshal(dirContent)
 					if err != nil {
-						return mcp.NewToolResultError("failed to read response body"), nil
+						return mcp.NewToolResultError("failed to marshal response"), nil
 					}
-					return mcp.NewToolResultError(fmt.Sprintf("failed to get file contents: %s", string(body))), nil
+					return mcp.NewToolResultText(string(r)), nil
 				}
-
-				r, err := json.Marshal(dirContent)
-				if err != nil {
-					return mcp.NewToolResultError("failed to marshal response"), nil
-				}
-				return mcp.NewToolResultText(string(r)), nil
 			}
 
 			// The path does not point to a file or directory.
@@ -1301,6 +1291,8 @@ func GetTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool m
 // filterPaths filters the entries in a GitHub tree to find paths that
 // match the given suffix.
 func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []string {
+	path = strings.TrimSuffix(path, "/") // Normalize path to avoid double slashes
+
 	matchedPaths := []string{}
 	for _, entry := range entries {
 		if len(matchedPaths) == maxResults {
@@ -1311,6 +1303,9 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 			continue // Skip empty paths
 		}
 		if strings.HasSuffix(entryPath, path) {
+			if entry.GetType() == "tree" {
+				entryPath += "/" // show directories with a trailing slash
+			}
 			matchedPaths = append(matchedPaths, entryPath)
 		}
 	}
