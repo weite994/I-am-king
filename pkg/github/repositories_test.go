@@ -2137,6 +2137,39 @@ func Test_filterPaths(t *testing.T) {
 			maxResults: -1,
 			expected:   []string{"name/"},
 		},
+		{
+			name: "max results limit 2",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+			},
+			path:       "folder/",
+			maxResults: 2,
+			expected:   []string{"folder/", "nested/folder/"},
+		},
+		{
+			name: "max results limit 1",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+			},
+			path:       "folder/",
+			maxResults: 1,
+			expected:   []string{"folder/"},
+		},
+		{
+			name: "max results limit 0",
+			tree: []*github.TreeEntry{
+				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
+				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+			},
+			path:       "folder/",
+			maxResults: 0,
+			expected:   []string{},
+		},
 	}
 
 	for _, tc := range tests {
