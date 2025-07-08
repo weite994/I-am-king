@@ -288,7 +288,7 @@ func CreateOrUpdateFile(getClient GetClientFn, t translations.TranslationHelperF
 				mcp.Description("Branch to create/update the file in"),
 			),
 			mcp.WithString("sha",
-				mcp.Description("Required if you are updating an existing file. The blob SHA of the file being replaced."),
+				mcp.Description("Required if updating an existing file. The blob SHA of the file being replaced."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
