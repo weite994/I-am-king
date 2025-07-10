@@ -361,10 +361,6 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 				mcp.Description("Sort direction"),
 				mcp.Enum("asc", "desc"),
 			),
-			mcp.WithString("author", 
-				mcp.Description("Filter by author username."),
-			),
-			
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -393,9 +389,6 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			direction, err := OptionalParam[string](request, "direction")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
