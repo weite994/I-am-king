@@ -330,7 +330,7 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 // ListPullRequests creates a tool to list and filter repository pull requests.
 func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("list_pull_requests",
-			mcp.WithDescription(t("TOOL_LIST_PULL_REQUESTS_DESCRIPTION", "List pull requests in a GitHub repository.")),
+			mcp.WithDescription(t("TOOL_LIST_PULL_REQUESTS_DESCRIPTION", "List pull requests in a GitHub repository. If the user specifies an author, then DO NOT use this tool, use the search_pull_requests tool instead.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_LIST_PULL_REQUESTS_USER_TITLE", "List pull requests"),
 				ReadOnlyHint: ToBoolPtr(true),
@@ -361,6 +361,10 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 				mcp.Description("Sort direction"),
 				mcp.Enum("asc", "desc"),
 			),
+			mcp.WithString("author", 
+				mcp.Description("Filter by author username."),
+			),
+			
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -392,11 +396,13 @@ func ListPullRequests(getClient GetClientFn, t translations.TranslationHelperFun
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-
 			opts := &github.PullRequestListOptions{
 				State:     state,
 				Head:      head,
