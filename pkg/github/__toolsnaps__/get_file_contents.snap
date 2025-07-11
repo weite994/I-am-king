@@ -11,7 +11,8 @@
         "type": "string"
       },
       "path": {
-        "description": "Path to file/directory. Directories, including root, must end with '/'",
+        "default": "/",
+        "description": "Path to file/directory (directories must end with a slash '/')",
         "type": "string"
       },
       "ref": {
@@ -29,8 +30,7 @@
     },
     "required": [
       "owner",
-      "repo",
-      "path"
+      "repo"
     ],
     "type": "object"
   },
