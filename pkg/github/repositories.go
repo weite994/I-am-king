@@ -1344,17 +1344,19 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 
 	// 2. If neither provided, use the default branch as ref
 	if ref == "" {
-		repoInfo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+		repoInfo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
 		if err != nil {
+			_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get repository info", resp, err)
 			return nil, fmt.Errorf("failed to get repository info: %w", err)
 		}
 		ref = fmt.Sprintf("refs/heads/%s", repoInfo.GetDefaultBranch())
 	}
 
 	// 3. Get the SHA from the ref
-	reference, _, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
+	reference, resp, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get reference for default branch: %w", err)
+		_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference", resp, err)
+		return nil, fmt.Errorf("failed to get reference: %w", err)
 	}
 	sha = reference.GetObject().GetSHA()
 
