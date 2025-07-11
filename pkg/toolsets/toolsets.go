@@ -107,7 +107,7 @@ func (t *Toolset) RegisterTools(s *server.MCPServer, prefix string) {
 	if !t.Enabled {
 		return
 	}
-	for _, tool := range t.readTools {
+	registerToolWithPrefix := func(tool server.ServerTool) {
 		toolToRegister := tool.Tool
 		if prefix != "" {
 			// Create a new tool with the prefixed name
@@ -115,14 +115,13 @@ func (t *Toolset) RegisterTools(s *server.MCPServer, prefix string) {
 		}
 		s.AddTool(toolToRegister, tool.Handler)
 	}
+
+	for _, tool := range t.readTools {
+		registerToolWithPrefix(tool)
+	}
 	if !t.readOnly {
 		for _, tool := range t.writeTools {
-			toolToRegister := tool.Tool
-			if prefix != "" {
-				// Create a new tool with the prefixed name
-				toolToRegister = createToolWithPrefixedName(tool.Tool, prefix)
-			}
-			s.AddTool(toolToRegister, tool.Handler)
+			registerToolWithPrefix(tool)
 		}
 	}
 }
