@@ -510,10 +510,12 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 				// First, get file info from Contents API to retrieve SHA
 				var fileSHA string
 				opts := &github.RepositoryContentGetOptions{Ref: ref}
-				fileContent, _, respContents, errContents := client.Repositories.GetContents(ctx, owner, repo, path, opts)
-				if errContents == nil && respContents.StatusCode == http.StatusOK && fileContent != nil && fileContent.SHA != nil {
-					fileSHA = *fileContent.SHA
+				fileContent, _, respContents, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+				if respContents != nil {
 					defer func() { _ = respContents.Body.Close() }()
+				}
+				if err == nil && respContents.StatusCode == http.StatusOK && fileContent != nil && fileContent.SHA != nil {
+					fileSHA = *fileContent.SHA
 				}
 
 				rawClient, err := getRawClient(ctx)
