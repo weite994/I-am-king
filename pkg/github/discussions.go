@@ -72,6 +72,10 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								Number    githubv4.Int
 								Title     githubv4.String
 								CreatedAt githubv4.DateTime
+								UpdatedAt githubv4.DateTime
+								Author struct {
+									Login githubv4.String
+								}
 								Category  struct {
 									Name githubv4.String
 								} `graphql:"category"`
@@ -96,6 +100,10 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 						Title:     github.Ptr(string(n.Title)),
 						HTMLURL:   github.Ptr(string(n.URL)),
 						CreatedAt: &github.Timestamp{Time: n.CreatedAt.Time},
+						UpdatedAt: &github.Timestamp{Time: n.UpdatedAt.Time},
+						User: &github.User{
+							Login: github.Ptr(string(n.Author.Login)),
+						},
 						DiscussionCategory: &github.DiscussionCategory{
 							Name: github.Ptr(string(n.Category.Name)),
 						},
@@ -111,6 +119,10 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								Number    githubv4.Int
 								Title     githubv4.String
 								CreatedAt githubv4.DateTime
+								UpdatedAt githubv4.DateTime
+								Author struct {
+									Login githubv4.String
+								}
 								Category  struct {
 									Name githubv4.String
 								} `graphql:"category"`
@@ -134,6 +146,10 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 						Title:     github.Ptr(string(n.Title)),
 						HTMLURL:   github.Ptr(string(n.URL)),
 						CreatedAt: &github.Timestamp{Time: n.CreatedAt.Time},
+						UpdatedAt: &github.Timestamp{Time: n.UpdatedAt.Time},
+						User: &github.User{
+							Login: github.Ptr(string(n.Author.Login)),
+						},
 						DiscussionCategory: &github.DiscussionCategory{
 							Name: github.Ptr(string(n.Category.Name)),
 						},
