@@ -550,7 +550,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 <summary>Context</summary>
 
 - **get_me** - Get my user profile
-  - `reason`: Optional: the reason for requesting the user information (string, optional)
+  - No parameters required
 
 </details>
 
@@ -870,7 +870,7 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `owner`: Repository owner (username or organization) (string, required)
   - `path`: Path where to create/update the file (string, required)
   - `repo`: Repository name (string, required)
-  - `sha`: SHA of file being replaced (for updates) (string, optional)
+  - `sha`: Required if updating an existing file. The blob SHA of the file being replaced. (string, optional)
 
 - **create_repository** - Create repository
   - `autoInit`: Initialize with README (boolean, optional)
@@ -899,10 +899,10 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 - **get_file_contents** - Get file or directory contents
   - `owner`: Repository owner (username or organization) (string, required)
-  - `path`: Path to file/directory (directories must end with a slash '/') (string, required)
+  - `path`: Path to file/directory (directories must end with a slash '/') (string, optional)
   - `ref`: Accepts optional git refs such as `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head` (string, optional)
   - `repo`: Repository name (string, required)
-  - `sha`: Accepts optional git sha, if sha is specified it will be used instead of ref (string, optional)
+  - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
@@ -916,12 +916,12 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `repo`: Repository name (string, required)
 
 - **list_commits** - List commits
-  - `author`: Author username or email address (string, optional)
+  - `author`: Author username or email address to filter commits by (string, optional)
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
-  - `sha`: The commit SHA, branch name, or tag name to list commits from. If not specified, defaults to the repository's default branch. (string, optional)
+  - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
@@ -981,6 +981,21 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
 
 </details>
 <!-- END AUTOMATED TOOLS -->
+
+### Additional Tools in Remote Github MCP Server
+
+<details>
+
+<summary>Copilot coding agent</summary>
+
+-   **create_pull_request_with_copilot** - Perform task with GitHub Copilot coding agent
+    -   `owner`: Repository owner. You can guess the owner, but confirm it with the user before proceeding. (string, required)
+    -   `repo`: Repository name. You can guess the repository name, but confirm it with the user before proceeding. (string, required)
+    -   `problem_statement`: Detailed description of the task to be performed (e.g., 'Implement a feature that does X', 'Fix bug Y', etc.) (string, required)
+    -   `title`: Title for the pull request that will be created (string, required)
+    -   `base_ref`: Git reference (e.g., branch) that the agent will start its work from. If not specified, defaults to the repository's default branch (string, optional)
+
+</details>
 
 ## Library Usage
 
