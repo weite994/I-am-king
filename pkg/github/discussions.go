@@ -31,6 +31,14 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			mcp.WithString("category",
 				mcp.Description("Optional filter by discussion category ID. If provided, only discussions with this category are listed."),
 			),
+			mcp.WithString("orderBy",
+				mcp.Description("Order discussions by field"),
+				mcp.Enum("CREATED_AT", "UPDATED_AT"),
+			),
+			mcp.WithString("direction", 
+    			mcp.Description("Order direction"),
+    			mcp.Enum("ASC", "DESC"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Required params
@@ -61,6 +69,27 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				categoryID = &id
 			}
 
+			orderBy, err := OptionalParam[string](request, "orderBy")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if orderBy == "" {
+				orderBy = "UPDATED_AT"  // or "CREATED_AT"
+			}
+			direction, err := OptionalParam[string](request, "direction") 
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if direction == "" {
+				direction = "DESC"
+			}
+
+			/* orderByInput := map[string]interface{}{
+				"field":     orderBy,
+				"direction": direction,
+			} */
+
+
 			// Now execute the discussions query
 			var discussions []*github.Discussion
 			if categoryID != nil {
@@ -81,14 +110,20 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								} `graphql:"category"`
 								URL githubv4.String `graphql:"url"`
 							}
-						} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
+                        } `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: {field: $orderByField, direction: $direction})"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
+
+
 				vars := map[string]interface{}{
 					"owner":      githubv4.String(owner),
 					"repo":       githubv4.String(repo),
 					"categoryId": *categoryID,
+					"orderByField": githubv4.DiscussionOrderField(orderBy),
+					"direction": githubv4.OrderDirection(direction),
 				}
+				
+
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
@@ -128,13 +163,18 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								} `graphql:"category"`
 								URL githubv4.String `graphql:"url"`
 							}
-						} `graphql:"discussions(first: 100)"`
+                        } `graphql:"discussions(first: 100, orderBy: {field: $orderByField, direction: $direction})"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
+
+
 				vars := map[string]interface{}{
-					"owner": githubv4.String(owner),
-					"repo":  githubv4.String(repo),
+					"owner":      githubv4.String(owner),
+					"repo":       githubv4.String(repo),
+					"orderByField": githubv4.DiscussionOrderField(orderBy),
+					"direction": githubv4.OrderDirection(direction),
 				}
+
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
