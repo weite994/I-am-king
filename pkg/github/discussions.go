@@ -74,7 +74,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			if orderBy == "" {
-				orderBy = "UPDATED_AT"  // or "CREATED_AT"
+				orderBy = "CREATED_AT" 
 			}
 			direction, err := OptionalParam[string](request, "direction") 
 			if err != nil {
