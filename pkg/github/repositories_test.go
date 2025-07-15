@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mockGQLClientFileSHA(t *testing.T, owner, repo, expression, expectedSHA string) *githubv4.Client {
+func mockGQLClientFileSHA(owner, repo, expression, expectedSHA string) *githubv4.Client {
 	// Create the query structure that matches getFileSHA function
 	query := struct {
 		Repository struct {
@@ -136,7 +136,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA(t, "owner", "repo", "refs/heads/main:README.md", "abc123"),
+			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:README.md", "abc123"),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -182,7 +182,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA(t, "owner", "repo", "refs/heads/main:test.png", "def456"),
+			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:test.png", "def456"),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -262,7 +262,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA(t, "owner", "repo", "refs/heads/main:nonexistent.md", ""),
+			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:nonexistent.md", ""),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
