@@ -124,15 +124,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				// Include pagination info in response
-				response := map[string]interface{}{
-					"discussions": discussions,
-					"pageInfo": map[string]interface{}{
-						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
-						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
-					},
-				}
-				out, err := json.Marshal(response)
+				out, err := json.Marshal(discussions)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
@@ -184,15 +176,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				// Include pagination info in response
-				response := map[string]interface{}{
-					"discussions": discussions,
-					"pageInfo": map[string]interface{}{
-						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
-						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
-					},
-				}
-				out, err := json.Marshal(response)
+				out, err := json.Marshal(discussions)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
@@ -346,15 +330,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				comments = append(comments, &github.IssueComment{Body: github.Ptr(string(c.Body))})
 			}
 
-			result := map[string]interface{}{
-				"comments": comments,
-				"pageInfo": map[string]interface{}{
-					"hasNextPage": bool(q.Repository.Discussion.Comments.PageInfo.HasNextPage),
-					"endCursor":   string(q.Repository.Discussion.Comments.PageInfo.EndCursor),
-				},
-			}
-
-			out, err := json.Marshal(result)
+			out, err := json.Marshal(comments)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal comments: %w", err)
 			}
@@ -438,15 +414,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				})
 			}
 
-			result := map[string]interface{}{
-				"categories": categories,
-				"pageInfo": map[string]interface{}{
-					"hasNextPage": bool(q.Repository.DiscussionCategories.PageInfo.HasNextPage),
-					"endCursor":   string(q.Repository.DiscussionCategories.PageInfo.EndCursor),
-				},
-			}
-
-			out, err := json.Marshal(result)
+			out, err := json.Marshal(categories)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal discussion categories: %w", err)
 			}

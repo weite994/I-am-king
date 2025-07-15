@@ -163,21 +163,11 @@ func Test_ListDiscussions(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			// Debug: print the actual response
-			t.Logf("Actual response text: %q", text)
-
 			// Parse the structured response with pagination info
-			var response struct {
-				Discussions []*github.Discussion `json:"discussions"`
-				PageInfo    struct {
-					HasNextPage bool   `json:"hasNextPage"`
-					EndCursor   string `json:"endCursor"`
-				} `json:"pageInfo"`
-			}
-			err = json.Unmarshal([]byte(text), &response)
+			var returnedDiscussions []*github.Discussion
+			err = json.Unmarshal([]byte(text), &returnedDiscussions)
 			require.NoError(t, err)
 
-			returnedDiscussions := response.Discussions
 			assert.Len(t, returnedDiscussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(returnedDiscussions))
 
 			// Verify that all returned discussions have a category if filtered
@@ -338,18 +328,14 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 	textContent := getTextResult(t, result)
 
-	var response struct {
-		Comments []*github.IssueComment `json:"comments"`
-		PageInfo map[string]interface{} `json:"pageInfo"`
-	}
-	err = json.Unmarshal([]byte(textContent.Text), &response)
+	var comments []*github.IssueComment
+	err = json.Unmarshal([]byte(textContent.Text), &comments)
 	require.NoError(t, err)
-	assert.Len(t, response.Comments, 2)
+	assert.Len(t, comments, 2)
 	expectedBodies := []string{"This is the first comment", "This is the second comment"}
-	for i, comment := range response.Comments {
+	for i, comment := range comments {
 		assert.Equal(t, expectedBodies[i], *comment.Body)
 	}
-	assert.Equal(t, false, response.PageInfo["hasNextPage"])
 }
 
 func Test_ListDiscussionCategories(t *testing.T) {
@@ -394,15 +380,11 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	require.NoError(t, err)
 
 	text := getTextResult(t, result).Text
-	var response struct {
-		Categories []map[string]string    `json:"categories"`
-		PageInfo   map[string]interface{} `json:"pageInfo"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(text), &response))
-	assert.Len(t, response.Categories, 2)
-	assert.Equal(t, "123", response.Categories[0]["id"])
-	assert.Equal(t, "CategoryOne", response.Categories[0]["name"])
-	assert.Equal(t, "456", response.Categories[1]["id"])
-	assert.Equal(t, "CategoryTwo", response.Categories[1]["name"])
-	assert.Equal(t, false, response.PageInfo["hasNextPage"])
+	var categories []map[string]string
+	require.NoError(t, json.Unmarshal([]byte(text), &categories))
+	assert.Len(t, categories, 2)
+	assert.Equal(t, "123", categories[0]["id"])
+	assert.Equal(t, "CategoryOne", categories[0]["name"])
+	assert.Equal(t, "456", categories[1]["id"])
+	assert.Equal(t, "CategoryTwo", categories[1]["name"])
 }
