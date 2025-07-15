@@ -286,6 +286,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
 			mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
 			mcp.WithNumber("discussionNumber", mcp.Required(), mcp.Description("Discussion Number")),
+			WithGraphQLPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
@@ -296,6 +297,17 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			}
 			if err := mapstructure.Decode(request.Params.Arguments, &params); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			paginationParams, err := OptionalGraphQLPaginationParams(request)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			// Use default of 100 if neither first nor last is specified
+			if paginationParams.First == nil && paginationParams.Last == nil {
+				defaultFirst := int32(100)
+				paginationParams.First = &defaultFirst
 			}
 
 			client, err := getGQLClient(ctx)
@@ -310,7 +322,11 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 							Nodes []struct {
 								Body githubv4.String
 							}
-						} `graphql:"comments(first:100)"`
+							PageInfo struct {
+								HasNextPage githubv4.Boolean
+								EndCursor   githubv4.String
+							}
+						} `graphql:"comments(first: $first, after: $after)"`
 					} `graphql:"discussion(number: $discussionNumber)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
@@ -318,16 +334,27 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				"owner":            githubv4.String(params.Owner),
 				"repo":             githubv4.String(params.Repo),
 				"discussionNumber": githubv4.Int(params.DiscussionNumber),
+				"first":            (*githubv4.Int)(paginationParams.First),
+				"after":            (*githubv4.String)(paginationParams.After),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
 			var comments []*github.IssueComment
 			for _, c := range q.Repository.Discussion.Comments.Nodes {
 				comments = append(comments, &github.IssueComment{Body: github.Ptr(string(c.Body))})
 			}
 
-			out, err := json.Marshal(comments)
+			result := map[string]interface{}{
+				"comments": comments,
+				"pageInfo": map[string]interface{}{
+					"hasNextPage": bool(q.Repository.Discussion.Comments.PageInfo.HasNextPage),
+					"endCursor":   string(q.Repository.Discussion.Comments.PageInfo.EndCursor),
+				},
+			}
+
+			out, err := json.Marshal(result)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal comments: %w", err)
 			}
@@ -351,55 +378,34 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				mcp.Required(),
 				mcp.Description("Repository name"),
 			),
-			mcp.WithNumber("first",
-				mcp.Description("Number of categories to return per page (min 1, max 100)"),
-				mcp.Min(1),
-				mcp.Max(100),
-			),
-			mcp.WithNumber("last",
-				mcp.Description("Number of categories to return from the end (min 1, max 100)"),
-				mcp.Min(1),
-				mcp.Max(100),
-			),
-			mcp.WithString("after",
-				mcp.Description("Cursor for pagination, use the 'after' field from the previous response"),
-			),
-			mcp.WithString("before",
-				mcp.Description("Cursor for pagination, use the 'before' field from the previous response"),
-			),
+			WithGraphQLPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
 			var params struct {
-				Owner  string
-				Repo   string
-				First  int32
-				Last   int32
-				After  string
-				Before string
+				Owner string
+				Repo  string
 			}
 			if err := mapstructure.Decode(request.Params.Arguments, &params); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Validate pagination parameters
-			if params.First != 0 && params.Last != 0 {
-				return mcp.NewToolResultError("only one of 'first' or 'last' may be specified"), nil
+			pagination, err := OptionalGraphQLPaginationParams(request)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
 			}
-			if params.After != "" && params.Before != "" {
-				return mcp.NewToolResultError("only one of 'after' or 'before' may be specified"), nil
-			}
-			if params.After != "" && params.Last != 0 {
-				return mcp.NewToolResultError("'after' cannot be used with 'last'. Did you mean to use 'before' instead?"), nil
-			}
-			if params.Before != "" && params.First != 0 {
-				return mcp.NewToolResultError("'before' cannot be used with 'first'. Did you mean to use 'after' instead?"), nil
+
+			// Use default of 100 if neither first nor last is specified
+			if pagination.First == nil && pagination.Last == nil {
+				defaultFirst := int32(100)
+				pagination.First = &defaultFirst
 			}
 
 			client, err := getGQLClient(ctx)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
 			}
+
 			var q struct {
 				Repository struct {
 					DiscussionCategories struct {
@@ -407,16 +413,23 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 							ID   githubv4.ID
 							Name githubv4.String
 						}
-					} `graphql:"discussionCategories(first: 100)"`
+						PageInfo struct {
+							HasNextPage githubv4.Boolean
+							EndCursor   githubv4.String
+						}
+					} `graphql:"discussionCategories(first: $first, after: $after)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
 			vars := map[string]interface{}{
 				"owner": githubv4.String(params.Owner),
 				"repo":  githubv4.String(params.Repo),
+				"first": (*githubv4.Int)(pagination.First),
+				"after": (*githubv4.String)(pagination.After),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
 			var categories []map[string]string
 			for _, c := range q.Repository.DiscussionCategories.Nodes {
 				categories = append(categories, map[string]string{
@@ -424,7 +437,16 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 					"name": string(c.Name),
 				})
 			}
-			out, err := json.Marshal(categories)
+
+			result := map[string]interface{}{
+				"categories": categories,
+				"pageInfo": map[string]interface{}{
+					"hasNextPage": bool(q.Repository.DiscussionCategories.PageInfo.HasNextPage),
+					"endCursor":   string(q.Repository.DiscussionCategories.PageInfo.EndCursor),
+				},
+			}
+
+			out, err := json.Marshal(result)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal discussion categories: %w", err)
 			}

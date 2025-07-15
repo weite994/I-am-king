@@ -294,22 +294,18 @@ func Test_GetDiscussionComments(t *testing.T) {
 	assert.Contains(t, toolDef.InputSchema.Properties, "discussionNumber")
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
-	var q struct {
-		Repository struct {
-			Discussion struct {
-				Comments struct {
-					Nodes []struct {
-						Body githubv4.String
-					}
-				} `graphql:"comments(first:100)"`
-			} `graphql:"discussion(number: $discussionNumber)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
+	// Use exact string query that matches implementation output
+	qGetComments := "query($after:String$discussionNumber:Int!$first:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first, after: $after){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
+
+	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
 		"owner":            githubv4.String("owner"),
 		"repo":             githubv4.String("repo"),
 		"discussionNumber": githubv4.Int(1),
+		"first":            float64(100), // Default value when no pagination specified
+		"after":            nil,
 	}
+
 	mockResponse := githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
 			"discussion": map[string]any{
@@ -318,11 +314,15 @@ func Test_GetDiscussionComments(t *testing.T) {
 						{"body": "This is the first comment"},
 						{"body": "This is the second comment"},
 					},
+					"pageInfo": map[string]any{
+						"hasNextPage": false,
+						"endCursor":   "",
+					},
 				},
 			},
 		},
 	})
-	matcher := githubv4mock.NewQueryMatcher(q, vars, mockResponse)
+	matcher := githubv4mock.NewQueryMatcher(qGetComments, vars, mockResponse)
 	httpClient := githubv4mock.NewMockedHTTPClient(matcher)
 	gqlClient := githubv4.NewClient(httpClient)
 	_, handler := GetDiscussionComments(stubGetGQLClientFn(gqlClient), translations.NullTranslationHelper)
@@ -338,31 +338,32 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 	textContent := getTextResult(t, result)
 
-	var returnedComments []*github.IssueComment
-	err = json.Unmarshal([]byte(textContent.Text), &returnedComments)
+	var response struct {
+		Comments []*github.IssueComment `json:"comments"`
+		PageInfo map[string]interface{} `json:"pageInfo"`
+	}
+	err = json.Unmarshal([]byte(textContent.Text), &response)
 	require.NoError(t, err)
-	assert.Len(t, returnedComments, 2)
+	assert.Len(t, response.Comments, 2)
 	expectedBodies := []string{"This is the first comment", "This is the second comment"}
-	for i, comment := range returnedComments {
+	for i, comment := range response.Comments {
 		assert.Equal(t, expectedBodies[i], *comment.Body)
 	}
+	assert.Equal(t, false, response.PageInfo["hasNextPage"])
 }
 
 func Test_ListDiscussionCategories(t *testing.T) {
-	var q struct {
-		Repository struct {
-			DiscussionCategories struct {
-				Nodes []struct {
-					ID   githubv4.ID
-					Name githubv4.String
-				}
-			} `graphql:"discussionCategories(first: 100)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
+	// Use exact string query that matches implementation output
+	qListCategories := "query($after:String$first:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
+
+	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
 		"owner": githubv4.String("owner"),
 		"repo":  githubv4.String("repo"),
+		"first": float64(100), // Default value when no pagination specified
+		"after": nil,
 	}
+
 	mockResp := githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
 			"discussionCategories": map[string]any{
@@ -370,10 +371,14 @@ func Test_ListDiscussionCategories(t *testing.T) {
 					{"id": "123", "name": "CategoryOne"},
 					{"id": "456", "name": "CategoryTwo"},
 				},
+				"pageInfo": map[string]any{
+					"hasNextPage": false,
+					"endCursor":   "",
+				},
 			},
 		},
 	})
-	matcher := githubv4mock.NewQueryMatcher(q, vars, mockResp)
+	matcher := githubv4mock.NewQueryMatcher(qListCategories, vars, mockResp)
 	httpClient := githubv4mock.NewMockedHTTPClient(matcher)
 	gqlClient := githubv4.NewClient(httpClient)
 
@@ -389,11 +394,15 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	require.NoError(t, err)
 
 	text := getTextResult(t, result).Text
-	var categories []map[string]string
-	require.NoError(t, json.Unmarshal([]byte(text), &categories))
-	assert.Len(t, categories, 2)
-	assert.Equal(t, "123", categories[0]["id"])
-	assert.Equal(t, "CategoryOne", categories[0]["name"])
-	assert.Equal(t, "456", categories[1]["id"])
-	assert.Equal(t, "CategoryTwo", categories[1]["name"])
+	var response struct {
+		Categories []map[string]string    `json:"categories"`
+		PageInfo   map[string]interface{} `json:"pageInfo"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(text), &response))
+	assert.Len(t, response.Categories, 2)
+	assert.Equal(t, "123", response.Categories[0]["id"])
+	assert.Equal(t, "CategoryOne", response.Categories[0]["name"])
+	assert.Equal(t, "456", response.Categories[1]["id"])
+	assert.Equal(t, "CategoryTwo", response.Categories[1]["name"])
+	assert.Equal(t, false, response.PageInfo["hasNextPage"])
 }
