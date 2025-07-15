@@ -67,8 +67,8 @@ func Test_ListDiscussions(t *testing.T) {
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
-		"owner":  "owner",
-		"repo":   "repo",
+		"owner":  githubv4.String("owner"),
+		"repo":   githubv4.String("repo"),
 		"first":  float64(30),
 		"last":   nil,
 		"after":  nil,
@@ -76,8 +76,8 @@ func Test_ListDiscussions(t *testing.T) {
 	}
 
 	varsRepoNotFound := map[string]interface{}{
-		"owner":  "owner",
-		"repo":   "nonexistent-repo",
+		"owner":  githubv4.String("owner"),
+		"repo":   githubv4.String("nonexistent-repo"),
 		"first":  float64(30),
 		"last":   nil,
 		"after":  nil,
@@ -85,9 +85,9 @@ func Test_ListDiscussions(t *testing.T) {
 	}
 
 	varsDiscussionsFiltered := map[string]interface{}{
-		"owner":      "owner",
-		"repo":       "repo",
-		"categoryId": "DIC_kwDOABC123",
+		"owner":      githubv4.String("owner"),
+		"repo":       githubv4.String("repo"),
+		"categoryId": githubv4.ID("DIC_kwDOABC123"),
 		"first":      float64(30),
 		"last":       nil,
 		"after":      nil,
