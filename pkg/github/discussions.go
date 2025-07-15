@@ -84,12 +84,6 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				direction = "DESC"
 			}
 
-			/* orderByInput := map[string]interface{}{
-				"field":     orderBy,
-				"direction": direction,
-			} */
-
-
 			// Now execute the discussions query
 			var discussions []*github.Discussion
 			if categoryID != nil {
