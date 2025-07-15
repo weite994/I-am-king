@@ -174,9 +174,7 @@ func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error)
 	}
 }
 
-// WithPagination returns a ToolOption that adds "page" and "perPage" parameters to the tool.
-// The "page" parameter is optional, min 1.
-// The "perPage" parameter is optional, min 1, max 100. If unset, defaults to 30.
+// WithPagination adds REST API pagination parameters to a tool.
 // https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api
 func WithPagination() mcp.ToolOption {
 	return func(tool *mcp.Tool) {
@@ -189,6 +187,32 @@ func WithPagination() mcp.ToolOption {
 			mcp.Description("Results per page for pagination (min 1, max 100)"),
 			mcp.Min(1),
 			mcp.Max(100),
+		)(tool)
+	}
+}
+
+// WithGraphQLPagination adds GraphQL cursor-based pagination parameters to a tool.
+// https://docs.github.com/en/graphql/reference/objects#connection
+func WithGraphQLPagination() mcp.ToolOption {
+	return func(tool *mcp.Tool) {
+		mcp.WithNumber("first",
+			mcp.Description("Number of items to return per page (min 1, max 100)"),
+			mcp.Min(1),
+			mcp.Max(100),
+		)(tool)
+
+		mcp.WithNumber("last",
+			mcp.Description("Number of items to return from the end (min 1, max 100)"),
+			mcp.Min(1),
+			mcp.Max(100),
+		)(tool)
+
+		mcp.WithString("after",
+			mcp.Description("Cursor for pagination, use the 'after' field from the previous response"),
+		)(tool)
+
+		mcp.WithString("before",
+			mcp.Description("Cursor for pagination, use the 'before' field from the previous response"),
 		)(tool)
 	}
 }
@@ -216,6 +240,61 @@ func OptionalPaginationParams(r mcp.CallToolRequest) (PaginationParams, error) {
 		page:    page,
 		perPage: perPage,
 	}, nil
+}
+
+type GraphQLPaginationParams struct {
+	First  *int32
+	Last   *int32
+	After  *string
+	Before *string
+}
+
+// OptionalGraphQLPaginationParams returns the GraphQL cursor-based pagination parameters from the request.
+// It validates that the parameters are used correctly according to GraphQL connection spec.
+func OptionalGraphQLPaginationParams(r mcp.CallToolRequest) (GraphQLPaginationParams, error) {
+	var params GraphQLPaginationParams
+
+	if val, err := OptionalParam[float64](r, "first"); err != nil {
+		return GraphQLPaginationParams{}, err
+	} else if val != 0 {
+		first := int32(val)
+		params.First = &first
+	}
+
+	if val, err := OptionalParam[float64](r, "last"); err != nil {
+		return GraphQLPaginationParams{}, err
+	} else if val != 0 {
+		last := int32(val)
+		params.Last = &last
+	}
+
+	if val, err := OptionalParam[string](r, "after"); err != nil {
+		return GraphQLPaginationParams{}, err
+	} else if val != "" {
+		params.After = &val
+	}
+
+	if val, err := OptionalParam[string](r, "before"); err != nil {
+		return GraphQLPaginationParams{}, err
+	} else if val != "" {
+		params.Before = &val
+	}
+
+	// Validate pagination parameters according to GraphQL connection spec
+	if params.First != nil && params.Last != nil {
+		return GraphQLPaginationParams{}, fmt.Errorf("only one of 'first' or 'last' may be specified")
+	}
+	if params.After != nil && params.Before != nil {
+		return GraphQLPaginationParams{}, fmt.Errorf("only one of 'after' or 'before' may be specified")
+	}
+	if params.After != nil && params.Last != nil {
+		return GraphQLPaginationParams{}, fmt.Errorf("'after' cannot be used with 'last'. Did you mean to use 'before' instead?")
+	}
+	if params.Before != nil && params.First != nil {
+		return GraphQLPaginationParams{}, fmt.Errorf("'before' cannot be used with 'first'. Did you mean to use 'after' instead?")
+	}
+
+	return params, nil
 }
 
 func MarshalledTextResult(v any) *mcp.CallToolResult {

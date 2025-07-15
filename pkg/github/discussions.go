@@ -31,6 +31,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			mcp.WithString("category",
 				mcp.Description("Optional filter by discussion category ID. If provided, only discussions with this category are listed."),
 			),
+			WithGraphQLPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Required params
@@ -49,6 +50,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			// Get pagination parameters
+			pagination, err := OptionalGraphQLPaginationParams(request)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
 			client, err := getGQLClient(ctx)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
@@ -61,7 +68,13 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				categoryID = &id
 			}
 
-			// Now execute the discussions query
+			// Build GraphQL query arguments
+			// Use default of 30 if neither first nor last is specified
+			if pagination.First == nil && pagination.Last == nil {
+				defaultFirst := int32(30)
+				pagination.First = &defaultFirst
+			}
+
 			var discussions []*github.Discussion
 			if categoryID != nil {
 				// Query with category filter (server-side filtering)
@@ -77,13 +90,21 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								} `graphql:"category"`
 								URL githubv4.String `graphql:"url"`
 							}
-						} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
+							PageInfo struct {
+								HasNextPage bool
+								EndCursor   string
+							}
+						} `graphql:"discussions(first: $first, last: $last, after: $after, before: $before, categoryId: $categoryId)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
 					"owner":      githubv4.String(owner),
 					"repo":       githubv4.String(repo),
 					"categoryId": *categoryID,
+					"first":      (*githubv4.Int)(pagination.First),
+					"last":       (*githubv4.Int)(pagination.Last),
+					"after":      (*githubv4.String)(pagination.After),
+					"before":     (*githubv4.String)(pagination.Before),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -102,6 +123,20 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					}
 					discussions = append(discussions, di)
 				}
+
+				// Include pagination info in response
+				response := map[string]interface{}{
+					"discussions": discussions,
+					"pageInfo": map[string]interface{}{
+						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
+						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+					},
+				}
+				out, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
+				}
+				return mcp.NewToolResultText(string(out)), nil
 			} else {
 				// Query without category filter
 				var query struct {
@@ -116,12 +151,20 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								} `graphql:"category"`
 								URL githubv4.String `graphql:"url"`
 							}
-						} `graphql:"discussions(first: 100)"`
+							PageInfo struct {
+								HasNextPage bool
+								EndCursor   string
+							}
+						} `graphql:"discussions(first: $first, last: $last, after: $after, before: $before)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
-					"owner": githubv4.String(owner),
-					"repo":  githubv4.String(repo),
+					"owner":  githubv4.String(owner),
+					"repo":   githubv4.String(repo),
+					"first":  (*githubv4.Int)(pagination.First),
+					"last":   (*githubv4.Int)(pagination.Last),
+					"after":  (*githubv4.String)(pagination.After),
+					"before": (*githubv4.String)(pagination.Before),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -140,14 +183,21 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					}
 					discussions = append(discussions, di)
 				}
-			}
 
-			// Marshal and return
-			out, err := json.Marshal(discussions)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal discussions: %w", err)
+				// Include pagination info in response
+				response := map[string]interface{}{
+					"discussions": discussions,
+					"pageInfo": map[string]interface{}{
+						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
+						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+					},
+				}
+				out, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
+				}
+				return mcp.NewToolResultText(string(out)), nil
 			}
-			return mcp.NewToolResultText(string(out)), nil
 		}
 }
 
