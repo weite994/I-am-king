@@ -15,15 +15,24 @@ import (
 	"github.com/google/go-github/v72/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
+	"github.com/shurcooL/githubv4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockGetFileSHA is a test helper that mocks the getFileSHA function so that we don't need to mock the GraphQL client in Test_GetFileContents.
+func mockGetFileSHA(expectedSHA string) func(context.Context, *githubv4.Client, string, string, string, *raw.ContentOpts) (string, error) {
+	return func(_ context.Context, _ *githubv4.Client, _, _, _ string, _ *raw.ContentOpts) (string, error) {
+		return expectedSHA, nil
+	}
+}
 
 func Test_GetFileContents(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	mockRawClient := raw.NewClient(mockClient, &url.URL{Scheme: "https", Host: "raw.githubusercontent.com", Path: "/"})
-	tool, _ := GetFileContents(stubGetClientFn(mockClient), stubGetRawClientFn(mockRawClient), translations.NullTranslationHelper)
+	mockGQLClient := githubv4.NewClient(nil)
+	tool, _ := GetFileContents(stubGetClientFn(mockClient), stubGetRawClientFn(mockRawClient), stubGetGQLClientFn(mockGQLClient), translations.NullTranslationHelper)
 	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "get_file_contents", tool.Name)
@@ -56,10 +65,10 @@ func Test_GetFileContents(t *testing.T) {
 			HTMLURL: github.Ptr("https://github.com/owner/repo/tree/main/src"),
 		},
 	}
-
 	tests := []struct {
 		name           string
 		mockedClient   *http.Client
+		mockFileSHA    string
 		requestArgs    map[string]interface{}
 		expectError    bool
 		expectedResult interface{}
@@ -98,6 +107,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
+			mockFileSHA: "abc123",
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -143,6 +153,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
+			mockFileSHA: "def456",
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -188,6 +199,7 @@ func Test_GetFileContents(t *testing.T) {
 					),
 				),
 			),
+			mockFileSHA: "", // Directory content doesn't need SHA
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -221,6 +233,7 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
+			mockFileSHA: "", // Error case doesn't need SHA
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -234,10 +247,20 @@ func Test_GetFileContents(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Mock the getFileSHA function if mockFileSHA is provided
+			if tc.mockFileSHA != "" {
+				originalGetFileSHA := getFileSHAFunc
+				getFileSHAFunc = mockGetFileSHA(tc.mockFileSHA)
+				defer func() {
+					getFileSHAFunc = originalGetFileSHA
+				}()
+			}
+
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
 			mockRawClient := raw.NewClient(client, &url.URL{Scheme: "https", Host: "raw.example.com", Path: "/"})
-			_, handler := GetFileContents(stubGetClientFn(client), stubGetRawClientFn(mockRawClient), translations.NullTranslationHelper)
+			mockGQLClient := githubv4.NewClient(tc.mockedClient)
+			_, handler := GetFileContents(stubGetClientFn(client), stubGetRawClientFn(mockRawClient), stubGetGQLClientFn(mockGQLClient), translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
