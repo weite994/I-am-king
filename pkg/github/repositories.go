@@ -19,10 +19,6 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-// getFileSHAFunc is a package-level variable that holds the getFileSHA function
-// This allows tests to mock the behavior
-var getFileSHAFunc = getFileSHA
-
 func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_commit",
 			mcp.WithDescription(t("TOOL_GET_COMMITS_DESCRIPTION", "Get details for a commit from a GitHub repository")),
@@ -516,7 +512,7 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, get
 				if err != nil {
 					return mcp.NewToolResultError("failed to get GitHub GraphQL client"), nil
 				}
-				fileSHA, err := getFileSHAFunc(ctx, gqlClient, owner, repo, path, rawOpts)
+				fileSHA, err := getFileSHA(ctx, gqlClient, owner, repo, path, rawOpts)
 				if err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("failed to get file SHA: %s", err)), nil
 				}
