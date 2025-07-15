@@ -106,7 +106,7 @@ func Test_GetFileContents(t *testing.T) {
 			},
 			expectError: false,
 			expectedResult: mcp.TextResourceContents{
-				URI:      "repo://owner/repo/sha/abc123/contents/README.md",
+				URI:      "repo://owner/repo/refs/heads/main/contents/README.md",
 				Text:     "# Test Repository\n\nThis is a test repository.",
 				MIMEType: "text/markdown",
 			},
@@ -151,7 +151,7 @@ func Test_GetFileContents(t *testing.T) {
 			},
 			expectError: false,
 			expectedResult: mcp.BlobResourceContents{
-				URI:      "repo://owner/repo/sha/def456/contents/test.png",
+				URI:      "repo://owner/repo/refs/heads/main/contents/test.png",
 				Blob:     base64.StdEncoding.EncodeToString(mockRawContent),
 				MIMEType: "image/png",
 			},

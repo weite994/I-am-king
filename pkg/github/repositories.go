@@ -540,11 +540,6 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t t
 
 					var resourceURI string
 					switch {
-					case fileSHA != "":
-						resourceURI, err = url.JoinPath("repo://", owner, repo, "sha", fileSHA, "contents", path)
-						if err != nil {
-							return nil, fmt.Errorf("failed to create resource URI: %w", err)
-						}
 					case sha != "":
 						resourceURI, err = url.JoinPath("repo://", owner, repo, "sha", sha, "contents", path)
 						if err != nil {
