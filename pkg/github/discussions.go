@@ -75,6 +75,8 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				pagination.First = &defaultFirst
 			}
 
+			var out []byte
+
 			var discussions []*github.Discussion
 			if categoryID != nil {
 				// Query with category filter (server-side filtering)
@@ -124,11 +126,10 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				out, err := json.Marshal(discussions)
+				out, err = json.Marshal(discussions)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
-				return mcp.NewToolResultText(string(out)), nil
 			} else {
 				// Query without category filter
 				var query struct {
@@ -176,12 +177,13 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				out, err := json.Marshal(discussions)
+				out, err = json.Marshal(discussions)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
-				return mcp.NewToolResultText(string(out)), nil
 			}
+
+			return mcp.NewToolResultText(string(out)), nil
 		}
 }
 
