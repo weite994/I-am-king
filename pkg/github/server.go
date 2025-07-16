@@ -246,9 +246,13 @@ type UnifiedPaginationParams struct {
 // ToGraphQLParams converts REST API pagination parameters to GraphQL-specific parameters.
 // This converts page/perPage to first parameter for GraphQL queries.
 func (u UnifiedPaginationParams) ToGraphQLParams() GraphQLPaginationParams {
+	// Cap perPage to safe range before converting to int32
 	perPage := u.PerPage
-	if perPage > 2147483647 {
+	if perPage > 100 { // GraphQL expects a max of 100
 		perPage = 100
+	}
+	if perPage < 1 {
+		perPage = 1
 	}
 	first := int32(perPage)
 
