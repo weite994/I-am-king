@@ -246,10 +246,12 @@ type UnifiedPaginationParams struct {
 // ToGraphQLParams converts REST API pagination parameters to GraphQL-specific parameters.
 // This converts page/perPage to first parameter for GraphQL queries.
 func (u UnifiedPaginationParams) ToGraphQLParams() GraphQLPaginationParams {
-	// Convert page/perPage to GraphQL parameters
-	// For GraphQL, we use 'first' for perPage and ignore page for the initial request
-	// (subsequent requests would use 'after' cursor from previous response)
-	first := int32(u.PerPage)
+	perPage := u.PerPage
+	if perPage > 2147483647 {
+		perPage = 100
+	}
+	first := int32(perPage)
+
 	return GraphQLPaginationParams{
 		First: &first,
 	}
