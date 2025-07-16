@@ -50,7 +50,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get unified pagination parameters and convert to GraphQL format
+			// Get pagination parameters and convert to GraphQL format
 			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -67,13 +67,6 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			if category != "" {
 				id := githubv4.ID(category)
 				categoryID = &id
-			}
-
-			// Build GraphQL query arguments
-			// Use default of 30 if neither first nor last is specified
-			if pagination.First == nil && pagination.Last == nil {
-				defaultFirst := int32(30)
-				pagination.First = &defaultFirst
 			}
 
 			var out []byte
@@ -97,17 +90,14 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								HasNextPage bool
 								EndCursor   string
 							}
-						} `graphql:"discussions(first: $first, last: $last, after: $after, before: $before, categoryId: $categoryId)"`
+						} `graphql:"discussions(first: $first, categoryId: $categoryId)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
 					"owner":      githubv4.String(owner),
 					"repo":       githubv4.String(repo),
 					"categoryId": *categoryID,
-					"first":      (*githubv4.Int)(pagination.First),
-					"last":       (*githubv4.Int)(pagination.Last),
-					"after":      (*githubv4.String)(pagination.After),
-					"before":     (*githubv4.String)(pagination.Before),
+					"first":      githubv4.Int(*pagination.First),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -149,16 +139,13 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								HasNextPage bool
 								EndCursor   string
 							}
-						} `graphql:"discussions(first: $first, last: $last, after: $after, before: $before)"`
+						} `graphql:"discussions(first: $first)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
-					"owner":  githubv4.String(owner),
-					"repo":   githubv4.String(repo),
-					"first":  (*githubv4.Int)(pagination.First),
-					"last":   (*githubv4.Int)(pagination.Last),
-					"after":  (*githubv4.String)(pagination.After),
-					"before": (*githubv4.String)(pagination.Before),
+					"owner": githubv4.String(owner),
+					"repo":  githubv4.String(repo),
+					"first": githubv4.Int(*pagination.First),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -291,10 +278,16 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			// Check if pagination parameters were explicitly provided
+			_, pageProvided := request.Params.Arguments.(map[string]interface{})["page"]
+			_, perPageProvided := request.Params.Arguments.(map[string]interface{})["perPage"]
+			paginationExplicit := pageProvided || perPageProvided
+
 			paginationParams := unifiedPagination.ToGraphQLParams()
 
-			// Use default of 100 if neither first nor last is specified
-			if paginationParams.First == nil && paginationParams.Last == nil {
+			// Use default of 100 if pagination was not explicitly provided
+			if !paginationExplicit {
 				defaultFirst := int32(100)
 				paginationParams.First = &defaultFirst
 			}
@@ -315,7 +308,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 								HasNextPage githubv4.Boolean
 								EndCursor   githubv4.String
 							}
-						} `graphql:"comments(first: $first, after: $after)"`
+						} `graphql:"comments(first: $first)"`
 					} `graphql:"discussion(number: $discussionNumber)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
@@ -323,8 +316,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				"owner":            githubv4.String(params.Owner),
 				"repo":             githubv4.String(params.Repo),
 				"discussionNumber": githubv4.Int(params.DiscussionNumber),
-				"first":            (*githubv4.Int)(paginationParams.First),
-				"after":            (*githubv4.String)(paginationParams.After),
+				"first":            githubv4.Int(*paginationParams.First),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -376,10 +368,16 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+
+			// Check if pagination parameters were explicitly provided
+			_, pageProvided := request.Params.Arguments.(map[string]interface{})["page"]
+			_, perPageProvided := request.Params.Arguments.(map[string]interface{})["perPage"]
+			paginationExplicit := pageProvided || perPageProvided
+
 			pagination := unifiedPagination.ToGraphQLParams()
 
-			// Use default of 100 if neither first nor last is specified
-			if pagination.First == nil && pagination.Last == nil {
+			// Use default of 100 if pagination was not explicitly provided
+			if !paginationExplicit {
 				defaultFirst := int32(100)
 				pagination.First = &defaultFirst
 			}
@@ -400,14 +398,13 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 							HasNextPage githubv4.Boolean
 							EndCursor   githubv4.String
 						}
-					} `graphql:"discussionCategories(first: $first, after: $after)"`
+					} `graphql:"discussionCategories(first: $first)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
 			vars := map[string]interface{}{
 				"owner": githubv4.String(params.Owner),
 				"repo":  githubv4.String(params.Repo),
-				"first": (*githubv4.Int)(pagination.First),
-				"after": (*githubv4.String)(pagination.After),
+				"first": githubv4.Int(*pagination.First),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

@@ -61,37 +61,28 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
 	// Use exact string queries that match implementation output (from error messages)
-	qDiscussions := "query($after:String$before:String$first:Int$last:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, last: $last, after: $after, before: $before){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussions := "query($first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
 
-	qDiscussionsFiltered := "query($after:String$before:String$categoryId:ID!$first:Int$last:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, last: $last, after: $after, before: $before, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussionsFiltered := "query($categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
-		"owner":  githubv4.String("owner"),
-		"repo":   githubv4.String("repo"),
-		"first":  float64(30),
-		"last":   nil,
-		"after":  nil,
-		"before": nil,
+		"owner": "owner",
+		"repo":  "repo",
+		"first": float64(30),
 	}
 
 	varsRepoNotFound := map[string]interface{}{
-		"owner":  githubv4.String("owner"),
-		"repo":   githubv4.String("nonexistent-repo"),
-		"first":  float64(30),
-		"last":   nil,
-		"after":  nil,
-		"before": nil,
+		"owner": "owner",
+		"repo":  "nonexistent-repo",
+		"first": float64(30),
 	}
 
 	varsDiscussionsFiltered := map[string]interface{}{
-		"owner":      githubv4.String("owner"),
-		"repo":       githubv4.String("repo"),
-		"categoryId": githubv4.ID("DIC_kwDOABC123"),
+		"owner":      "owner",
+		"repo":       "repo",
+		"categoryId": "DIC_kwDOABC123",
 		"first":      float64(30),
-		"last":       nil,
-		"after":      nil,
-		"before":     nil,
 	}
 
 	tests := []struct {
@@ -191,23 +182,13 @@ func Test_GetDiscussion(t *testing.T) {
 	assert.Contains(t, toolDef.InputSchema.Properties, "discussionNumber")
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
-	var q struct {
-		Repository struct {
-			Discussion struct {
-				Number    githubv4.Int
-				Body      githubv4.String
-				CreatedAt githubv4.DateTime
-				URL       githubv4.String `graphql:"url"`
-				Category  struct {
-					Name githubv4.String
-				} `graphql:"category"`
-			} `graphql:"discussion(number: $discussionNumber)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
+	// Use exact string query that matches implementation output
+	qGetDiscussion := "query($discussionNumber:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){number,body,createdAt,url,category{name}}}}"
+
 	vars := map[string]interface{}{
-		"owner":            githubv4.String("owner"),
-		"repo":             githubv4.String("repo"),
-		"discussionNumber": githubv4.Int(1),
+		"owner":            "owner",
+		"repo":             "repo",
+		"discussionNumber": float64(1),
 	}
 	tests := []struct {
 		name        string
@@ -247,7 +228,7 @@ func Test_GetDiscussion(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			matcher := githubv4mock.NewQueryMatcher(q, vars, tc.response)
+			matcher := githubv4mock.NewQueryMatcher(qGetDiscussion, vars, tc.response)
 			httpClient := githubv4mock.NewMockedHTTPClient(matcher)
 			gqlClient := githubv4.NewClient(httpClient)
 			_, handler := GetDiscussion(stubGetGQLClientFn(gqlClient), translations.NullTranslationHelper)
@@ -285,15 +266,14 @@ func Test_GetDiscussionComments(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
 	// Use exact string query that matches implementation output
-	qGetComments := "query($after:String$discussionNumber:Int!$first:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first, after: $after){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
+	qGetComments := "query($discussionNumber:Int!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
-		"owner":            githubv4.String("owner"),
-		"repo":             githubv4.String("repo"),
-		"discussionNumber": githubv4.Int(1),
-		"first":            float64(100), // Default value when no pagination specified
-		"after":            nil,
+		"owner":            "owner",
+		"repo":             "repo",
+		"discussionNumber": float64(1),
+		"first":            float64(100),
 	}
 
 	mockResponse := githubv4mock.DataResponse(map[string]any{
@@ -328,6 +308,9 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 	textContent := getTextResult(t, result)
 
+	// Debug: print the actual JSON response
+	t.Logf("JSON response: %s", textContent.Text)
+
 	var comments []*github.IssueComment
 	err = json.Unmarshal([]byte(textContent.Text), &comments)
 	require.NoError(t, err)
@@ -340,14 +323,13 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 func Test_ListDiscussionCategories(t *testing.T) {
 	// Use exact string query that matches implementation output
-	qListCategories := "query($after:String$first:Int$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
+	qListCategories := "query($first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
-		"owner": githubv4.String("owner"),
-		"repo":  githubv4.String("repo"),
-		"first": float64(100), // Default value when no pagination specified
-		"after": nil,
+		"owner": "owner",
+		"repo":  "repo",
+		"first": float64(100),
 	}
 
 	mockResp := githubv4mock.DataResponse(map[string]any{
@@ -380,6 +362,10 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	require.NoError(t, err)
 
 	text := getTextResult(t, result).Text
+
+	// Debug: print the actual JSON response
+	t.Logf("JSON response: %s", text)
+
 	var categories []map[string]string
 	require.NoError(t, json.Unmarshal([]byte(text), &categories))
 	assert.Len(t, categories, 2)
