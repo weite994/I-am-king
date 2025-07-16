@@ -16,7 +16,6 @@ import (
 	"github.com/google/go-github/v73/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/shurcooL/githubv4"
 )
 
 func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
@@ -447,7 +446,7 @@ func CreateRepository(getClient GetClientFn, t translations.TranslationHelperFun
 }
 
 // GetFileContents creates a tool to get the contents of a file or directory from a GitHub repository.
-func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_file_contents",
 			mcp.WithDescription(t("TOOL_GET_FILE_CONTENTS_DESCRIPTION", "Get the contents of a file or directory from a GitHub repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
@@ -508,14 +507,24 @@ func GetFileContents(getClient GetClientFn, getRawClient raw.GetRawClientFn, get
 			// If the path is (most likely) not to be a directory, we will
 			// first try to get the raw content from the GitHub raw content API.
 			if path != "" && !strings.HasSuffix(path, "/") {
-				gqlClient, err := getGQLClient(ctx)
-				if err != nil {
-					return mcp.NewToolResultError("failed to get GitHub GraphQL client"), nil
+				// First, get file info from Contents API to retrieve SHA
+				var fileSHA string
+				opts := &github.RepositoryContentGetOptions{Ref: ref}
+				fileContent, _, respContents, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+				if respContents != nil {
+					defer func() { _ = respContents.Body.Close() }()
 				}
-				fileSHA, err := getFileSHA(ctx, gqlClient, owner, repo, path, rawOpts)
 				if err != nil {
-					return mcp.NewToolResultError(fmt.Sprintf("failed to get file SHA: %s", err)), nil
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to get file SHA",
+						respContents,
+						err,
+					), nil
 				}
+				if fileContent == nil || fileContent.SHA == nil {
+					return mcp.NewToolResultError("file content SHA is nil"), nil
+				}
+				fileSHA = *fileContent.SHA
 
 				rawClient, err := getRawClient(ctx)
 				if err != nil {
@@ -1381,35 +1390,4 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 
 	// Use provided ref, or it will be empty which defaults to the default branch
 	return &raw.ContentOpts{Ref: ref, SHA: sha}, nil
-}
-
-// getFileSHA retrieves the Blob SHA of a file.
-func getFileSHA(ctx context.Context, client *githubv4.Client, owner, repo, path string, opts *raw.ContentOpts) (string, error) {
-	var query struct {
-		Repository struct {
-			Object struct {
-				Blob struct {
-					OID string
-				} `graphql:"... on Blob"`
-			} `graphql:"object(expression: $expression)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	// Prepare the expression based on the provided options
-	expression := githubv4.String(path)
-	if opts != nil && opts.SHA != "" {
-		expression = githubv4.String(fmt.Sprintf("%s:%s", opts.SHA, path))
-	} else if opts != nil && opts.Ref != "" {
-		expression = githubv4.String(fmt.Sprintf("%s:%s", opts.Ref, path))
-	}
-
-	variables := map[string]interface{}{
-		"owner":      githubv4.String(owner),
-		"repo":       githubv4.String(repo),
-		"expression": expression,
-	}
-	if err := client.Query(ctx, &query, variables); err != nil {
-		return "", fmt.Errorf("failed to query file SHA: %w", err)
-	}
-	return query.Repository.Object.Blob.OID, nil
 }

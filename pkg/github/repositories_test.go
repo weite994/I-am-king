@@ -9,59 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/github-mcp-server/internal/githubv4mock"
 	"github.com/github/github-mcp-server/internal/toolsnaps"
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v73/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
-	"github.com/shurcooL/githubv4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func mockGQLClientFileSHA(owner, repo, expression, expectedSHA string) *githubv4.Client {
-	// Create the query structure that matches getFileSHA function
-	query := struct {
-		Repository struct {
-			Object struct {
-				Blob struct {
-					OID string
-				} `graphql:"... on Blob"`
-			} `graphql:"object(expression: $expression)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}{}
-
-	// Match any variables, we don't care about the exact values in this test
-	variables := map[string]interface{}{
-		"owner":      githubv4.String(owner),
-		"repo":       githubv4.String(repo),
-		"expression": githubv4.String(expression),
-	}
-
-	// Create the mock response with the expected SHA
-	mockResponse := githubv4mock.DataResponse(map[string]any{
-		"repository": map[string]any{
-			"object": map[string]any{
-				"oid": expectedSHA,
-			},
-		},
-	})
-
-	// Create the matcher and mock client
-	matcher := githubv4mock.NewQueryMatcher(query, variables, mockResponse)
-	httpClient := githubv4mock.NewMockedHTTPClient(matcher)
-
-	return githubv4.NewClient(httpClient)
-}
 
 func Test_GetFileContents(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	mockRawClient := raw.NewClient(mockClient, &url.URL{Scheme: "https", Host: "raw.githubusercontent.com", Path: "/"})
-	mockGQLClient := githubv4.NewClient(nil)
-	tool, _ := GetFileContents(stubGetClientFn(mockClient), stubGetRawClientFn(mockRawClient), stubGetGQLClientFn(mockGQLClient), translations.NullTranslationHelper)
+	tool, _ := GetFileContents(stubGetClientFn(mockClient), stubGetRawClientFn(mockRawClient), translations.NullTranslationHelper)
 	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "get_file_contents", tool.Name)
@@ -94,10 +56,10 @@ func Test_GetFileContents(t *testing.T) {
 			HTMLURL: github.Ptr("https://github.com/owner/repo/tree/main/src"),
 		},
 	}
+
 	tests := []struct {
 		name           string
 		mockedClient   *http.Client
-		mockGQLClient  *githubv4.Client
 		requestArgs    map[string]interface{}
 		expectError    bool
 		expectedResult interface{}
@@ -136,7 +98,6 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:README.md", "abc123"),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -182,7 +143,6 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:test.png", "def456"),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -228,7 +188,6 @@ func Test_GetFileContents(t *testing.T) {
 					),
 				),
 			),
-			mockGQLClient: nil,
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -262,7 +221,6 @@ func Test_GetFileContents(t *testing.T) {
 					}),
 				),
 			),
-			mockGQLClient: mockGQLClientFileSHA("owner", "repo", "refs/heads/main:nonexistent.md", ""),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -279,7 +237,7 @@ func Test_GetFileContents(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
 			mockRawClient := raw.NewClient(client, &url.URL{Scheme: "https", Host: "raw.example.com", Path: "/"})
-			_, handler := GetFileContents(stubGetClientFn(client), stubGetRawClientFn(mockRawClient), stubGetGQLClientFn(tc.mockGQLClient), translations.NullTranslationHelper)
+			_, handler := GetFileContents(stubGetClientFn(client), stubGetRawClientFn(mockRawClient), translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
