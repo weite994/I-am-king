@@ -53,9 +53,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			// Get pagination parameters and convert to GraphQL format
 			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
+				return nil, err
 			}
-			pagination := unifiedPagination.ToGraphQLParams()
+			pagination, err := unifiedPagination.ToGraphQLParams()
+			if err != nil {
+				return nil, err
+			}
 
 			client, err := getGQLClient(ctx)
 			if err != nil {
@@ -276,15 +279,18 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			// Get unified pagination parameters and convert to GraphQL format
 			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
+				return nil, err
 			}
 
 			// Check if pagination parameters were explicitly provided
-			_, pageProvided := request.Params.Arguments.(map[string]interface{})["page"]
-			_, perPageProvided := request.Params.Arguments.(map[string]interface{})["perPage"]
+			_, pageProvided := request.GetArguments()["page"]
+			_, perPageProvided := request.GetArguments()["perPage"]
 			paginationExplicit := pageProvided || perPageProvided
 
-			paginationParams := unifiedPagination.ToGraphQLParams()
+			paginationParams, err := unifiedPagination.ToGraphQLParams()
+			if err != nil {
+				return nil, err
+			}
 
 			// Use default of 100 if pagination was not explicitly provided
 			if !paginationExplicit {
@@ -366,15 +372,18 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			// Get unified pagination parameters and convert to GraphQL format
 			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
+				return nil, err
 			}
 
 			// Check if pagination parameters were explicitly provided
-			_, pageProvided := request.Params.Arguments.(map[string]interface{})["page"]
-			_, perPageProvided := request.Params.Arguments.(map[string]interface{})["perPage"]
+			_, pageProvided := request.GetArguments()["page"]
+			_, perPageProvided := request.GetArguments()["perPage"]
 			paginationExplicit := pageProvided || perPageProvided
 
-			pagination := unifiedPagination.ToGraphQLParams()
+			pagination, err := unifiedPagination.ToGraphQLParams()
+			if err != nil {
+				return nil, err
+			}
 
 			// Use default of 100 if pagination was not explicitly provided
 			if !paginationExplicit {
