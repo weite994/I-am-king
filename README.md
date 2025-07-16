@@ -587,6 +587,8 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `first`: Number of items to return per page (min 1, max 100) (number, optional)
   - `last`: Number of items to return from the end (min 1, max 100) (number, optional)
   - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 - **list_discussion_categories** - List discussion categories
@@ -595,6 +597,8 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `first`: Number of items to return per page (min 1, max 100) (number, optional)
   - `last`: Number of items to return from the end (min 1, max 100) (number, optional)
   - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 - **list_discussions** - List discussions
@@ -604,6 +608,8 @@ export GITHUB_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION="an alternative description
   - `first`: Number of items to return per page (min 1, max 100) (number, optional)
   - `last`: Number of items to return from the end (min 1, max 100) (number, optional)
   - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 </details>
