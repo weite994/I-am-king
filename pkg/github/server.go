@@ -191,10 +191,24 @@ func WithPagination() mcp.ToolOption {
 	}
 }
 
-// WithGraphQLPagination adds GraphQL cursor-based pagination parameters to a tool.
-// https://docs.github.com/en/graphql/reference/objects#connection
-func WithGraphQLPagination() mcp.ToolOption {
+// WithUnifiedPagination adds both REST and GraphQL pagination parameters to a tool.
+// This allows tools to accept both page/perPage and cursor-based pagination parameters.
+// GraphQL tools should use this and convert page/perPage to first/after internally.
+func WithUnifiedPagination() mcp.ToolOption {
 	return func(tool *mcp.Tool) {
+		// REST API pagination parameters
+		mcp.WithNumber("page",
+			mcp.Description("Page number for pagination (min 1)"),
+			mcp.Min(1),
+		)(tool)
+
+		mcp.WithNumber("perPage",
+			mcp.Description("Results per page for pagination (min 1, max 100)"),
+			mcp.Min(1),
+			mcp.Max(100),
+		)(tool)
+
+		// GraphQL cursor-based pagination parameters
 		mcp.WithNumber("first",
 			mcp.Description("Number of items to return per page (min 1, max 100)"),
 			mcp.Min(1),
@@ -247,6 +261,110 @@ type GraphQLPaginationParams struct {
 	Last   *int32
 	After  *string
 	Before *string
+}
+
+// UnifiedPaginationParams contains both REST and GraphQL pagination parameters
+type UnifiedPaginationParams struct {
+	// REST API pagination
+	Page    int
+	PerPage int
+
+	// GraphQL cursor-based pagination
+	First  *int32
+	Last   *int32
+	After  *string
+	Before *string
+}
+
+// ToGraphQLParams converts unified pagination parameters to GraphQL-specific parameters.
+// If cursor-based parameters (first/last/after/before) are provided, they take precedence.
+// Otherwise, page/perPage are converted to first/after equivalent.
+func (u UnifiedPaginationParams) ToGraphQLParams() GraphQLPaginationParams {
+	// If any cursor-based parameters are explicitly set, use them directly
+	if u.First != nil || u.Last != nil || u.After != nil || u.Before != nil {
+		return GraphQLPaginationParams{
+			First:  u.First,
+			Last:   u.Last,
+			After:  u.After,
+			Before: u.Before,
+		}
+	}
+
+	// Convert page/perPage to GraphQL parameters
+	// For GraphQL, we use 'first' for perPage and ignore page for the initial request
+	// (subsequent requests would use 'after' cursor from previous response)
+	first := int32(u.PerPage)
+	return GraphQLPaginationParams{
+		First:  &first,
+		Last:   nil,
+		After:  nil,
+		Before: nil,
+	}
+}
+
+// OptionalUnifiedPaginationParams returns unified pagination parameters from the request.
+// It accepts both REST API (page/perPage) and GraphQL (first/last/after/before) parameters.
+func OptionalUnifiedPaginationParams(r mcp.CallToolRequest) (UnifiedPaginationParams, error) {
+	var params UnifiedPaginationParams
+
+	// Get REST API pagination parameters with defaults
+	page, err := OptionalIntParamWithDefault(r, "page", 1)
+	if err != nil {
+		return UnifiedPaginationParams{}, err
+	}
+	params.Page = page
+
+	perPage, err := OptionalIntParamWithDefault(r, "perPage", 30)
+	if err != nil {
+		return UnifiedPaginationParams{}, err
+	}
+	params.PerPage = perPage
+
+	// Get GraphQL pagination parameters
+	if val, err := OptionalParam[float64](r, "first"); err != nil {
+		return UnifiedPaginationParams{}, err
+	} else if val != 0 {
+		first := int32(val)
+		params.First = &first
+	}
+
+	if val, err := OptionalParam[float64](r, "last"); err != nil {
+		return UnifiedPaginationParams{}, err
+	} else if val != 0 {
+		last := int32(val)
+		params.Last = &last
+	}
+
+	if val, err := OptionalParam[string](r, "after"); err != nil {
+		return UnifiedPaginationParams{}, err
+	} else if val != "" {
+		params.After = &val
+	}
+
+	if val, err := OptionalParam[string](r, "before"); err != nil {
+		return UnifiedPaginationParams{}, err
+	} else if val != "" {
+		params.Before = &val
+	}
+
+	// Validate GraphQL pagination parameters according to GraphQL connection spec
+	// Only validate if any GraphQL parameters are provided
+	if params.First != nil || params.Last != nil || params.After != nil || params.Before != nil {
+		if params.First != nil && params.Last != nil {
+			return UnifiedPaginationParams{}, fmt.Errorf("only one of 'first' or 'last' may be specified")
+		}
+		if params.After != nil && params.Before != nil {
+			return UnifiedPaginationParams{}, fmt.Errorf("only one of 'after' or 'before' may be specified")
+		}
+		if params.After != nil && params.Last != nil {
+			return UnifiedPaginationParams{}, fmt.Errorf("'after' cannot be used with 'last'. Did you mean to use 'before' instead?")
+		}
+		if params.Before != nil && params.First != nil {
+			return UnifiedPaginationParams{}, fmt.Errorf("'before' cannot be used with 'first'. Did you mean to use 'after' instead?")
+		}
+	}
+
+	return params, nil
 }
 
 // OptionalGraphQLPaginationParams returns the GraphQL cursor-based pagination parameters from the request.

@@ -31,7 +31,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			mcp.WithString("category",
 				mcp.Description("Optional filter by discussion category ID. If provided, only discussions with this category are listed."),
 			),
-			WithGraphQLPagination(),
+			WithUnifiedPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Required params
@@ -50,11 +50,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get pagination parameters
-			pagination, err := OptionalGraphQLPaginationParams(request)
+			// Get unified pagination parameters and convert to GraphQL format
+			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			pagination := unifiedPagination.ToGraphQLParams()
 
 			client, err := getGQLClient(ctx)
 			if err != nil {
@@ -272,7 +273,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
 			mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
 			mcp.WithNumber("discussionNumber", mcp.Required(), mcp.Description("Discussion Number")),
-			WithGraphQLPagination(),
+			WithUnifiedPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
@@ -285,10 +286,12 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			paginationParams, err := OptionalGraphQLPaginationParams(request)
+			// Get unified pagination parameters and convert to GraphQL format
+			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			paginationParams := unifiedPagination.ToGraphQLParams()
 
 			// Use default of 100 if neither first nor last is specified
 			if paginationParams.First == nil && paginationParams.Last == nil {
@@ -356,7 +359,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				mcp.Required(),
 				mcp.Description("Repository name"),
 			),
-			WithGraphQLPagination(),
+			WithUnifiedPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
@@ -368,10 +371,12 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			pagination, err := OptionalGraphQLPaginationParams(request)
+			// Get unified pagination parameters and convert to GraphQL format
+			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			pagination := unifiedPagination.ToGraphQLParams()
 
 			// Use default of 100 if neither first nor last is specified
 			if pagination.First == nil && pagination.Last == nil {
