@@ -209,8 +209,8 @@ func WithUnifiedPagination() mcp.ToolOption {
 }
 
 type PaginationParams struct {
-	page    int
-	perPage int
+	Page    int
+	PerPage int
 }
 
 // OptionalPaginationParams returns the "page" and "perPage" parameters from the request,
@@ -228,8 +228,8 @@ func OptionalPaginationParams(r mcp.CallToolRequest) (PaginationParams, error) {
 		return PaginationParams{}, err
 	}
 	return PaginationParams{
-		page:    page,
-		perPage: perPage,
+		Page:    page,
+		PerPage: perPage,
 	}, nil
 }
 
@@ -237,41 +237,18 @@ type GraphQLPaginationParams struct {
 	First *int32
 }
 
-// UnifiedPaginationParams contains REST API pagination parameters that can be converted to GraphQL internally
-type UnifiedPaginationParams struct {
-	Page    int
-	PerPage int
-}
-
 // ToGraphQLParams converts REST API pagination parameters to GraphQL-specific parameters.
 // This converts page/perPage to first parameter for GraphQL queries.
-func (u UnifiedPaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
-	if u.PerPage > 100 {
-		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", u.PerPage)
+func (p PaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
+	if p.PerPage > 100 {
+		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", p.PerPage)
 	}
-	first := int32(u.PerPage)
+	if p.PerPage < 0 {
+		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d cannot be negative", p.PerPage)
+	}
+	first := int32(p.PerPage)
 	return GraphQLPaginationParams{
 		First: &first,
-	}, nil
-}
-
-// OptionalUnifiedPaginationParams returns pagination parameters from the request.
-// It accepts REST API (page/perPage) parameters only.
-func OptionalUnifiedPaginationParams(r mcp.CallToolRequest) (UnifiedPaginationParams, error) {
-	// Get REST API pagination parameters with defaults
-	page, err := OptionalIntParamWithDefault(r, "page", 1)
-	if err != nil {
-		return UnifiedPaginationParams{}, err
-	}
-
-	perPage, err := OptionalIntParamWithDefault(r, "perPage", 30)
-	if err != nil {
-		return UnifiedPaginationParams{}, err
-	}
-
-	return UnifiedPaginationParams{
-		Page:    page,
-		PerPage: perPage,
 	}, nil
 }
 

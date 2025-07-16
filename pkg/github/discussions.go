@@ -51,11 +51,11 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			// Get pagination parameters and convert to GraphQL format
-			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return nil, err
 			}
-			pagination, err := unifiedPagination.ToGraphQLParams()
+			paginationParams, err := pagination.ToGraphQLParams()
 			if err != nil {
 				return nil, err
 			}
@@ -100,7 +100,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					"owner":      githubv4.String(owner),
 					"repo":       githubv4.String(repo),
 					"categoryId": *categoryID,
-					"first":      githubv4.Int(*pagination.First),
+					"first":      githubv4.Int(*paginationParams.First),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -148,7 +148,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				vars := map[string]interface{}{
 					"owner": githubv4.String(owner),
 					"repo":  githubv4.String(repo),
-					"first": githubv4.Int(*pagination.First),
+					"first": githubv4.Int(*paginationParams.First),
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -276,8 +276,8 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get unified pagination parameters and convert to GraphQL format
-			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
+			// Get pagination parameters and convert to GraphQL format
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return nil, err
 			}
@@ -287,7 +287,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			_, perPageProvided := request.GetArguments()["perPage"]
 			paginationExplicit := pageProvided || perPageProvided
 
-			paginationParams, err := unifiedPagination.ToGraphQLParams()
+			paginationParams, err := pagination.ToGraphQLParams()
 			if err != nil {
 				return nil, err
 			}
@@ -369,8 +369,8 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Get unified pagination parameters and convert to GraphQL format
-			unifiedPagination, err := OptionalUnifiedPaginationParams(request)
+			// Get pagination parameters and convert to GraphQL format
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return nil, err
 			}
@@ -380,7 +380,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			_, perPageProvided := request.GetArguments()["perPage"]
 			paginationExplicit := pageProvided || perPageProvided
 
-			pagination, err := unifiedPagination.ToGraphQLParams()
+			paginationParams, err := pagination.ToGraphQLParams()
 			if err != nil {
 				return nil, err
 			}
@@ -388,7 +388,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			// Use default of 100 if pagination was not explicitly provided
 			if !paginationExplicit {
 				defaultFirst := int32(100)
-				pagination.First = &defaultFirst
+				paginationParams.First = &defaultFirst
 			}
 
 			client, err := getGQLClient(ctx)
@@ -413,7 +413,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			vars := map[string]interface{}{
 				"owner": githubv4.String(params.Owner),
 				"repo":  githubv4.String(params.Repo),
-				"first": githubv4.Int(*pagination.First),
+				"first": githubv4.Int(*paginationParams.First),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
