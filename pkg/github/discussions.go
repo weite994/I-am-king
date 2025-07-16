@@ -93,7 +93,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								HasNextPage bool
 								EndCursor   string
 							}
-						} `graphql:"discussions(first: $first, categoryId: $categoryId)"`
+						} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
@@ -101,6 +101,11 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					"repo":       githubv4.String(repo),
 					"categoryId": *categoryID,
 					"first":      githubv4.Int(*paginationParams.First),
+				}
+				if paginationParams.After != nil {
+					vars["after"] = githubv4.String(*paginationParams.After)
+				} else {
+					vars["after"] = (*githubv4.String)(nil)
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -120,7 +125,16 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				out, err = json.Marshal(discussions)
+				// Create response with pagination info
+				response := map[string]interface{}{
+					"discussions": discussions,
+					"pageInfo": map[string]interface{}{
+						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
+						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+					},
+				}
+
+				out, err = json.Marshal(response)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
@@ -142,13 +156,18 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								HasNextPage bool
 								EndCursor   string
 							}
-						} `graphql:"discussions(first: $first)"`
+						} `graphql:"discussions(first: $first, after: $after)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
 				vars := map[string]interface{}{
 					"owner": githubv4.String(owner),
 					"repo":  githubv4.String(repo),
 					"first": githubv4.Int(*paginationParams.First),
+				}
+				if paginationParams.After != nil {
+					vars["after"] = githubv4.String(*paginationParams.After)
+				} else {
+					vars["after"] = (*githubv4.String)(nil)
 				}
 				if err := client.Query(ctx, &query, vars); err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -168,7 +187,16 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 					discussions = append(discussions, di)
 				}
 
-				out, err = json.Marshal(discussions)
+				// Create response with pagination info
+				response := map[string]interface{}{
+					"discussions": discussions,
+					"pageInfo": map[string]interface{}{
+						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
+						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+					},
+				}
+
+				out, err = json.Marshal(response)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 				}
@@ -314,7 +342,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 								HasNextPage githubv4.Boolean
 								EndCursor   githubv4.String
 							}
-						} `graphql:"comments(first: $first)"`
+						} `graphql:"comments(first: $first, after: $after)"`
 					} `graphql:"discussion(number: $discussionNumber)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
@@ -323,6 +351,11 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				"repo":             githubv4.String(params.Repo),
 				"discussionNumber": githubv4.Int(params.DiscussionNumber),
 				"first":            githubv4.Int(*paginationParams.First),
+			}
+			if paginationParams.After != nil {
+				vars["after"] = githubv4.String(*paginationParams.After)
+			} else {
+				vars["after"] = (*githubv4.String)(nil)
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -333,7 +366,16 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 				comments = append(comments, &github.IssueComment{Body: github.Ptr(string(c.Body))})
 			}
 
-			out, err := json.Marshal(comments)
+			// Create response with pagination info
+			response := map[string]interface{}{
+				"comments": comments,
+				"pageInfo": map[string]interface{}{
+					"hasNextPage": q.Repository.Discussion.Comments.PageInfo.HasNextPage,
+					"endCursor":   string(q.Repository.Discussion.Comments.PageInfo.EndCursor),
+				},
+			}
+
+			out, err := json.Marshal(response)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal comments: %w", err)
 			}
@@ -407,13 +449,18 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 							HasNextPage githubv4.Boolean
 							EndCursor   githubv4.String
 						}
-					} `graphql:"discussionCategories(first: $first)"`
+					} `graphql:"discussionCategories(first: $first, after: $after)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
 			vars := map[string]interface{}{
 				"owner": githubv4.String(params.Owner),
 				"repo":  githubv4.String(params.Repo),
 				"first": githubv4.Int(*paginationParams.First),
+			}
+			if paginationParams.After != nil {
+				vars["after"] = githubv4.String(*paginationParams.After)
+			} else {
+				vars["after"] = (*githubv4.String)(nil)
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -427,7 +474,16 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				})
 			}
 
-			out, err := json.Marshal(categories)
+			// Create response with pagination info
+			response := map[string]interface{}{
+				"categories": categories,
+				"pageInfo": map[string]interface{}{
+					"hasNextPage": q.Repository.DiscussionCategories.PageInfo.HasNextPage,
+					"endCursor":   string(q.Repository.DiscussionCategories.PageInfo.EndCursor),
+				},
+			}
+
+			out, err := json.Marshal(response)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal discussion categories: %w", err)
 			}

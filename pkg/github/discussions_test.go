@@ -61,21 +61,23 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
 	// Use exact string queries that match implementation output (from error messages)
-	qDiscussions := "query($first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussions := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
 
-	qDiscussionsFiltered := "query($categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussionsFiltered := "query($after:String$categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
 		"owner": "owner",
 		"repo":  "repo",
 		"first": float64(30),
+		"after": (*string)(nil),
 	}
 
 	varsRepoNotFound := map[string]interface{}{
 		"owner": "owner",
 		"repo":  "nonexistent-repo",
 		"first": float64(30),
+		"after": (*string)(nil),
 	}
 
 	varsDiscussionsFiltered := map[string]interface{}{
@@ -83,6 +85,7 @@ func Test_ListDiscussions(t *testing.T) {
 		"repo":       "repo",
 		"categoryId": "DIC_kwDOABC123",
 		"first":      float64(30),
+		"after":      (*string)(nil),
 	}
 
 	tests := []struct {
@@ -155,15 +158,21 @@ func Test_ListDiscussions(t *testing.T) {
 			require.NoError(t, err)
 
 			// Parse the structured response with pagination info
-			var returnedDiscussions []*github.Discussion
-			err = json.Unmarshal([]byte(text), &returnedDiscussions)
+			var response struct {
+				Discussions []*github.Discussion `json:"discussions"`
+				PageInfo    struct {
+					HasNextPage bool   `json:"hasNextPage"`
+					EndCursor   string `json:"endCursor"`
+				} `json:"pageInfo"`
+			}
+			err = json.Unmarshal([]byte(text), &response)
 			require.NoError(t, err)
 
-			assert.Len(t, returnedDiscussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(returnedDiscussions))
+			assert.Len(t, response.Discussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(response.Discussions))
 
 			// Verify that all returned discussions have a category if filtered
 			if _, hasCategory := tc.reqParams["category"]; hasCategory {
-				for _, discussion := range returnedDiscussions {
+				for _, discussion := range response.Discussions {
 					require.NotNil(t, discussion.DiscussionCategory, "Discussion should have category")
 					assert.NotEmpty(t, *discussion.DiscussionCategory.Name, "Discussion should have category name")
 				}
@@ -266,7 +275,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
 	// Use exact string query that matches implementation output
-	qGetComments := "query($discussionNumber:Int!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
+	qGetComments := "query($after:String$discussionNumber:Int!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first, after: $after){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
@@ -274,6 +283,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 		"repo":             "repo",
 		"discussionNumber": float64(1),
 		"first":            float64(100),
+		"after":            (*string)(nil),
 	}
 
 	mockResponse := githubv4mock.DataResponse(map[string]any{
@@ -311,25 +321,32 @@ func Test_GetDiscussionComments(t *testing.T) {
 	// Debug: print the actual JSON response
 	t.Logf("JSON response: %s", textContent.Text)
 
-	var comments []*github.IssueComment
-	err = json.Unmarshal([]byte(textContent.Text), &comments)
+	var response struct {
+		Comments []*github.IssueComment `json:"comments"`
+		PageInfo struct {
+			HasNextPage bool   `json:"hasNextPage"`
+			EndCursor   string `json:"endCursor"`
+		} `json:"pageInfo"`
+	}
+	err = json.Unmarshal([]byte(textContent.Text), &response)
 	require.NoError(t, err)
-	assert.Len(t, comments, 2)
+	assert.Len(t, response.Comments, 2)
 	expectedBodies := []string{"This is the first comment", "This is the second comment"}
-	for i, comment := range comments {
+	for i, comment := range response.Comments {
 		assert.Equal(t, expectedBodies[i], *comment.Body)
 	}
 }
 
 func Test_ListDiscussionCategories(t *testing.T) {
 	// Use exact string query that matches implementation output
-	qListCategories := "query($first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
+	qListCategories := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
 		"owner": "owner",
 		"repo":  "repo",
 		"first": float64(100),
+		"after": (*string)(nil),
 	}
 
 	mockResp := githubv4mock.DataResponse(map[string]any{
@@ -366,11 +383,17 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	// Debug: print the actual JSON response
 	t.Logf("JSON response: %s", text)
 
-	var categories []map[string]string
-	require.NoError(t, json.Unmarshal([]byte(text), &categories))
-	assert.Len(t, categories, 2)
-	assert.Equal(t, "123", categories[0]["id"])
-	assert.Equal(t, "CategoryOne", categories[0]["name"])
-	assert.Equal(t, "456", categories[1]["id"])
-	assert.Equal(t, "CategoryTwo", categories[1]["name"])
+	var response struct {
+		Categories []map[string]string `json:"categories"`
+		PageInfo   struct {
+			HasNextPage bool   `json:"hasNextPage"`
+			EndCursor   string `json:"endCursor"`
+		} `json:"pageInfo"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(text), &response))
+	assert.Len(t, response.Categories, 2)
+	assert.Equal(t, "123", response.Categories[0]["id"])
+	assert.Equal(t, "CategoryOne", response.Categories[0]["name"])
+	assert.Equal(t, "456", response.Categories[1]["id"])
+	assert.Equal(t, "CategoryTwo", response.Categories[1]["name"])
 }
