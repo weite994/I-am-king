@@ -245,11 +245,14 @@ type UnifiedPaginationParams struct {
 
 // ToGraphQLParams converts REST API pagination parameters to GraphQL-specific parameters.
 // This converts page/perPage to first parameter for GraphQL queries.
-func (u UnifiedPaginationParams) ToGraphQLParams() GraphQLPaginationParams {
+func (u UnifiedPaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
+	if u.PerPage > 100 {
+		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", u.PerPage)
+	}
 	first := int32(u.PerPage)
 	return GraphQLPaginationParams{
-		First: &first, //nolint:gosec // G115: This is safe, we cap perPage to 100 in the toolset
-	}
+		First: &first,
+	}, nil
 }
 
 // OptionalUnifiedPaginationParams returns pagination parameters from the request.
