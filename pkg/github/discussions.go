@@ -14,7 +14,6 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-// Define reusable fragments for discussions
 type DiscussionFragment struct {
 	Number    githubv4.Int
 	Title     githubv4.String
@@ -29,39 +28,42 @@ type DiscussionFragment struct {
 	URL githubv4.String `graphql:"url"`
 }
 
-type discussionQueries struct {
-	BasicNoOrder struct {
-		Repository struct {
-			Discussions struct {
-				Nodes []DiscussionFragment
-			} `graphql:"discussions(first: 100)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	BasicWithOrder struct {
-		Repository struct {
-			Discussions struct {
-				Nodes []DiscussionFragment
-			} `graphql:"discussions(first: 100, orderBy: $orderBy)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	WithCategoryAndOrder struct {
-		Repository struct {
-			Discussions struct {
-				Nodes []DiscussionFragment
-			} `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: $orderBy)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	WithCategoryNoOrder struct {
-		Repository struct {
-			Discussions struct {
-				Nodes []DiscussionFragment
-			} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
+type BasicNoOrder struct {
+	Repository struct {
+		Discussions struct {
+			Nodes []DiscussionFragment
+		} `graphql:"discussions(first: 100)"`
+	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
+
+type BasicWithOrder struct {
+	Repository struct {
+		Discussions struct {
+			Nodes []DiscussionFragment
+		} `graphql:"discussions(first: 100, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+	} `graphql:"repository(owner: $owner, name: $repo)"`
+}
+
+
+
+type WithCategoryAndOrder struct {
+	Repository struct {
+		Discussions struct {
+			Nodes []DiscussionFragment
+		} `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+	} `graphql:"repository(owner: $owner, name: $repo)"`
+}
+
+
+type WithCategoryNoOrder struct {
+	Repository struct {
+		Discussions struct {
+			Nodes []DiscussionFragment
+		} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
+	} `graphql:"repository(owner: $owner, name: $repo)"`
+}
+
+
 
 func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
 	return &github.Discussion{
@@ -77,6 +79,19 @@ func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
 			Name: github.Ptr(string(fragment.Category.Name)),
 		},
 	}
+}
+
+func getQueryType (useOrdering bool, categoryID *githubv4.ID) any {
+    if categoryID != nil && useOrdering {
+        return &WithCategoryAndOrder{}
+    }
+    if categoryID != nil && !useOrdering {
+        return &WithCategoryNoOrder{}
+    }
+    if categoryID == nil && useOrdering {
+        return &BasicWithOrder{}
+    }
+    return &BasicNoOrder{}
 }
 
 func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
@@ -151,11 +166,8 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			// we shouldn't use ordering unless both a 'field' and 'direction' are provided
 			useOrdering := orderBy != "" && direction != ""
 			if useOrdering {
-				orderObject := githubv4.DiscussionOrder{
-					Field:     githubv4.DiscussionOrderField(orderBy),
-					Direction: githubv4.OrderDirection(direction),
-				}
-				vars["orderBy"] = orderObject
+				vars["orderByField"] = githubv4.DiscussionOrderField(orderBy)
+				vars["orderByDirection"] = githubv4.OrderDirection(direction)
 			}
 
 			if categoryID != nil {
@@ -163,60 +175,45 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			var discussions []*github.Discussion
-			queries := &discussionQueries{}
+			discussionQuery := getQueryType(useOrdering, categoryID)
+
+			if err := client.Query(ctx, discussionQuery, vars); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 
 			// we need to check what user inputs we received at runtime, and use the
-			// most appropriate query
-			switch {
-			// use query WithCategoryAndOrder
-			case categoryID != nil && useOrdering:
-				log.Printf("GraphQL Query with category and order: %+v", queries.WithCategoryAndOrder)
+			// most appropriate query based on that
+			switch queryType := discussionQuery.(type) {
+			case *WithCategoryAndOrder:
+				log.Printf("GraphQL Query with category and order: %+v", queryType)
 				log.Printf("GraphQL Variables: %+v", vars)
-
-				if err := client.Query(ctx, &queries.WithCategoryAndOrder, vars); err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-
-				for _, node := range queries.WithCategoryAndOrder.Repository.Discussions.Nodes {
+				
+				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
-			// use query WithCategoryNoOrder
-			case categoryID != nil && !useOrdering:
-				log.Printf("GraphQL Query with category no order: %+v", queries.WithCategoryNoOrder)
+			case *WithCategoryNoOrder:
+				log.Printf("GraphQL Query with category no order: %+v", queryType)
 				log.Printf("GraphQL Variables: %+v", vars)
 
-				if err := client.Query(ctx, &queries.WithCategoryNoOrder, vars); err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-
-				for _, node := range queries.WithCategoryNoOrder.Repository.Discussions.Nodes {
+				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
-			// use query BasicWithOrder
-			case categoryID == nil && useOrdering:
-				log.Printf("GraphQL Query basic with order: %+v", queries.BasicWithOrder)
+			case *BasicWithOrder:
+				log.Printf("GraphQL Query basic with order: %+v", queryType)
 				log.Printf("GraphQL Variables: %+v", vars)
 
-				if err := client.Query(ctx, &queries.BasicWithOrder, vars); err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-
-				for _, node := range queries.BasicWithOrder.Repository.Discussions.Nodes {
+				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
-			// use query BasicNoOrder
-			case categoryID == nil && !useOrdering:
-				log.Printf("GraphQL Query basic no order: %+v", queries.BasicNoOrder)
+
+			case *BasicNoOrder:
+				log.Printf("GraphQL Query basic no order: %+v", queryType)
 				log.Printf("GraphQL Variables: %+v", vars)
 
-				if err := client.Query(ctx, &queries.BasicNoOrder, vars); err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-
-				for _, node := range queries.BasicNoOrder.Repository.Discussions.Nodes {
+				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 			}
