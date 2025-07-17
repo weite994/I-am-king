@@ -318,8 +318,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 	textContent := getTextResult(t, result)
 
-	// Debug: print the actual JSON response
-	t.Logf("JSON response: %s", textContent.Text)
+// (Lines removed)
 
 	var response struct {
 		Comments []*github.IssueComment `json:"comments"`
