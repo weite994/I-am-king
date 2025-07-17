@@ -159,7 +159,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			if categoryID != nil {
-				vars["categoryId"] = githubv4.ID(categoryID)
+				vars["categoryId"] = *categoryID
 			}
 
 			var discussions []*github.Discussion
