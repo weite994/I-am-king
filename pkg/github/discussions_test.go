@@ -30,9 +30,12 @@ var (
 			"discussions": map[string]any{
 				"nodes": discussionsAll,
 				"pageInfo": map[string]any{
-					"hasNextPage": false,
-					"endCursor":   "",
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
 				},
+				"totalCount": 3,
 			},
 		},
 	})
@@ -41,9 +44,12 @@ var (
 			"discussions": map[string]any{
 				"nodes": discussionsGeneral,
 				"pageInfo": map[string]any{
-					"hasNextPage": false,
-					"endCursor":   "",
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
 				},
+				"totalCount": 2,
 			},
 		},
 	})
@@ -61,9 +67,9 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
 	// Use exact string queries that match implementation output (from error messages)
-	qDiscussions := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussions := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
 
-	qDiscussionsFiltered := "query($after:String$categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,endCursor}}}}"
+	qDiscussionsFiltered := "query($after:String$categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, categoryId: $categoryId){nodes{number,title,createdAt,category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
@@ -161,9 +167,12 @@ func Test_ListDiscussions(t *testing.T) {
 			var response struct {
 				Discussions []*github.Discussion `json:"discussions"`
 				PageInfo    struct {
-					HasNextPage bool   `json:"hasNextPage"`
-					EndCursor   string `json:"endCursor"`
+					HasNextPage     bool   `json:"hasNextPage"`
+					HasPreviousPage bool   `json:"hasPreviousPage"`
+					StartCursor     string `json:"startCursor"`
+					EndCursor       string `json:"endCursor"`
 				} `json:"pageInfo"`
+				TotalCount int `json:"totalCount"`
 			}
 			err = json.Unmarshal([]byte(text), &response)
 			require.NoError(t, err)
@@ -275,7 +284,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
 	// Use exact string query that matches implementation output
-	qGetComments := "query($after:String$discussionNumber:Int!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first, after: $after){nodes{body},pageInfo{hasNextPage,endCursor}}}}}"
+	qGetComments := "query($after:String$discussionNumber:Int!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){comments(first: $first, after: $after){nodes{body},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
@@ -295,9 +304,12 @@ func Test_GetDiscussionComments(t *testing.T) {
 						{"body": "This is the second comment"},
 					},
 					"pageInfo": map[string]any{
-						"hasNextPage": false,
-						"endCursor":   "",
+						"hasNextPage":     false,
+						"hasPreviousPage": false,
+						"startCursor":     "",
+						"endCursor":       "",
 					},
+					"totalCount": 2,
 				},
 			},
 		},
@@ -323,9 +335,12 @@ func Test_GetDiscussionComments(t *testing.T) {
 	var response struct {
 		Comments []*github.IssueComment `json:"comments"`
 		PageInfo struct {
-			HasNextPage bool   `json:"hasNextPage"`
-			EndCursor   string `json:"endCursor"`
+			HasNextPage     bool   `json:"hasNextPage"`
+			HasPreviousPage bool   `json:"hasPreviousPage"`
+			StartCursor     string `json:"startCursor"`
+			EndCursor       string `json:"endCursor"`
 		} `json:"pageInfo"`
+		TotalCount int `json:"totalCount"`
 	}
 	err = json.Unmarshal([]byte(textContent.Text), &response)
 	require.NoError(t, err)
@@ -338,7 +353,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 func Test_ListDiscussionCategories(t *testing.T) {
 	// Use exact string query that matches implementation output
-	qListCategories := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}"
+	qListCategories := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
@@ -356,9 +371,12 @@ func Test_ListDiscussionCategories(t *testing.T) {
 					{"id": "456", "name": "CategoryTwo"},
 				},
 				"pageInfo": map[string]any{
-					"hasNextPage": false,
-					"endCursor":   "",
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
 				},
+				"totalCount": 2,
 			},
 		},
 	})
@@ -385,9 +403,12 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	var response struct {
 		Categories []map[string]string `json:"categories"`
 		PageInfo   struct {
-			HasNextPage bool   `json:"hasNextPage"`
-			EndCursor   string `json:"endCursor"`
+			HasNextPage     bool   `json:"hasNextPage"`
+			HasPreviousPage bool   `json:"hasPreviousPage"`
+			StartCursor     string `json:"startCursor"`
+			EndCursor       string `json:"endCursor"`
 		} `json:"pageInfo"`
+		TotalCount int `json:"totalCount"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(text), &response))
 	assert.Len(t, response.Categories, 2)

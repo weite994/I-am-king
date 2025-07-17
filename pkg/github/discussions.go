@@ -92,9 +92,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								URL githubv4.String `graphql:"url"`
 							}
 							PageInfo struct {
-								HasNextPage bool
-								EndCursor   string
+								HasNextPage     bool
+								HasPreviousPage bool
+								StartCursor     string
+								EndCursor       string
 							}
+							TotalCount int
 						} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
@@ -131,9 +134,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				response := map[string]interface{}{
 					"discussions": discussions,
 					"pageInfo": map[string]interface{}{
-						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
-						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+						"hasNextPage":     query.Repository.Discussions.PageInfo.HasNextPage,
+						"hasPreviousPage": query.Repository.Discussions.PageInfo.HasPreviousPage,
+						"startCursor":     query.Repository.Discussions.PageInfo.StartCursor,
+						"endCursor":       query.Repository.Discussions.PageInfo.EndCursor,
 					},
+					"totalCount": query.Repository.Discussions.TotalCount,
 				}
 
 				out, err = json.Marshal(response)
@@ -155,9 +161,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 								URL githubv4.String `graphql:"url"`
 							}
 							PageInfo struct {
-								HasNextPage bool
-								EndCursor   string
+								HasNextPage     bool
+								HasPreviousPage bool
+								StartCursor     string
+								EndCursor       string
 							}
+							TotalCount int
 						} `graphql:"discussions(first: $first, after: $after)"`
 					} `graphql:"repository(owner: $owner, name: $repo)"`
 				}
@@ -193,9 +202,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				response := map[string]interface{}{
 					"discussions": discussions,
 					"pageInfo": map[string]interface{}{
-						"hasNextPage": query.Repository.Discussions.PageInfo.HasNextPage,
-						"endCursor":   query.Repository.Discussions.PageInfo.EndCursor,
+						"hasNextPage":     query.Repository.Discussions.PageInfo.HasNextPage,
+						"hasPreviousPage": query.Repository.Discussions.PageInfo.HasPreviousPage,
+						"startCursor":     query.Repository.Discussions.PageInfo.StartCursor,
+						"endCursor":       query.Repository.Discussions.PageInfo.EndCursor,
 					},
+					"totalCount": query.Repository.Discussions.TotalCount,
 				}
 
 				out, err = json.Marshal(response)
@@ -341,9 +353,12 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 								Body githubv4.String
 							}
 							PageInfo struct {
-								HasNextPage githubv4.Boolean
-								EndCursor   githubv4.String
+								HasNextPage     githubv4.Boolean
+								HasPreviousPage githubv4.Boolean
+								StartCursor     githubv4.String
+								EndCursor       githubv4.String
 							}
+							TotalCount int
 						} `graphql:"comments(first: $first, after: $after)"`
 					} `graphql:"discussion(number: $discussionNumber)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
@@ -372,9 +387,12 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			response := map[string]interface{}{
 				"comments": comments,
 				"pageInfo": map[string]interface{}{
-					"hasNextPage": q.Repository.Discussion.Comments.PageInfo.HasNextPage,
-					"endCursor":   string(q.Repository.Discussion.Comments.PageInfo.EndCursor),
+					"hasNextPage":     q.Repository.Discussion.Comments.PageInfo.HasNextPage,
+					"hasPreviousPage": q.Repository.Discussion.Comments.PageInfo.HasPreviousPage,
+					"startCursor":     string(q.Repository.Discussion.Comments.PageInfo.StartCursor),
+					"endCursor":       string(q.Repository.Discussion.Comments.PageInfo.EndCursor),
 				},
+				"totalCount": q.Repository.Discussion.Comments.TotalCount,
 			}
 
 			out, err := json.Marshal(response)
@@ -448,9 +466,12 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 							Name githubv4.String
 						}
 						PageInfo struct {
-							HasNextPage githubv4.Boolean
-							EndCursor   githubv4.String
+							HasNextPage     githubv4.Boolean
+							HasPreviousPage githubv4.Boolean
+							StartCursor     githubv4.String
+							EndCursor       githubv4.String
 						}
+						TotalCount int
 					} `graphql:"discussionCategories(first: $first, after: $after)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
@@ -480,9 +501,12 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			response := map[string]interface{}{
 				"categories": categories,
 				"pageInfo": map[string]interface{}{
-					"hasNextPage": q.Repository.DiscussionCategories.PageInfo.HasNextPage,
-					"endCursor":   string(q.Repository.DiscussionCategories.PageInfo.EndCursor),
+					"hasNextPage":     q.Repository.DiscussionCategories.PageInfo.HasNextPage,
+					"hasPreviousPage": q.Repository.DiscussionCategories.PageInfo.HasPreviousPage,
+					"startCursor":     string(q.Repository.DiscussionCategories.PageInfo.StartCursor),
+					"endCursor":       string(q.Repository.DiscussionCategories.PageInfo.EndCursor),
 				},
+				"totalCount": q.Repository.DiscussionCategories.TotalCount,
 			}
 
 			out, err := json.Marshal(response)
