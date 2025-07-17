@@ -101,8 +101,8 @@ func Test_ListDiscussions(t *testing.T) {
 					Number    githubv4.Int
 					Title     githubv4.String
 					CreatedAt githubv4.DateTime
-					UpdatedAt githubv4.DateTime // Added
-					Author    struct {          // Added
+					UpdatedAt githubv4.DateTime 
+					Author    struct {          
 						Login githubv4.String
 					}
 					Category struct {
