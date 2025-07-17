@@ -163,63 +163,63 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			var discussions []*github.Discussion
-            queries := &discussionQueries{}
+			queries := &discussionQueries{}
 
-			// we need to check what user inputs we received at runtime, and use the 
-			// most appropriate query 
-            switch {
-				// use query WithCategoryAndOrder
-				case categoryID != nil && useOrdering:
-					log.Printf("GraphQL Query with category and order: %+v", queries.WithCategoryAndOrder)
-					log.Printf("GraphQL Variables: %+v", vars)
+			// we need to check what user inputs we received at runtime, and use the
+			// most appropriate query
+			switch {
+			// use query WithCategoryAndOrder
+			case categoryID != nil && useOrdering:
+				log.Printf("GraphQL Query with category and order: %+v", queries.WithCategoryAndOrder)
+				log.Printf("GraphQL Variables: %+v", vars)
 
-					if err := client.Query(ctx, &queries.WithCategoryAndOrder, vars); err != nil {
-						return mcp.NewToolResultError(err.Error()), nil
-					}
+				if err := client.Query(ctx, &queries.WithCategoryAndOrder, vars); err != nil {
+					return mcp.NewToolResultError(err.Error()), nil
+				}
 
-					for _, node := range queries.WithCategoryAndOrder.Repository.Discussions.Nodes {
-						discussions = append(discussions, fragmentToDiscussion(node))
-					}
+				for _, node := range queries.WithCategoryAndOrder.Repository.Discussions.Nodes {
+					discussions = append(discussions, fragmentToDiscussion(node))
+				}
 
-				// use query WithCategoryNoOrder
-				case categoryID != nil && !useOrdering:
-					log.Printf("GraphQL Query with category no order: %+v", queries.WithCategoryNoOrder)
-					log.Printf("GraphQL Variables: %+v", vars)
+			// use query WithCategoryNoOrder
+			case categoryID != nil && !useOrdering:
+				log.Printf("GraphQL Query with category no order: %+v", queries.WithCategoryNoOrder)
+				log.Printf("GraphQL Variables: %+v", vars)
 
-					if err := client.Query(ctx, &queries.WithCategoryNoOrder, vars); err != nil {
-						return mcp.NewToolResultError(err.Error()), nil
-					}
+				if err := client.Query(ctx, &queries.WithCategoryNoOrder, vars); err != nil {
+					return mcp.NewToolResultError(err.Error()), nil
+				}
 
-					for _, node := range queries.WithCategoryNoOrder.Repository.Discussions.Nodes {
-						discussions = append(discussions, fragmentToDiscussion(node))
-					}
+				for _, node := range queries.WithCategoryNoOrder.Repository.Discussions.Nodes {
+					discussions = append(discussions, fragmentToDiscussion(node))
+				}
 
-				// use query BasicWithOrder
-				case categoryID == nil && useOrdering:
-					log.Printf("GraphQL Query basic with order: %+v", queries.BasicWithOrder)
-					log.Printf("GraphQL Variables: %+v", vars)
+			// use query BasicWithOrder
+			case categoryID == nil && useOrdering:
+				log.Printf("GraphQL Query basic with order: %+v", queries.BasicWithOrder)
+				log.Printf("GraphQL Variables: %+v", vars)
 
-					if err := client.Query(ctx, &queries.BasicWithOrder, vars); err != nil {
-						return mcp.NewToolResultError(err.Error()), nil
-					}
+				if err := client.Query(ctx, &queries.BasicWithOrder, vars); err != nil {
+					return mcp.NewToolResultError(err.Error()), nil
+				}
 
-					for _, node := range queries.BasicWithOrder.Repository.Discussions.Nodes {
-						discussions = append(discussions, fragmentToDiscussion(node))
-					}
+				for _, node := range queries.BasicWithOrder.Repository.Discussions.Nodes {
+					discussions = append(discussions, fragmentToDiscussion(node))
+				}
 
-				// use query BasicNoOrder
-				case categoryID == nil && !useOrdering:
-					log.Printf("GraphQL Query basic no order: %+v", queries.BasicNoOrder)
-					log.Printf("GraphQL Variables: %+v", vars)
+			// use query BasicNoOrder
+			case categoryID == nil && !useOrdering:
+				log.Printf("GraphQL Query basic no order: %+v", queries.BasicNoOrder)
+				log.Printf("GraphQL Variables: %+v", vars)
 
-					if err := client.Query(ctx, &queries.BasicNoOrder, vars); err != nil {
-						return mcp.NewToolResultError(err.Error()), nil
-					}
+				if err := client.Query(ctx, &queries.BasicNoOrder, vars); err != nil {
+					return mcp.NewToolResultError(err.Error()), nil
+				}
 
-					for _, node := range queries.BasicNoOrder.Repository.Discussions.Nodes {
-						discussions = append(discussions, fragmentToDiscussion(node))
-					}
-            }
+				for _, node := range queries.BasicNoOrder.Repository.Discussions.Nodes {
+					discussions = append(discussions, fragmentToDiscussion(node))
+				}
+			}
 
 			out, err := json.Marshal(discussions)
 			if err != nil {
