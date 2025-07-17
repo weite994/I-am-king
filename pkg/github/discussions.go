@@ -13,6 +13,8 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
+const DefaultGraphQLPageSize = 30
+
 func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_discussions",
 			mcp.WithDescription(t("TOOL_LIST_DISCUSSIONS_DESCRIPTION", "List discussions for a repository")),
