@@ -17,13 +17,37 @@ import (
 
 var (
 	discussionsGeneral = []map[string]any{
-		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/1", "category": map[string]any{"name": "General"}},
-		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/3", "category": map[string]any{"name": "General"}},
+		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "updatedAt": "2023-01-01T00:00:00Z", "author": map[string]any{"login": "user1"}, "url": "https://github.com/owner/repo/discussions/1", "category": map[string]any{"name": "General"}},
+		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "updatedAt": "2023-02-01T00:00:00Z", "author": map[string]any{"login": "user1"}, "url": "https://github.com/owner/repo/discussions/3", "category": map[string]any{"name": "General"}},
 	}
 	discussionsAll = []map[string]any{
-		{"number": 1, "title": "Discussion 1 title", "createdAt": "2023-01-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/1", "category": map[string]any{"name": "General"}},
-		{"number": 2, "title": "Discussion 2 title", "createdAt": "2023-02-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/2", "category": map[string]any{"name": "Questions"}},
-		{"number": 3, "title": "Discussion 3 title", "createdAt": "2023-03-01T00:00:00Z", "url": "https://github.com/owner/repo/discussions/3", "category": map[string]any{"name": "General"}},
+		{
+			"number":    1,
+			"title":     "Discussion 1 title",
+			"createdAt": "2023-01-01T00:00:00Z",
+			"updatedAt": "2023-01-01T00:00:00Z",
+			"author":    map[string]any{"login": "user1"},
+			"url":       "https://github.com/owner/repo/discussions/1",
+			"category":  map[string]any{"name": "General"},
+		},
+		{
+			"number":    2,
+			"title":     "Discussion 2 title",
+			"createdAt": "2023-02-01T00:00:00Z",
+			"updatedAt": "2023-02-01T00:00:00Z",
+			"author":    map[string]any{"login": "user2"},
+			"url":       "https://github.com/owner/repo/discussions/2",
+			"category":  map[string]any{"name": "Questions"},
+		},
+		{
+			"number":    3,
+			"title":     "Discussion 3 title",
+			"createdAt": "2023-03-01T00:00:00Z",
+			"updatedAt": "2023-03-01T00:00:00Z",
+			"author":    map[string]any{"login": "user3"},
+			"url":       "https://github.com/owner/repo/discussions/3",
+			"category":  map[string]any{"name": "General"},
+		},
 	}
 	mockResponseListAll = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
@@ -48,15 +72,19 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.Contains(t, toolDef.InputSchema.Properties, "repo")
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
-	// mock for the call to ListDiscussions without category filter
-	var qDiscussions struct {
+	// Mock for BasicNoOrder query
+	var qBasicNoOrder struct {
 		Repository struct {
 			Discussions struct {
 				Nodes []struct {
 					Number    githubv4.Int
 					Title     githubv4.String
 					CreatedAt githubv4.DateTime
-					Category  struct {
+					UpdatedAt githubv4.DateTime
+					Author    struct {
+						Login githubv4.String
+					}
+					Category struct {
 						Name githubv4.String
 					} `graphql:"category"`
 					URL githubv4.String `graphql:"url"`
@@ -65,15 +93,19 @@ func Test_ListDiscussions(t *testing.T) {
 		} `graphql:"repository(owner: $owner, name: $repo)"`
 	}
 
-	// mock for the call to get discussions with category filter
-	var qDiscussionsFiltered struct {
+	// Mock for WithCategoryNoOrder query
+	var qWithCategoryNoOrder struct {
 		Repository struct {
 			Discussions struct {
 				Nodes []struct {
 					Number    githubv4.Int
 					Title     githubv4.String
 					CreatedAt githubv4.DateTime
-					Category  struct {
+					UpdatedAt githubv4.DateTime // Added
+					Author    struct {          // Added
+						Login githubv4.String
+					}
+					Category struct {
 						Name githubv4.String
 					} `graphql:"category"`
 					URL githubv4.String `graphql:"url"`
@@ -141,15 +173,16 @@ func Test_ListDiscussions(t *testing.T) {
 
 			switch tc.name {
 			case "list all discussions without category filter":
-				// Simple case - no category filter
-				matcher := githubv4mock.NewQueryMatcher(qDiscussions, varsListAll, mockResponseListAll)
+				// Simple case - BasicNoOrder query structure (i.e. no order, no category)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsListAll, mockResponseListAll)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "filter by category ID":
-				// Simple case - category filter using category ID directly
-				matcher := githubv4mock.NewQueryMatcher(qDiscussionsFiltered, varsDiscussionsFiltered, mockResponseListGeneral)
+				// WithCategoryNoOrder
+				matcher := githubv4mock.NewQueryMatcher(qWithCategoryNoOrder, varsDiscussionsFiltered, mockResponseListGeneral)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
+				// BasicNoOrder
 			case "repository not found error":
-				matcher := githubv4mock.NewQueryMatcher(qDiscussions, varsRepoNotFound, mockErrorRepoNotFound)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsRepoNotFound, mockErrorRepoNotFound)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			}
 
