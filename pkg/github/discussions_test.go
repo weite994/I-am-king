@@ -282,7 +282,7 @@ func Test_GetDiscussionComments(t *testing.T) {
 		"owner":            "owner",
 		"repo":             "repo",
 		"discussionNumber": float64(1),
-		"first":            float64(100),
+		"first":            float64(30),
 		"after":            (*string)(nil),
 	}
 
@@ -344,7 +344,7 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	vars := map[string]interface{}{
 		"owner": "owner",
 		"repo":  "repo",
-		"first": float64(100),
+		"first": float64(30),
 		"after": (*string)(nil),
 	}
 
