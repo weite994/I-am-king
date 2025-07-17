@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/go-viper/mapstructure/v2"
@@ -180,33 +179,21 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			// most appropriate query based on that
 			switch queryType := discussionQuery.(type) {
 			case *WithCategoryAndOrder:
-				log.Printf("GraphQL Query with category and order: %+v", queryType)
-				log.Printf("GraphQL Variables: %+v", vars)
-
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
 			case *WithCategoryNoOrder:
-				log.Printf("GraphQL Query with category no order: %+v", queryType)
-				log.Printf("GraphQL Variables: %+v", vars)
-
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
 			case *BasicWithOrder:
-				log.Printf("GraphQL Query basic with order: %+v", queryType)
-				log.Printf("GraphQL Variables: %+v", vars)
-
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
 
 			case *BasicNoOrder:
-				log.Printf("GraphQL Query basic no order: %+v", queryType)
-				log.Printf("GraphQL Variables: %+v", vars)
-
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
