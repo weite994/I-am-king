@@ -429,7 +429,7 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 
 			// Use default of 100 if pagination was not explicitly provided
 			if !paginationExplicit {
-				defaultFirst := int32(100)
+				defaultFirst := int32(DefaultGraphQLPageSize)
 				paginationParams.First = &defaultFirst
 			}
 
