@@ -31,36 +31,36 @@ type DiscussionFragment struct {
 
 type discussionQueries struct {
 	BasicNoOrder struct {
-        Repository struct {
-            Discussions struct {
-                Nodes []DiscussionFragment
-            } `graphql:"discussions(first: 100)"`
-        } `graphql:"repository(owner: $owner, name: $repo)"`
-    }
+		Repository struct {
+			Discussions struct {
+				Nodes []DiscussionFragment
+			} `graphql:"discussions(first: 100)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
 
-    BasicWithOrder struct {
-        Repository struct {
-            Discussions struct {
-                Nodes []DiscussionFragment
-            } `graphql:"discussions(first: 100, orderBy: $orderBy)"`
-        } `graphql:"repository(owner: $owner, name: $repo)"`
-    }
+	BasicWithOrder struct {
+		Repository struct {
+			Discussions struct {
+				Nodes []DiscussionFragment
+			} `graphql:"discussions(first: 100, orderBy: $orderBy)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
 
-    WithCategoryAndOrder struct {
-        Repository struct {
-            Discussions struct {
-                Nodes []DiscussionFragment
-            } `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: $orderBy)"`
-        } `graphql:"repository(owner: $owner, name: $repo)"`
-    }
+	WithCategoryAndOrder struct {
+		Repository struct {
+			Discussions struct {
+				Nodes []DiscussionFragment
+			} `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: $orderBy)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
 
-    WithCategoryNoOrder struct {
-        Repository struct {
-            Discussions struct {
-                Nodes []DiscussionFragment
-            } `graphql:"discussions(first: 100, categoryId: $categoryId)"`
-        } `graphql:"repository(owner: $owner, name: $repo)"`
-    }
+	WithCategoryNoOrder struct {
+		Repository struct {
+			Discussions struct {
+				Nodes []DiscussionFragment
+			} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
 }
 
 func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
@@ -101,9 +101,9 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				mcp.Description("Order discussions by field. If provided, the 'direction' also needs to be provided."),
 				mcp.Enum("CREATED_AT", "UPDATED_AT"),
 			),
-			mcp.WithString("direction", 
-    			mcp.Description("Order direction."),
-    			mcp.Enum("ASC", "DESC"),
+			mcp.WithString("direction",
+				mcp.Description("Order direction."),
+				mcp.Enum("ASC", "DESC"),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -125,8 +125,8 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			
-			direction, err := OptionalParam[string](request, "direction") 
+
+			direction, err := OptionalParam[string](request, "direction")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -136,82 +136,85 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
 			}
 
-			baseVars := map[string]interface{}{
-                "owner": githubv4.String(owner),
-                "repo":  githubv4.String(repo),
-            }
+			var categoryID *githubv4.ID
+			if category != "" {
+				id := githubv4.ID(category)
+				categoryID = &id
+			}
+
+			vars := map[string]interface{}{
+				"owner": githubv4.String(owner),
+				"repo":  githubv4.String(repo),
+			}
 
 			// this is an extra check in case the tool description is misinterpreted, because
 			// we shouldn't use ordering unless both a 'field' and 'direction' are provided
-            useOrdering := orderBy != "" && direction != ""
+			useOrdering := orderBy != "" && direction != ""
 			if useOrdering {
-                orderObject := githubv4.DiscussionOrder{
-                    Field:     githubv4.DiscussionOrderField(orderBy),
-                    Direction: githubv4.OrderDirection(direction),
-                }
-                baseVars["orderBy"] = orderObject
-            }
+				orderObject := githubv4.DiscussionOrder{
+					Field:     githubv4.DiscussionOrderField(orderBy),
+					Direction: githubv4.OrderDirection(direction),
+				}
+				vars["orderBy"] = orderObject
+			}
+
+			if categoryID != nil {
+				vars["categoryId"] = githubv4.ID(categoryID)
+			}
 
 			var discussions []*github.Discussion
 			queries := &discussionQueries{}
 
-            if category != "" {
-                vars := make(map[string]interface{})
-                for k, v := range baseVars {
-                    vars[k] = v
-                }
-                vars["categoryId"] = githubv4.ID(category)
-                
-                if useOrdering {
-                    log.Printf("GraphQL Query with category and order: %+v", queries.WithCategoryAndOrder)
-                    log.Printf("GraphQL Variables: %+v", vars)
-                    
-                    if err := client.Query(ctx, &queries.WithCategoryAndOrder, vars); err != nil {
-                        return mcp.NewToolResultError(err.Error()), nil
-                    }
-                    
-                    for _, node := range queries.WithCategoryAndOrder.Repository.Discussions.Nodes {
-                        discussions = append(discussions, fragmentToDiscussion(node))
-                    }
-                } else {
-                    log.Printf("GraphQL Query with category no order: %+v", queries.WithCategoryNoOrder)
-                    log.Printf("GraphQL Variables: %+v", vars)
-                    
-                    if err := client.Query(ctx, &queries.WithCategoryNoOrder, vars); err != nil {
-                        return mcp.NewToolResultError(err.Error()), nil
-                    }
-                    
-                    for _, node := range queries.WithCategoryNoOrder.Repository.Discussions.Nodes {
-                        discussions = append(discussions, fragmentToDiscussion(node))
-                    }
-                }
-            } else {
-                if useOrdering {
-                    log.Printf("GraphQL Query basic with order: %+v", queries.BasicWithOrder)
-                    log.Printf("GraphQL Variables: %+v", baseVars)
-                    
-                    if err := client.Query(ctx, &queries.BasicWithOrder, baseVars); err != nil {
-                        return mcp.NewToolResultError(err.Error()), nil
-                    }
-                    
-                    for _, node := range queries.BasicWithOrder.Repository.Discussions.Nodes {
-                        discussions = append(discussions, fragmentToDiscussion(node))
-                    }
-                } else {
-                    log.Printf("GraphQL Query basic no order: %+v", queries.BasicNoOrder)
-                    log.Printf("GraphQL Variables: %+v", baseVars)
-                    
-                    if err := client.Query(ctx, &queries.BasicNoOrder, baseVars); err != nil {
-                        return mcp.NewToolResultError(err.Error()), nil
-                    }
-                    
-                    for _, node := range queries.BasicNoOrder.Repository.Discussions.Nodes {
-                        discussions = append(discussions, fragmentToDiscussion(node))
-                    }
-                }
-            }
+			if categoryID != nil {
+				if useOrdering {
+					log.Printf("GraphQL Query with category and order: %+v", queries.WithCategoryAndOrder)
+					log.Printf("GraphQL Variables: %+v", vars)
 
-			// Marshal and return
+					if err := client.Query(ctx, &queries.WithCategoryAndOrder, vars); err != nil {
+						return mcp.NewToolResultError(err.Error()), nil
+					}
+
+					for _, node := range queries.WithCategoryAndOrder.Repository.Discussions.Nodes {
+						discussions = append(discussions, fragmentToDiscussion(node))
+					}
+				} else {
+					log.Printf("GraphQL Query with category no order: %+v", queries.WithCategoryNoOrder)
+					log.Printf("GraphQL Variables: %+v", vars)
+
+					if err := client.Query(ctx, &queries.WithCategoryNoOrder, vars); err != nil {
+						return mcp.NewToolResultError(err.Error()), nil
+					}
+
+					for _, node := range queries.WithCategoryNoOrder.Repository.Discussions.Nodes {
+						discussions = append(discussions, fragmentToDiscussion(node))
+					}
+				}
+			} else {
+				if useOrdering {
+					log.Printf("GraphQL Query basic with order: %+v", queries.BasicWithOrder)
+					log.Printf("GraphQL Variables: %+v", vars)
+
+					if err := client.Query(ctx, &queries.BasicWithOrder, vars); err != nil {
+						return mcp.NewToolResultError(err.Error()), nil
+					}
+
+					for _, node := range queries.BasicWithOrder.Repository.Discussions.Nodes {
+						discussions = append(discussions, fragmentToDiscussion(node))
+					}
+				} else {
+					log.Printf("GraphQL Query basic no order: %+v", queries.BasicNoOrder)
+					log.Printf("GraphQL Variables: %+v", vars)
+
+					if err := client.Query(ctx, &queries.BasicNoOrder, vars); err != nil {
+						return mcp.NewToolResultError(err.Error()), nil
+					}
+
+					for _, node := range queries.BasicNoOrder.Repository.Discussions.Nodes {
+						discussions = append(discussions, fragmentToDiscussion(node))
+					}
+				}
+			}
+
 			out, err := json.Marshal(discussions)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal discussions: %w", err)
