@@ -44,8 +44,6 @@ type BasicWithOrder struct {
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
-
-
 type WithCategoryAndOrder struct {
 	Repository struct {
 		Discussions struct {
@@ -54,7 +52,6 @@ type WithCategoryAndOrder struct {
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
-
 type WithCategoryNoOrder struct {
 	Repository struct {
 		Discussions struct {
@@ -62,8 +59,6 @@ type WithCategoryNoOrder struct {
 		} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
-
-
 
 func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
 	return &github.Discussion{
@@ -81,17 +76,17 @@ func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
 	}
 }
 
-func getQueryType (useOrdering bool, categoryID *githubv4.ID) any {
-    if categoryID != nil && useOrdering {
-        return &WithCategoryAndOrder{}
-    }
-    if categoryID != nil && !useOrdering {
-        return &WithCategoryNoOrder{}
-    }
-    if categoryID == nil && useOrdering {
-        return &BasicWithOrder{}
-    }
-    return &BasicNoOrder{}
+func getQueryType(useOrdering bool, categoryID *githubv4.ID) any {
+	if categoryID != nil && useOrdering {
+		return &WithCategoryAndOrder{}
+	}
+	if categoryID != nil && !useOrdering {
+		return &WithCategoryNoOrder{}
+	}
+	if categoryID == nil && useOrdering {
+		return &BasicWithOrder{}
+	}
+	return &BasicNoOrder{}
 }
 
 func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
@@ -187,7 +182,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			case *WithCategoryAndOrder:
 				log.Printf("GraphQL Query with category and order: %+v", queryType)
 				log.Printf("GraphQL Variables: %+v", vars)
-				
+
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
@@ -207,7 +202,6 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				for _, node := range queryType.Repository.Discussions.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
-
 
 			case *BasicNoOrder:
 				log.Printf("GraphQL Query basic no order: %+v", queryType)
