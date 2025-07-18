@@ -1154,9 +1154,9 @@ func CreatePendingPullRequestReview(getGQLClient GetGQLClientFn, t translations.
 // AddCommentToPendingReview creates a tool to add a comment to a pull request review.
 func AddCommentToPendingReview(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("add_comment_to_pending_review",
-			mcp.WithDescription(t("TOOL_ADD_COMMENT_TO_PENDING_REVIEW_DESCRIPTION", "Add a review comment to the requester's latest pending pull request review, a pending review needs to already exist to call this (check with the user if not sure).")),
+			mcp.WithDescription(t("TOOL_ADD_COMMENT_TO_PENDING_REVIEW_DESCRIPTION", "Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure).")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
-				Title:        t("TOOL_ADD_COMMENT_TO_PENDING_REVIEW_USER_TITLE", "Add comment to the requester's latest pending pull request review"),
+				Title:        t("TOOL_ADD_COMMENT_TO_PENDING_REVIEW_USER_TITLE", "Add review comment to the requester's latest pending pull request review"),
 				ReadOnlyHint: ToBoolPtr(false),
 			}),
 			// Ideally, for performance sake this would just accept the pullRequestReviewID. However, we would need to

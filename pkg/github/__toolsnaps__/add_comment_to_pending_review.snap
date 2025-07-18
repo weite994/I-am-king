@@ -1,9 +1,9 @@
 {
   "annotations": {
-    "title": "Add comment to the requester's latest pending pull request review",
+    "title": "Add review comment to the requester's latest pending pull request review",
     "readOnlyHint": false
   },
-  "description": "Add a review comment to the requester's latest pending pull request review, a pending review needs to already exist to call this (check with the user if not sure).",
+  "description": "Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure).",
   "inputSchema": {
     "properties": {
       "body": {
