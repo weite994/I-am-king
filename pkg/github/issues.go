@@ -296,48 +296,40 @@ func ListSubIssues(getClient GetClientFn, t translations.TranslationHelperFunc) 
 				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			// Since the go-github library might not have sub-issues support yet,
-			// we'll make a direct HTTP request using the client's HTTP client
-			url := fmt.Sprintf("%srepos/%s/%s/issues/%d/sub_issues?page=%d&per_page=%d",
-				client.BaseURL.String(), owner, repo, issueNumber, page, perPage)
-			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+			opts := &github.IssueListOptions{
+                ListOptions: github.ListOptions{
+                    Page:    page,
+                    PerPage: perPage,
+                },
+            }
+
+			subIssues, resp, err := client.SubIssue.ListByIssue(ctx, owner, repo, int64(issueNumber), opts)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create request: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to list sub-issues",
+					resp,
+					err,
+				), nil
 			}
 
-			req.Header.Set("Accept", "application/vnd.github+json")
-			req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-			// Use the same authentication as the GitHub client
-			httpClient := client.Client()
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed to list sub-issues: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read response body: %w", err)
-			}
+			defer func() { _ = resp.Body.Close() }() 
 
 			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
 				return mcp.NewToolResultError(fmt.Sprintf("failed to list sub-issues: %s", string(body))), nil
 			}
 
-			// Parse and re-marshal to ensure consistent formatting
-			var result interface{}
-			if err := json.Unmarshal(body, &result); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-			}
-
-			r, err := json.Marshal(result)
+			r, err := json.Marshal(subIssues)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
 
 			return mcp.NewToolResultText(string(r)), nil
 		}
+		
 }
 
 // RemoveSubIssue creates a tool to remove a sub-issue from a parent issue.
