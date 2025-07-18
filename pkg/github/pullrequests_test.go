@@ -2140,7 +2140,7 @@ func TestAddPullRequestReviewCommentToPendingReview(t *testing.T) {
 	tool, _ := AddPullRequestReviewCommentToPendingReview(stubGetGQLClientFn(mockClient), translations.NullTranslationHelper)
 	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
-	assert.Equal(t, "add_pull_request_review_comment_to_pending_review", tool.Name)
+	assert.Equal(t, "add_comment_to_pending_review", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
