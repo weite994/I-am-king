@@ -83,7 +83,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 
 #### Configuration Steps
 1. Install/update the GitHub Copilot plugin
-2. Click **GitHub Copilot icon** → **Edit Settings** → **MCP Servers** → **Edit in mcp.json**
+2. Click **GitHub Copilot icon in the status bar** → **Edit Settings** → **Model Context Protocol** → **Configure**
 3. Add configuration:
 ```json
 {
