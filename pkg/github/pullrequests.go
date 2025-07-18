@@ -1151,8 +1151,8 @@ func CreatePendingPullRequestReview(getGQLClient GetGQLClientFn, t translations.
 		}
 }
 
-// AddPullRequestReviewCommentToPendingReview creates a tool to add a comment to a pull request review.
-func AddPullRequestReviewCommentToPendingReview(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+// AddCommentToPendingReview creates a tool to add a comment to a pull request review.
+func AddCommentToPendingReview(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("add_comment_to_pending_review",
 			mcp.WithDescription(t("TOOL_ADD_COMMENT_TO_PENDING_REVIEW_DESCRIPTION", "Add a review comment to the requester's latest pending pull request review, a pending review needs to already exist to call this (check with the user if not sure).")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
