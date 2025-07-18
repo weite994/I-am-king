@@ -10,7 +10,7 @@
 The remote GitHub MCP server is hosted by GitHub at `https://api.githubcopilot.com/mcp/` and supports Streamable HTTP protocol. Cursor currently supports remote servers with PAT authentication.
 
 ### Streamable HTTP Configuration
-As of Cursor v0.48.0, Cursor supports SSE servers directly:
+As of Cursor v0.48.0, Cursor supports Streamable HTTP servers directly:
 
 ```json
 {
