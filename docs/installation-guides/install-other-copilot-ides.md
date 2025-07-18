@@ -186,7 +186,7 @@ For users who prefer to run the GitHub MCP server locally. Requires Docker insta
 
 ## Eclipse
 
-MCP support available with Eclipse 2024-09+ and latest GitHub Copilot extension.
+MCP support available with Eclipse 2024-03+ and latest version of the GitHub Copilot plugin.
 
 ### Remote Server (Recommended)
 
@@ -196,7 +196,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 
 #### Configuration Steps
 1. Install GitHub Copilot extension from Eclipse Marketplace
-2. Click **GitHub Copilot icon** → **Edit Preferences** → **MCP Servers**
+2. Click the **GitHub Copilot icon** → **Edit Preferences** → **MCP** (under **GitHub Copilot**)
 3. Add GitHub MCP server configuration:
 ```json
 {
@@ -212,7 +212,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
   }
 }
 ```
-4. Restart Eclipse
+4. Click the "Apply and Close" button in the preference dialog and the configuration will take effect automatically.
 
 ### Local Server
 
@@ -237,7 +237,7 @@ For users who prefer to run the GitHub MCP server locally. Requires Docker insta
 }
 ```
 
-**Documentation:** [Eclipse Copilot Extension](https://marketplace.eclipse.org/content/github-copilot)
+**Documentation:** [Eclipse Copilot plugin](https://marketplace.eclipse.org/content/github-copilot)
 
 ---
 
