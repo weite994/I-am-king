@@ -33,7 +33,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			mcp.WithString("category",
 				mcp.Description("Optional filter by discussion category ID. If provided, only discussions with this category are listed."),
 			),
-			WithUnifiedPagination(),
+			WithCursorPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Required params
@@ -53,7 +53,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			}
 
 			// Get pagination parameters and convert to GraphQL format
-			pagination, err := OptionalPaginationParams(request)
+			pagination, err := OptionalCursorPaginationParams(request)
 			if err != nil {
 				return nil, err
 			}
@@ -305,7 +305,7 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
 			mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
 			mcp.WithNumber("discussionNumber", mcp.Required(), mcp.Description("Discussion Number")),
-			WithUnifiedPagination(),
+			WithCursorPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
@@ -319,22 +319,21 @@ func GetDiscussionComments(getGQLClient GetGQLClientFn, t translations.Translati
 			}
 
 			// Get pagination parameters and convert to GraphQL format
-			pagination, err := OptionalPaginationParams(request)
+			pagination, err := OptionalCursorPaginationParams(request)
 			if err != nil {
 				return nil, err
 			}
 
 			// Check if pagination parameters were explicitly provided
-			_, pageProvided := request.GetArguments()["page"]
 			_, perPageProvided := request.GetArguments()["perPage"]
-			paginationExplicit := pageProvided || perPageProvided
+			paginationExplicit := perPageProvided
 
 			paginationParams, err := pagination.ToGraphQLParams()
 			if err != nil {
 				return nil, err
 			}
 
-			// Use default of 100 if pagination was not explicitly provided
+			// Use default of 30 if pagination was not explicitly provided
 			if !paginationExplicit {
 				defaultFirst := int32(DefaultGraphQLPageSize)
 				paginationParams.First = &defaultFirst
@@ -419,7 +418,6 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 				mcp.Required(),
 				mcp.Description("Repository name"),
 			),
-			WithUnifiedPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Decode params
@@ -429,28 +427,6 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 			}
 			if err := mapstructure.Decode(request.Params.Arguments, &params); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			// Get pagination parameters and convert to GraphQL format
-			pagination, err := OptionalPaginationParams(request)
-			if err != nil {
-				return nil, err
-			}
-
-			// Check if pagination parameters were explicitly provided
-			_, pageProvided := request.GetArguments()["page"]
-			_, perPageProvided := request.GetArguments()["perPage"]
-			paginationExplicit := pageProvided || perPageProvided
-
-			paginationParams, err := pagination.ToGraphQLParams()
-			if err != nil {
-				return nil, err
-			}
-
-			// Use default of 100 if pagination was not explicitly provided
-			if !paginationExplicit {
-				defaultFirst := int32(DefaultGraphQLPageSize)
-				paginationParams.First = &defaultFirst
 			}
 
 			client, err := getGQLClient(ctx)
@@ -472,18 +448,13 @@ func ListDiscussionCategories(getGQLClient GetGQLClientFn, t translations.Transl
 							EndCursor       githubv4.String
 						}
 						TotalCount int
-					} `graphql:"discussionCategories(first: $first, after: $after)"`
+					} `graphql:"discussionCategories(first: $first)"`
 				} `graphql:"repository(owner: $owner, name: $repo)"`
 			}
 			vars := map[string]interface{}{
 				"owner": githubv4.String(params.Owner),
 				"repo":  githubv4.String(params.Repo),
-				"first": githubv4.Int(*paginationParams.First),
-			}
-			if paginationParams.After != nil {
-				vars["after"] = githubv4.String(*paginationParams.After)
-			} else {
-				vars["after"] = (*githubv4.String)(nil)
+				"first": githubv4.Int(25),
 			}
 			if err := client.Query(ctx, &q, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

@@ -212,6 +212,21 @@ func WithUnifiedPagination() mcp.ToolOption {
 	}
 }
 
+// WithCursorPagination adds only cursor-based pagination parameters to a tool (no page parameter).
+func WithCursorPagination() mcp.ToolOption {
+	return func(tool *mcp.Tool) {
+		mcp.WithNumber("perPage",
+			mcp.Description("Results per page for pagination (min 1, max 100)"),
+			mcp.Min(1),
+			mcp.Max(100),
+		)(tool)
+
+		mcp.WithString("after",
+			mcp.Description("Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs."),
+		)(tool)
+	}
+}
+
 type PaginationParams struct {
 	Page    int
 	PerPage int
@@ -240,6 +255,49 @@ func OptionalPaginationParams(r mcp.CallToolRequest) (PaginationParams, error) {
 		Page:    page,
 		PerPage: perPage,
 		After:   after,
+	}, nil
+}
+
+// OptionalCursorPaginationParams returns the "perPage" and "after" parameters from the request,
+// without the "page" parameter, suitable for cursor-based pagination only.
+func OptionalCursorPaginationParams(r mcp.CallToolRequest) (CursorPaginationParams, error) {
+	perPage, err := OptionalIntParamWithDefault(r, "perPage", 30)
+	if err != nil {
+		return CursorPaginationParams{}, err
+	}
+	after, err := OptionalParam[string](r, "after")
+	if err != nil {
+		return CursorPaginationParams{}, err
+	}
+	return CursorPaginationParams{
+		PerPage: perPage,
+		After:   after,
+	}, nil
+}
+
+type CursorPaginationParams struct {
+	PerPage int
+	After   string
+}
+
+// ToGraphQLParams converts cursor pagination parameters to GraphQL-specific parameters.
+func (p CursorPaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
+	if p.PerPage > 100 {
+		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", p.PerPage)
+	}
+	if p.PerPage < 0 {
+		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d cannot be negative", p.PerPage)
+	}
+	first := int32(p.PerPage)
+
+	var after *string
+	if p.After != "" {
+		after = &p.After
+	}
+
+	return GraphQLPaginationParams{
+		First: &first,
+		After: after,
 	}, nil
 }
 

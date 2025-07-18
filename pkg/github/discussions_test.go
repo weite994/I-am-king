@@ -353,14 +353,13 @@ func Test_GetDiscussionComments(t *testing.T) {
 
 func Test_ListDiscussionCategories(t *testing.T) {
 	// Use exact string query that matches implementation output
-	qListCategories := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first, after: $after){nodes{id,name},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
+	qListCategories := "query($first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussionCategories(first: $first){nodes{id,name},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	vars := map[string]interface{}{
 		"owner": "owner",
 		"repo":  "repo",
-		"first": float64(30),
-		"after": (*string)(nil),
+		"first": float64(25),
 	}
 
 	mockResp := githubv4mock.DataResponse(map[string]any{
@@ -396,9 +395,6 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	require.NoError(t, err)
 
 	text := getTextResult(t, result).Text
-
-	// Debug: print the actual JSON response
-	t.Logf("JSON response: %s", text)
 
 	var response struct {
 		Categories []map[string]string `json:"categories"`
