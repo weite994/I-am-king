@@ -25,7 +25,7 @@ As of Cursor v0.48.0, Cursor supports Streamable HTTP servers directly:
 }
 ```
 
-**Note**: You may need to update to the latest version, if the current version doesn't support direct SSE
+**Note**: You may need to update to the latest version, if the current version doesn't support direct Streamable HTTP
 
 ## Local Server Setup
 
