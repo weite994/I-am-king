@@ -99,7 +99,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
   }
 }
 ```
-4. Restart IDE and use Agent mode in Copilot Chat
+4. Press `Ctrl + S` or `Command + S` to save, or close the `mcp.json` file. The configuration should take effect immediately and restart all the MCP servers defined. You can restart the IDE if needed.
 
 ### Local Server
 
