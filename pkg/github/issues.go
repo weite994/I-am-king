@@ -457,7 +457,7 @@ func ReprioritizeSubIssue(getClient GetClientFn, t translations.TranslationHelpe
 			),
 			mcp.WithNumber("sub_issue_id",
 				mcp.Required(),
-				mcp.Description("The ID of the sub-issue to reprioritize"),
+				mcp.Description("The ID of the sub-issue to reprioritize. Note: This is NOT the same as the issue number."),
 			),
 			mcp.WithNumber("after_id",
 				mcp.Description("The ID of the sub-issue to be prioritized after (either after_id OR before_id should be specified)"),
@@ -503,68 +503,48 @@ func ReprioritizeSubIssue(getClient GetClientFn, t translations.TranslationHelpe
 			}
 
 			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
+            if err != nil {
+                return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+            }
 
-			// Create the request body
-			requestBody := map[string]interface{}{
-				"sub_issue_id": subIssueID,
-			}
+            subIssueRequest := github.SubIssueRequest{
+                SubIssueID: int64(subIssueID),
+            }
+
 			if afterID != 0 {
-				requestBody["after_id"] = afterID
-			}
-			if beforeID != 0 {
-				requestBody["before_id"] = beforeID
-			}
+                afterIDInt64 := int64(afterID)
+                subIssueRequest.AfterID = &afterIDInt64
+            }
+            if beforeID != 0 {
+                beforeIDInt64 := int64(beforeID)
+                subIssueRequest.BeforeID = &beforeIDInt64
+            }
 
-			// Since the go-github library might not have sub-issues support yet,
-			// we'll make a direct HTTP request using the client's HTTP client
-			reqBodyBytes, err := json.Marshal(requestBody)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal request body: %w", err)
-			}
+            subIssue, resp, err := client.SubIssue.Reprioritize(ctx, owner, repo, int64(issueNumber), subIssueRequest)
+            if err != nil {
+                return ghErrors.NewGitHubAPIErrorResponse(ctx,
+                    "failed to reprioritize sub-issue",
+                    resp,
+                    err,
+                ), nil
+            }
 
-			url := fmt.Sprintf("%srepos/%s/%s/issues/%d/sub_issues/priority",
-				client.BaseURL.String(), owner, repo, issueNumber)
-			req, err := http.NewRequestWithContext(ctx, "PATCH", url, strings.NewReader(string(reqBodyBytes)))
-			if err != nil {
-				return nil, fmt.Errorf("failed to create request: %w", err)
-			}
+            defer func() { _ = resp.Body.Close() }() 
 
-			req.Header.Set("Accept", "application/vnd.github+json")
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+            if resp.StatusCode != http.StatusOK {
+                body, err := io.ReadAll(resp.Body)
+                if err != nil {
+                    return nil, fmt.Errorf("failed to read response body: %w", err)
+                }
+                return mcp.NewToolResultError(fmt.Sprintf("failed to reprioritize sub-issue: %s", string(body))), nil
+            }
 
-			// Use the same authentication as the GitHub client
-			httpClient := client.Client()
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed to reprioritize sub-issue: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
+            r, err := json.Marshal(subIssue)
+            if err != nil {
+                return nil, fmt.Errorf("failed to marshal response: %w", err)
+            }
 
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read response body: %w", err)
-			}
-
-			if resp.StatusCode != http.StatusOK {
-				return mcp.NewToolResultError(fmt.Sprintf("failed to reprioritize sub-issue: %s", string(body))), nil
-			}
-
-			// Parse and re-marshal to ensure consistent formatting
-			var result interface{}
-			if err := json.Unmarshal(body, &result); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-			}
-
-			r, err := json.Marshal(result)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal response: %w", err)
-			}
-
-			return mcp.NewToolResultText(string(r)), nil
+            return mcp.NewToolResultText(string(r)), nil
 		}
 }
 
