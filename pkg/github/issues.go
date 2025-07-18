@@ -354,7 +354,7 @@ func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc)
 			),
 			mcp.WithNumber("sub_issue_id",
 				mcp.Required(),
-				mcp.Description("The ID of the sub-issue to remove"),
+				mcp.Description("The ID of the sub-issue to remove. Note: This is NOT the same as the issue number."),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
