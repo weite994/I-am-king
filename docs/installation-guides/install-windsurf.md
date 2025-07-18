@@ -86,7 +86,7 @@ After installation:
 ### Remote Server Issues
 - **Authentication failures**: Verify PAT has correct scopes and hasn't expired
 - **Connection errors**: Check firewall/proxy settings for HTTPS connections
-- **SSE not working**: Ensure you're using the correct `serverUrl` field format
+- **Streamable HTTP not working**: Ensure you're using the correct `serverUrl` field format
 
 ### Local Server Issues
 - **Docker errors**: Ensure Docker Desktop is running
