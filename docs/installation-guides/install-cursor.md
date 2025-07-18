@@ -101,7 +101,7 @@ After installation:
 ## Troubleshooting
 
 ### Remote Server Issues
-- **SSE not working**: Ensure you're using Cursor v0.48.0 or later
+- **Streamable HTTP not working**: Ensure you're using Cursor v0.48.0 or later
 - **Authentication failures**: Verify PAT has correct scopes
 - **Connection errors**: Check firewall/proxy settings
 
