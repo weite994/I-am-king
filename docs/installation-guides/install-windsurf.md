@@ -7,7 +7,7 @@
 
 ## Remote Server Setup (Recommended)
 
-The remote GitHub MCP server is hosted by GitHub at `https://api.githubcopilot.com/mcp/` and supports both HTTP and SSE protocols. Windsurf currently supports PAT authentication only.
+The remote GitHub MCP server is hosted by GitHub at `https://api.githubcopilot.com/mcp/` and supports Streamable HTTP protocol. Windsurf currently supports PAT authentication only.
 
 ### Direct SSE Configuration
 Windsurf supports SSE servers with a `serverUrl` field:
