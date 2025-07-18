@@ -10,7 +10,7 @@
 The remote GitHub MCP server is hosted by GitHub at `https://api.githubcopilot.com/mcp/` and supports Streamable HTTP protocol. Windsurf currently supports PAT authentication only.
 
 ### Streamable HTTP Configuration
-Windsurf supports SSE servers with a `serverUrl` field:
+Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 
 ```json
 {
