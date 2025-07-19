@@ -125,7 +125,7 @@ Add this codeblock to your `claude_desktop_config.json`:
 - Check token hasn't expired
 
 **Remote Server:**
-- Verify URL: `https://api.githubcopilot.com/mcp/`
+- Verify URL: `https://api.githubcopilot.com/mcp`
 
 **Docker Issues (Local Only):**
 - Ensure Docker Desktop is running
