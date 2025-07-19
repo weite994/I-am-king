@@ -42,6 +42,7 @@ claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Aut
 
 ### Local Server Setup (Docker required)
 
+### With Docker
 1. Run the following command in the Claude Code CLI:
 ```bash
 claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
@@ -50,6 +51,17 @@ claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- docker 
 With an environment variable:
 ```bash
 claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | cut -d '=' -f2) -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
+```
+2. Restart Claude Code
+3. Run `claude mcp list` to see if the GitHub server is configured
+
+### With a Go Binary (without Docker)
+
+1. Download [release binary](https://github.com/github/github-mcp-server/releases)
+2. Add to your `PATH`
+3. Run:
+```bash
+claude mcp add-json github '{"command": "github-mcp-server", "args": ["stdio"], "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT"}}'
 ```
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
