@@ -55,7 +55,7 @@ claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | c
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
 
-### With a Go Binary (without Docker)
+### With a Binary (no Docker)
 
 1. Download [release binary](https://github.com/github/github-mcp-server/releases)
 2. Add to your `PATH`
