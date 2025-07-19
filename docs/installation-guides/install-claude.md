@@ -6,7 +6,7 @@
 - Claude Code CLI installed
 - [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)
 - For local setup: [Docker](https://www.docker.com/) installed and running
-- Claude Code provides the best experience when it's start within the directory for your project – or it may configure MCP in the wrong place, or pull from other project configuration files
+- Open Claude Code inside the directory for your project (recommended for best experience and clear scope of configuration)
 
 <details>
 <summary><b>Storing Your PAT Securely</b></summary>
