@@ -20,6 +20,36 @@ Built for developers who want to connect their AI tools to GitHub context and ca
 
 The remote GitHub MCP Server is hosted by GitHub and provides the easiest method for getting up and running. If your MCP host does not support remote MCP servers, don't worry! You can use the [local version of the GitHub MCP Server](https://github.com/github/github-mcp-server?tab=readme-ov-file#local-github-mcp-server) instead.
 
+## 🧠 VS Code: Example `mcp.json`
+
+If you see this error when installing the MCP server:
+
+> Cannot read properties of undefined (reading 'inputs')
+
+You need to create a `.vscode/mcp.json` file with input definitions. Example:
+
+```json
+{
+  "inputs": [
+    {
+      "id": "github_token",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+      }
+    }
+  }
+}
+
+
 ### Prerequisites
 
 1. A compatible MCP host with remote server support (VS Code 1.101+, Claude Desktop, Cursor, Windsurf, etc.)
