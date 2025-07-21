@@ -1029,8 +1029,8 @@ func GetIssueComments(getClient GetClientFn, t translations.TranslationHelperFun
 
 			opts := &github.IssueListCommentsOptions{
 				ListOptions: github.ListOptions{
-					Page:    pagination.page,
-					PerPage: pagination.perPage,
+					Page:    pagination.Page,
+					PerPage: pagination.PerPage,
 				},
 			}
 
