@@ -281,12 +281,12 @@ type CursorPaginationParams struct {
 }
 
 // ToGraphQLParams converts cursor pagination parameters to GraphQL-specific parameters.
-func (p CursorPaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
+func (p CursorPaginationParams) ToGraphQLParams() (*GraphQLPaginationParams, error) {
 	if p.PerPage > 100 {
-		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", p.PerPage)
+		return nil, fmt.Errorf("perPage value %d exceeds maximum of 100", p.PerPage)
 	}
 	if p.PerPage < 0 {
-		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d cannot be negative", p.PerPage)
+		return nil, fmt.Errorf("perPage value %d cannot be negative", p.PerPage)
 	}
 	first := int32(p.PerPage)
 
@@ -295,7 +295,7 @@ func (p CursorPaginationParams) ToGraphQLParams() (GraphQLPaginationParams, erro
 		after = &p.After
 	}
 
-	return GraphQLPaginationParams{
+	return &GraphQLPaginationParams{
 		First: &first,
 		After: after,
 	}, nil
@@ -309,24 +309,13 @@ type GraphQLPaginationParams struct {
 // ToGraphQLParams converts REST API pagination parameters to GraphQL-specific parameters.
 // This converts page/perPage to first parameter for GraphQL queries.
 // If After is provided, it takes precedence over page-based pagination.
-func (p PaginationParams) ToGraphQLParams() (GraphQLPaginationParams, error) {
-	if p.PerPage > 100 {
-		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d exceeds maximum of 100", p.PerPage)
+func (p PaginationParams) ToGraphQLParams() (*GraphQLPaginationParams, error) {
+	// Convert to CursorPaginationParams and delegate to avoid duplication
+	cursor := CursorPaginationParams{
+		PerPage: p.PerPage,
+		After:   p.After,
 	}
-	if p.PerPage < 0 {
-		return GraphQLPaginationParams{}, fmt.Errorf("perPage value %d cannot be negative", p.PerPage)
-	}
-	first := int32(p.PerPage)
-
-	var after *string
-	if p.After != "" {
-		after = &p.After
-	}
-
-	return GraphQLPaginationParams{
-		First: &first,
-		After: after,
-	}, nil
+	return cursor.ToGraphQLParams()
 }
 
 func MarshalledTextResult(v any) *mcp.CallToolResult {
