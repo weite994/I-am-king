@@ -1640,6 +1640,7 @@ func Test_AddSubIssue(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	tool, _ := AddSubIssue(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "add_sub_issue", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1875,6 +1876,7 @@ func Test_ListSubIssues(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	tool, _ := ListSubIssues(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "list_sub_issues", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -2114,6 +2116,7 @@ func Test_RemoveSubIssue(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	tool, _ := RemoveSubIssue(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "remove_sub_issue", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -2329,6 +2332,7 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
 	tool, _ := ReprioritizeSubIssue(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "reprioritize_sub_issue", tool.Name)
 	assert.NotEmpty(t, tool.Description)
