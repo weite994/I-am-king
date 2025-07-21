@@ -407,9 +407,13 @@ func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc)
 			httpClient := client.Client() // Use authenticated GitHub client
 			resp, err := httpClient.Do(req)
 			if err != nil {
+				var ghResp *github.Response
+				if resp != nil {
+					ghResp = &github.Response{Response: resp}
+				}
 				return ghErrors.NewGitHubAPIErrorResponse(ctx,
 					"failed to remove sub-issue",
-					&github.Response{Response: resp},
+					ghResp,
 					err,
 				), nil
 			}
