@@ -333,6 +333,10 @@ func ListSubIssues(getClient GetClientFn, t translations.TranslationHelperFunc) 
 }
 
 // RemoveSubIssue creates a tool to remove a sub-issue from a parent issue.
+// Unlike other sub-issue tools, this currently uses a direct HTTP DELETE request
+// because of a bug in the go-github library.
+// Once the fix is released, this can be updated to use the library method.
+// See: https://github.com/google/go-github/pull/3613
 func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("remove_sub_issue",
 			mcp.WithDescription(t("TOOL_REMOVE_SUB_ISSUE_DESCRIPTION", "Remove a sub-issue from a parent issue in a GitHub repository.")),
@@ -384,30 +388,30 @@ func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc)
 			requestBody := map[string]interface{}{
 				"sub_issue_id": subIssueID,
 			}
-
-			// Since the go-github library might not have sub-issues support yet,
-			// we'll make a direct HTTP request using the client's HTTP client
 			reqBodyBytes, err := json.Marshal(requestBody)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal request body: %w", err)
 			}
 
+			// Create the HTTP request
 			url := fmt.Sprintf("%srepos/%s/%s/issues/%d/sub_issue",
 				client.BaseURL.String(), owner, repo, issueNumber)
 			req, err := http.NewRequestWithContext(ctx, "DELETE", url, strings.NewReader(string(reqBodyBytes)))
 			if err != nil {
 				return nil, fmt.Errorf("failed to create request: %w", err)
 			}
-
 			req.Header.Set("Accept", "application/vnd.github+json")
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-			// Use the same authentication as the GitHub client
-			httpClient := client.Client()
+			httpClient := client.Client() // Use authenticated GitHub client
 			resp, err := httpClient.Do(req)
 			if err != nil {
-				return nil, fmt.Errorf("failed to remove sub-issue: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to remove sub-issue",
+					&github.Response{Response: resp},
+					err,
+				), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
