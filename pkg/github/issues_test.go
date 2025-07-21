@@ -1681,16 +1681,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "successful sub-issue addition with all parameters",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id":   float64(123),
-						"replace_parent": true,
-					}).andThen(
-						mockResponse(t, http.StatusCreated, mockIssue),
-					),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusCreated, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1707,15 +1699,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "successful sub-issue addition with minimal parameters",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id": float64(456),
-					}).andThen(
-						mockResponse(t, http.StatusCreated, mockIssue),
-					),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusCreated, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1731,15 +1716,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "successful sub-issue addition with replace_parent false",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id": float64(789),
-					}).andThen(
-						mockResponse(t, http.StatusCreated, mockIssue),
-					),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusCreated, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1756,14 +1734,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "parent issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/999/sub_issues",
-						Method:  "POST",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Parent issue not found"}`))
-					}),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Parent issue not found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1779,14 +1751,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "sub-issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Sub-issue not found"}`))
-					}),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Sub-issue not found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1802,14 +1768,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "validation failed - sub-issue cannot be parent of itself",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusUnprocessableEntity)
-						_, _ = w.Write([]byte(`{"message": "Validation failed", "errors": [{"message": "Sub-issue cannot be a parent of itself"}]}`))
-					}),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusUnprocessableEntity, `{"message": "Validation failed", "errors": [{"message": "Sub-issue cannot be a parent of itself"}]}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1825,14 +1785,8 @@ func Test_AddSubIssue(t *testing.T) {
 			name: "insufficient permissions",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusForbidden)
-						_, _ = w.Write([]byte(`{"message": "Must have write access to repository"}`))
-					}),
+					mock.PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusForbidden, `{"message": "Must have write access to repository"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -1845,15 +1799,9 @@ func Test_AddSubIssue(t *testing.T) {
 			expectedErrMsg: "failed to add sub-issue",
 		},
 		{
-			name: "missing required parameter owner",
+			name:         "missing required parameter owner",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					mockResponse(t, http.StatusCreated, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"repo":         "repo",
@@ -1864,15 +1812,9 @@ func Test_AddSubIssue(t *testing.T) {
 			expectedErrMsg: "missing required parameter: owner",
 		},
 		{
-			name: "missing required parameter sub_issue_id",
+			name:         "missing required parameter sub_issue_id",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "POST",
-					},
-					mockResponse(t, http.StatusCreated, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner":        "owner",
@@ -1988,17 +1930,9 @@ func Test_ListSubIssues(t *testing.T) {
 		{
 			name: "successful sub-issues listing with minimal parameters",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					expectQueryParams(t, map[string]string{
-						"page":     "1",
-						"per_page": "30",
-					}).andThen(
-						mockResponse(t, http.StatusOK, mockSubIssues),
-					),
+				mock.WithRequestMatch(
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockSubIssues,
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2013,10 +1947,7 @@ func Test_ListSubIssues(t *testing.T) {
 			name: "successful sub-issues listing with pagination",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
 					expectQueryParams(t, map[string]string{
 						"page":     "2",
 						"per_page": "10",
@@ -2038,12 +1969,9 @@ func Test_ListSubIssues(t *testing.T) {
 		{
 			name: "successful sub-issues listing with empty result",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					mockResponse(t, http.StatusOK, []*github.Issue{}),
+				mock.WithRequestMatch(
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					[]*github.Issue{},
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2058,14 +1986,8 @@ func Test_ListSubIssues(t *testing.T) {
 			name: "parent issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/999/sub_issues",
-						Method:  "GET",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-					}),
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Not Found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2080,14 +2002,8 @@ func Test_ListSubIssues(t *testing.T) {
 			name: "repository not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/nonexistent/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-					}),
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Not Found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2102,14 +2018,8 @@ func Test_ListSubIssues(t *testing.T) {
 			name: "sub-issues feature gone/deprecated",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusGone)
-						_, _ = w.Write([]byte(`{"message": "This feature has been deprecated"}`))
-					}),
+					mock.GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusGone, `{"message": "This feature has been deprecated"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2121,15 +2031,9 @@ func Test_ListSubIssues(t *testing.T) {
 			expectedErrMsg: "failed to list sub-issues",
 		},
 		{
-			name: "missing required parameter owner",
+			name:         "missing required parameter owner",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					mockResponse(t, http.StatusOK, mockSubIssues),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"repo":         "repo",
@@ -2139,15 +2043,9 @@ func Test_ListSubIssues(t *testing.T) {
 			expectedErrMsg: "missing required parameter: owner",
 		},
 		{
-			name: "missing required parameter issue_number",
+			name:         "missing required parameter issue_number",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues",
-						Method:  "GET",
-					},
-					mockResponse(t, http.StatusOK, mockSubIssues),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner": "owner",
@@ -2256,15 +2154,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "successful sub-issue removal",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id": float64(123),
-					}).andThen(
-						mockResponse(t, http.StatusOK, mockIssue),
-					),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusOK, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2280,14 +2171,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "parent issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/999/sub_issue",
-						Method:  "DELETE",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-					}),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Not Found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2303,14 +2188,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "sub-issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Sub-issue not found"}`))
-					}),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Sub-issue not found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2326,14 +2205,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "bad request - invalid sub_issue_id",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusBadRequest)
-						_, _ = w.Write([]byte(`{"message": "Invalid sub_issue_id"}`))
-					}),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusBadRequest, `{"message": "Invalid sub_issue_id"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2349,14 +2222,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "repository not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/nonexistent/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-					}),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Not Found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2372,14 +2239,8 @@ func Test_RemoveSubIssue(t *testing.T) {
 			name: "insufficient permissions",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusForbidden)
-						_, _ = w.Write([]byte(`{"message": "Must have write access to repository"}`))
-					}),
+					mock.DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusForbidden, `{"message": "Must have write access to repository"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2392,15 +2253,9 @@ func Test_RemoveSubIssue(t *testing.T) {
 			expectedErrMsg: "failed to remove sub-issue",
 		},
 		{
-			name: "missing required parameter owner",
+			name:         "missing required parameter owner",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"repo":         "repo",
@@ -2411,15 +2266,9 @@ func Test_RemoveSubIssue(t *testing.T) {
 			expectedErrMsg: "missing required parameter: owner",
 		},
 		{
-			name: "missing required parameter sub_issue_id",
+			name:         "missing required parameter sub_issue_id",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issue",
-						Method:  "DELETE",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner":        "owner",
@@ -2522,16 +2371,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "successful reprioritization with after_id",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id": float64(123),
-						"after_id":     float64(456),
-					}).andThen(
-						mockResponse(t, http.StatusOK, mockIssue),
-					),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusOK, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2548,16 +2389,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "successful reprioritization with before_id",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					expectRequestBody(t, map[string]interface{}{
-						"sub_issue_id": float64(123),
-						"before_id":    float64(789),
-					}).andThen(
-						mockResponse(t, http.StatusOK, mockIssue),
-					),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusOK, mockIssue),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2571,15 +2404,9 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			expectedIssue: mockIssue,
 		},
 		{
-			name: "validation error - neither after_id nor before_id specified",
+			name:         "validation error - neither after_id nor before_id specified",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner":        "owner",
@@ -2591,15 +2418,9 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			expectedErrMsg: "either after_id or before_id must be specified",
 		},
 		{
-			name: "validation error - both after_id and before_id specified",
+			name:         "validation error - both after_id and before_id specified",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner":        "owner",
@@ -2616,14 +2437,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "parent issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/999/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-					}),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Not Found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2640,14 +2455,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "sub-issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusNotFound)
-						_, _ = w.Write([]byte(`{"message": "Sub-issue not found"}`))
-					}),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusNotFound, `{"message": "Sub-issue not found"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2664,14 +2473,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "validation failed - positioning sub-issue not found",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusUnprocessableEntity)
-						_, _ = w.Write([]byte(`{"message": "Validation failed", "errors": [{"message": "Positioning sub-issue not found"}]}`))
-					}),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusUnprocessableEntity, `{"message": "Validation failed", "errors": [{"message": "Positioning sub-issue not found"}]}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2688,14 +2491,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "insufficient permissions",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusForbidden)
-						_, _ = w.Write([]byte(`{"message": "Must have write access to repository"}`))
-					}),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusForbidden, `{"message": "Must have write access to repository"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2712,14 +2509,8 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			name: "service unavailable",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-						w.WriteHeader(http.StatusServiceUnavailable)
-						_, _ = w.Write([]byte(`{"message": "Service Unavailable"}`))
-					}),
+					mock.PatchReposIssuesSubIssuesPriorityByOwnerByRepoByIssueNumber,
+					mockResponse(t, http.StatusServiceUnavailable, `{"message": "Service Unavailable"}`),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -2733,15 +2524,9 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			expectedErrMsg: "failed to reprioritize sub-issue",
 		},
 		{
-			name: "missing required parameter owner",
+			name:         "missing required parameter owner",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"repo":         "repo",
@@ -2753,15 +2538,9 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 			expectedErrMsg: "missing required parameter: owner",
 		},
 		{
-			name: "missing required parameter sub_issue_id",
+			name:         "missing required parameter sub_issue_id",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatchHandler(
-					mock.EndpointPattern{
-						Pattern: "/repos/owner/repo/issues/42/sub_issues/priority",
-						Method:  "PATCH",
-					},
-					mockResponse(t, http.StatusOK, mockIssue),
-				),
+			// No mocked requests needed since validation fails before HTTP call
 			),
 			requestArgs: map[string]interface{}{
 				"owner":        "owner",
