@@ -483,7 +483,7 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `replace_parent`: When true, replaces the sub-issue's current parent issue (boolean, optional)
   - `repo`: Repository name (string, required)
-  - `sub_issue_id`: The ID of the sub-issue to add. Note: This is NOT the same as the issue number. (number, required)
+  - `sub_issue_id`: The ID of the sub-issue to add. ID is not the same as issue number (number, required)
 
 - **assign_copilot_to_issue** - Assign Copilot to issue
   - `issueNumber`: Issue number (number, required)
@@ -533,7 +533,7 @@ The following sets of tools are available (all are on by default):
   - `issue_number`: The number of the parent issue (number, required)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `sub_issue_id`: The ID of the sub-issue to remove. Note: This is NOT the same as the issue number. (number, required)
+  - `sub_issue_id`: The ID of the sub-issue to remove. ID is not the same as issue number (number, required)
 
 - **reprioritize_sub_issue** - Reprioritize sub-issue
   - `after_id`: The ID of the sub-issue to be prioritized after (either after_id OR before_id should be specified) (number, optional)
@@ -541,7 +541,7 @@ The following sets of tools are available (all are on by default):
   - `issue_number`: The number of the parent issue (number, required)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `sub_issue_id`: The ID of the sub-issue to reprioritize. Note: This is NOT the same as the issue number. (number, required)
+  - `sub_issue_id`: The ID of the sub-issue to reprioritize. ID is not the same as issue number (number, required)
 
 - **search_issues** - Search issues
   - `order`: Sort order (string, optional)

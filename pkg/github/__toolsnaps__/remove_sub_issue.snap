@@ -19,7 +19,7 @@
         "type": "string"
       },
       "sub_issue_id": {
-        "description": "The ID of the sub-issue to remove. Note: This is NOT the same as the issue number.",
+        "description": "The ID of the sub-issue to remove. ID is not the same as issue number",
         "type": "number"
       }
     },
