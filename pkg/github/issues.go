@@ -210,7 +210,7 @@ func AddSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			subIssueRequest := github.SubIssueRequest{
-				SubIssueID: int64(subIssueID),
+				SubIssueID:    int64(subIssueID),
 				ReplaceParent: ToBoolPtr(replaceParent),
 			}
 
@@ -223,7 +223,7 @@ func AddSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				), nil
 			}
 
-			defer func() { _ = resp.Body.Close() }() 
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				body, err := io.ReadAll(resp.Body)
@@ -297,11 +297,11 @@ func ListSubIssues(getClient GetClientFn, t translations.TranslationHelperFunc) 
 			}
 
 			opts := &github.IssueListOptions{
-                ListOptions: github.ListOptions{
-                    Page:    page,
-                    PerPage: perPage,
-                },
-            }
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: perPage,
+				},
+			}
 
 			subIssues, resp, err := client.SubIssue.ListByIssue(ctx, owner, repo, int64(issueNumber), opts)
 			if err != nil {
@@ -312,7 +312,7 @@ func ListSubIssues(getClient GetClientFn, t translations.TranslationHelperFunc) 
 				), nil
 			}
 
-			defer func() { _ = resp.Body.Close() }() 
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				body, err := io.ReadAll(resp.Body)
@@ -329,7 +329,7 @@ func ListSubIssues(getClient GetClientFn, t translations.TranslationHelperFunc) 
 
 			return mcp.NewToolResultText(string(r)), nil
 		}
-		
+
 }
 
 // RemoveSubIssue creates a tool to remove a sub-issue from a parent issue.
@@ -503,48 +503,48 @@ func ReprioritizeSubIssue(getClient GetClientFn, t translations.TranslationHelpe
 			}
 
 			client, err := getClient(ctx)
-            if err != nil {
-                return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-            }
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
 
-            subIssueRequest := github.SubIssueRequest{
-                SubIssueID: int64(subIssueID),
-            }
+			subIssueRequest := github.SubIssueRequest{
+				SubIssueID: int64(subIssueID),
+			}
 
 			if afterID != 0 {
-                afterIDInt64 := int64(afterID)
-                subIssueRequest.AfterID = &afterIDInt64
-            }
-            if beforeID != 0 {
-                beforeIDInt64 := int64(beforeID)
-                subIssueRequest.BeforeID = &beforeIDInt64
-            }
+				afterIDInt64 := int64(afterID)
+				subIssueRequest.AfterID = &afterIDInt64
+			}
+			if beforeID != 0 {
+				beforeIDInt64 := int64(beforeID)
+				subIssueRequest.BeforeID = &beforeIDInt64
+			}
 
-            subIssue, resp, err := client.SubIssue.Reprioritize(ctx, owner, repo, int64(issueNumber), subIssueRequest)
-            if err != nil {
-                return ghErrors.NewGitHubAPIErrorResponse(ctx,
-                    "failed to reprioritize sub-issue",
-                    resp,
-                    err,
-                ), nil
-            }
+			subIssue, resp, err := client.SubIssue.Reprioritize(ctx, owner, repo, int64(issueNumber), subIssueRequest)
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to reprioritize sub-issue",
+					resp,
+					err,
+				), nil
+			}
 
-            defer func() { _ = resp.Body.Close() }() 
+			defer func() { _ = resp.Body.Close() }()
 
-            if resp.StatusCode != http.StatusOK {
-                body, err := io.ReadAll(resp.Body)
-                if err != nil {
-                    return nil, fmt.Errorf("failed to read response body: %w", err)
-                }
-                return mcp.NewToolResultError(fmt.Sprintf("failed to reprioritize sub-issue: %s", string(body))), nil
-            }
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to reprioritize sub-issue: %s", string(body))), nil
+			}
 
-            r, err := json.Marshal(subIssue)
-            if err != nil {
-                return nil, fmt.Errorf("failed to marshal response: %w", err)
-            }
+			r, err := json.Marshal(subIssue)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
 
-            return mcp.NewToolResultText(string(r)), nil
+			return mcp.NewToolResultText(string(r)), nil
 		}
 }
 
