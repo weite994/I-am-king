@@ -15,6 +15,62 @@ import (
 
 const DefaultGraphQLPageSize = 30
 
+// Common interface for all discussion query types
+type DiscussionQueryResult interface {
+	GetDiscussionNodes() []DiscussionFragment
+	GetPageInfo() PageInfoFragment
+	GetTotalCount() githubv4.Int
+}
+
+// Implement the interface for all query types
+func (q *BasicNoOrder) GetDiscussionNodes() []DiscussionFragment {
+	return q.Repository.Discussions.Nodes
+}
+
+func (q *BasicNoOrder) GetPageInfo() PageInfoFragment {
+	return q.Repository.Discussions.PageInfo
+}
+
+func (q *BasicNoOrder) GetTotalCount() githubv4.Int {
+	return q.Repository.Discussions.TotalCount
+}
+
+func (q *BasicWithOrder) GetDiscussionNodes() []DiscussionFragment {
+	return q.Repository.Discussions.Nodes
+}
+
+func (q *BasicWithOrder) GetPageInfo() PageInfoFragment {
+	return q.Repository.Discussions.PageInfo
+}
+
+func (q *BasicWithOrder) GetTotalCount() githubv4.Int {
+	return q.Repository.Discussions.TotalCount
+}
+
+func (q *WithCategoryAndOrder) GetDiscussionNodes() []DiscussionFragment {
+	return q.Repository.Discussions.Nodes
+}
+
+func (q *WithCategoryAndOrder) GetPageInfo() PageInfoFragment {
+	return q.Repository.Discussions.PageInfo
+}
+
+func (q *WithCategoryAndOrder) GetTotalCount() githubv4.Int {
+	return q.Repository.Discussions.TotalCount
+}
+
+func (q *WithCategoryNoOrder) GetDiscussionNodes() []DiscussionFragment {
+	return q.Repository.Discussions.Nodes
+}
+
+func (q *WithCategoryNoOrder) GetPageInfo() PageInfoFragment {
+	return q.Repository.Discussions.PageInfo
+}
+
+func (q *WithCategoryNoOrder) GetTotalCount() githubv4.Int {
+	return q.Repository.Discussions.TotalCount
+}
+
 type DiscussionFragment struct {
 	Number    githubv4.Int
 	Title     githubv4.String
@@ -29,35 +85,50 @@ type DiscussionFragment struct {
 	URL githubv4.String `graphql:"url"`
 }
 
+type PageInfoFragment struct {
+	HasNextPage     bool
+	HasPreviousPage bool
+	StartCursor     githubv4.String
+	EndCursor       githubv4.String
+}
+
 type BasicNoOrder struct {
 	Repository struct {
 		Discussions struct {
-			Nodes []DiscussionFragment
-		} `graphql:"discussions(first: 100)"`
+			Nodes      []DiscussionFragment
+			PageInfo   PageInfoFragment
+			TotalCount githubv4.Int
+		} `graphql:"discussions(first: $first, after: $after)"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type BasicWithOrder struct {
 	Repository struct {
 		Discussions struct {
-			Nodes []DiscussionFragment
-		} `graphql:"discussions(first: 100, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+			Nodes      []DiscussionFragment
+			PageInfo   PageInfoFragment
+			TotalCount githubv4.Int
+		} `graphql:"discussions(first: $first, after: $after, orderBy: { field: $orderByField, direction: $orderByDirection })"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type WithCategoryAndOrder struct {
 	Repository struct {
 		Discussions struct {
-			Nodes []DiscussionFragment
-		} `graphql:"discussions(first: 100, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+			Nodes      []DiscussionFragment
+			PageInfo   PageInfoFragment
+			TotalCount githubv4.Int
+		} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection })"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type WithCategoryNoOrder struct {
 	Repository struct {
 		Discussions struct {
-			Nodes []DiscussionFragment
-		} `graphql:"discussions(first: 100, categoryId: $categoryId)"`
+			Nodes      []DiscussionFragment
+			PageInfo   PageInfoFragment
+			TotalCount githubv4.Int
+		} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId)"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
@@ -116,6 +187,7 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				mcp.Description("Order direction."),
 				mcp.Enum("ASC", "DESC"),
 			),
+			WithCursorPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -142,6 +214,16 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			// Get pagination parameters and convert to GraphQL format
+			pagination, err := OptionalCursorPaginationParams(request)
+			if err != nil {
+				return nil, err
+			}
+			paginationParams, err := pagination.ToGraphQLParams()
+			if err != nil {
+				return nil, err
+			}
+
 			client, err := getGQLClient(ctx)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
@@ -156,6 +238,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			vars := map[string]interface{}{
 				"owner": githubv4.String(owner),
 				"repo":  githubv4.String(repo),
+				"first": githubv4.Int(*paginationParams.First),
+			}
+			if paginationParams.After != nil {
+				vars["after"] = githubv4.String(*paginationParams.After)
+			} else {
+				vars["after"] = (*githubv4.String)(nil)
 			}
 
 			// this is an extra check in case the tool description is misinterpreted, because
@@ -170,38 +258,36 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				vars["categoryId"] = *categoryID
 			}
 
-			var discussions []*github.Discussion
 			discussionQuery := getQueryType(useOrdering, categoryID)
-
 			if err := client.Query(ctx, discussionQuery, vars); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// we need to check what user inputs we received at runtime, and use the
-			// most appropriate query based on that
-			switch queryType := discussionQuery.(type) {
-			case *WithCategoryAndOrder:
-				for _, node := range queryType.Repository.Discussions.Nodes {
+			// Extract and convert all discussion nodes using the common interface
+			var discussions []*github.Discussion
+			var pageInfo PageInfoFragment
+			var totalCount githubv4.Int
+			if queryResult, ok := discussionQuery.(DiscussionQueryResult); ok {
+				for _, node := range queryResult.GetDiscussionNodes() {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
-
-			case *WithCategoryNoOrder:
-				for _, node := range queryType.Repository.Discussions.Nodes {
-					discussions = append(discussions, fragmentToDiscussion(node))
-				}
-
-			case *BasicWithOrder:
-				for _, node := range queryType.Repository.Discussions.Nodes {
-					discussions = append(discussions, fragmentToDiscussion(node))
-				}
-
-			case *BasicNoOrder:
-				for _, node := range queryType.Repository.Discussions.Nodes {
-					discussions = append(discussions, fragmentToDiscussion(node))
-				}
+				pageInfo = queryResult.GetPageInfo()
+				totalCount = queryResult.GetTotalCount()
 			}
 
-			out, err := json.Marshal(discussions)
+			// Create response with pagination info
+			response := map[string]interface{}{
+				"discussions": discussions,
+				"pageInfo": map[string]interface{}{
+					"hasNextPage":     pageInfo.HasNextPage,
+					"hasPreviousPage": pageInfo.HasPreviousPage,
+					"startCursor":     pageInfo.StartCursor,
+					"endCursor":       pageInfo.EndCursor,
+				},
+				"totalCount": totalCount,
+			}
+
+			out, err := json.Marshal(response)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal discussions: %w", err)
 			}

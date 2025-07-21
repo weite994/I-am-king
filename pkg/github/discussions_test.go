@@ -71,27 +71,72 @@ var (
 
 	mockResponseListAll = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsAll},
+			"discussions": map[string]any{
+				"nodes": discussionsAll,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 3,
+			},
 		},
 	})
 	mockResponseListGeneral = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsGeneral},
+			"discussions": map[string]any{
+				"nodes": discussionsGeneral,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 2,
+			},
 		},
 	})
 	mockResponseOrderedCreatedAsc = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsOrderedCreatedAsc},
+			"discussions": map[string]any{
+				"nodes": discussionsOrderedCreatedAsc,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 3,
+			},
 		},
 	})
 	mockResponseOrderedUpdatedDesc = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsOrderedUpdatedDesc},
+			"discussions": map[string]any{
+				"nodes": discussionsOrderedUpdatedDesc,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 3,
+			},
 		},
 	})
 	mockResponseGeneralOrderedDesc = githubv4mock.DataResponse(map[string]any{
 		"repository": map[string]any{
-			"discussions": map[string]any{"nodes": discussionsGeneralOrderedDesc},
+			"discussions": map[string]any{
+				"nodes": discussionsGeneralOrderedDesc,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 2,
+			},
 		},
 	})
 	mockErrorRepoNotFound = githubv4mock.ErrorResponse("repository not found")
@@ -108,20 +153,27 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.Contains(t, toolDef.InputSchema.Properties, "direction")
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
 
+	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
 		"owner": githubv4.String("owner"),
 		"repo":  githubv4.String("repo"),
+		"first": float64(30),
+		"after": (*string)(nil),
 	}
 
 	varsRepoNotFound := map[string]interface{}{
 		"owner": githubv4.String("owner"),
 		"repo":  githubv4.String("nonexistent-repo"),
+		"first": float64(30),
+		"after": (*string)(nil),
 	}
 
 	varsDiscussionsFiltered := map[string]interface{}{
 		"owner":      githubv4.String("owner"),
 		"repo":       githubv4.String("repo"),
 		"categoryId": githubv4.ID("DIC_kwDOABC123"),
+		"first":      float64(30),
+		"after":      (*string)(nil),
 	}
 
 	varsOrderByCreatedAsc := map[string]interface{}{
@@ -310,20 +362,30 @@ func Test_ListDiscussions(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			var returnedDiscussions []*github.Discussion
-			err = json.Unmarshal([]byte(text), &returnedDiscussions)
+			// Parse the structured response with pagination info
+			var response struct {
+				Discussions []*github.Discussion `json:"discussions"`
+				PageInfo    struct {
+					HasNextPage     bool   `json:"hasNextPage"`
+					HasPreviousPage bool   `json:"hasPreviousPage"`
+					StartCursor     string `json:"startCursor"`
+					EndCursor       string `json:"endCursor"`
+				} `json:"pageInfo"`
+				TotalCount int `json:"totalCount"`
+			}
+			err = json.Unmarshal([]byte(text), &response)
 			require.NoError(t, err)
 
-			assert.Len(t, returnedDiscussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(returnedDiscussions))
+			assert.Len(t, response.Discussions, tc.expectedCount, "Expected %d discussions, got %d", tc.expectedCount, len(response.Discussions))
 
 			// Verify order if verifyOrder function is provided
 			if tc.verifyOrder != nil {
-				tc.verifyOrder(t, returnedDiscussions)
+				tc.verifyOrder(t, response.Discussions)
 			}
 
 			// Verify that all returned discussions have a category if filtered
 			if _, hasCategory := tc.reqParams["category"]; hasCategory {
-				for _, discussion := range returnedDiscussions {
+				for _, discussion := range response.Discussions {
 					require.NotNil(t, discussion.DiscussionCategory, "Discussion should have category")
 					assert.NotEmpty(t, *discussion.DiscussionCategory.Name, "Discussion should have category name")
 				}
