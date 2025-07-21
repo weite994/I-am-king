@@ -281,8 +281,8 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 				"pageInfo": map[string]interface{}{
 					"hasNextPage":     pageInfo.HasNextPage,
 					"hasPreviousPage": pageInfo.HasPreviousPage,
-					"startCursor":     pageInfo.StartCursor,
-					"endCursor":       pageInfo.EndCursor,
+					"startCursor":     string(pageInfo.StartCursor),
+					"endCursor":       string(pageInfo.EndCursor),
 				},
 				"totalCount": totalCount,
 			}

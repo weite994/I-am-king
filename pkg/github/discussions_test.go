@@ -155,47 +155,53 @@ func Test_ListDiscussions(t *testing.T) {
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
-		"owner": githubv4.String("owner"),
-		"repo":  githubv4.String("repo"),
+		"owner": "owner",
+		"repo":  "repo",
 		"first": float64(30),
 		"after": (*string)(nil),
 	}
 
 	varsRepoNotFound := map[string]interface{}{
-		"owner": githubv4.String("owner"),
-		"repo":  githubv4.String("nonexistent-repo"),
+		"owner": "owner",
+		"repo":  "nonexistent-repo",
 		"first": float64(30),
 		"after": (*string)(nil),
 	}
 
 	varsDiscussionsFiltered := map[string]interface{}{
-		"owner":      githubv4.String("owner"),
-		"repo":       githubv4.String("repo"),
-		"categoryId": githubv4.ID("DIC_kwDOABC123"),
+		"owner":      "owner",
+		"repo":       "repo",
+		"categoryId": "DIC_kwDOABC123",
 		"first":      float64(30),
 		"after":      (*string)(nil),
 	}
 
 	varsOrderByCreatedAsc := map[string]interface{}{
-		"owner":            githubv4.String("owner"),
-		"repo":             githubv4.String("repo"),
-		"orderByField":     githubv4.DiscussionOrderField("CREATED_AT"),
-		"orderByDirection": githubv4.OrderDirection("ASC"),
+		"owner":            "owner",
+		"repo":             "repo",
+		"orderByField":     "CREATED_AT",
+		"orderByDirection": "ASC",
+		"first":            float64(30),
+		"after":            (*string)(nil),
 	}
 
 	varsOrderByUpdatedDesc := map[string]interface{}{
-		"owner":            githubv4.String("owner"),
-		"repo":             githubv4.String("repo"),
-		"orderByField":     githubv4.DiscussionOrderField("UPDATED_AT"),
-		"orderByDirection": githubv4.OrderDirection("DESC"),
+		"owner":            "owner",
+		"repo":             "repo",
+		"orderByField":     "UPDATED_AT",
+		"orderByDirection": "DESC",
+		"first":            float64(30),
+		"after":            (*string)(nil),
 	}
 
 	varsCategoryWithOrder := map[string]interface{}{
-		"owner":            githubv4.String("owner"),
-		"repo":             githubv4.String("repo"),
-		"categoryId":       githubv4.ID("DIC_kwDOABC123"),
-		"orderByField":     githubv4.DiscussionOrderField("CREATED_AT"),
-		"orderByDirection": githubv4.OrderDirection("DESC"),
+		"owner":            "owner",
+		"repo":             "repo",
+		"categoryId":       "DIC_kwDOABC123",
+		"orderByField":     "CREATED_AT",
+		"orderByDirection": "DESC",
+		"first":            float64(30),
+		"after":            (*string)(nil),
 	}
 
 	tests := []struct {
@@ -310,41 +316,40 @@ func Test_ListDiscussions(t *testing.T) {
 		},
 	}
 
+	// Define the actual query strings that match the implementation
+	qBasicNoOrder := "query($after:String$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after){nodes{number,title,createdAt,updatedAt,author{login},category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
+	qWithCategoryNoOrder := "query($after:String$categoryId:ID!$first:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, categoryId: $categoryId){nodes{number,title,createdAt,updatedAt,author{login},category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
+	qBasicWithOrder := "query($after:String$first:Int!$orderByDirection:OrderDirection!$orderByField:DiscussionOrderField!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, orderBy: { field: $orderByField, direction: $orderByDirection }){nodes{number,title,createdAt,updatedAt,author{login},category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
+	qWithCategoryAndOrder := "query($after:String$categoryId:ID!$first:Int!$orderByDirection:OrderDirection!$orderByField:DiscussionOrderField!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussions(first: $first, after: $after, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection }){nodes{number,title,createdAt,updatedAt,author{login},category{name},url},pageInfo{hasNextPage,hasPreviousPage,startCursor,endCursor},totalCount}}}"
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var httpClient *http.Client
 
 			switch tc.name {
 			case "list all discussions without category filter":
-				// Simple case - BasicNoOrder query structure (i.e. no order, no category)
-				matcher := githubv4mock.NewQueryMatcher(&BasicNoOrder{}, varsListAll, mockResponseListAll)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsListAll, mockResponseListAll)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "filter by category ID":
-				// WithCategoryNoOrder
-				matcher := githubv4mock.NewQueryMatcher(&WithCategoryNoOrder{}, varsDiscussionsFiltered, mockResponseListGeneral)
+				matcher := githubv4mock.NewQueryMatcher(qWithCategoryNoOrder, varsDiscussionsFiltered, mockResponseListGeneral)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "order by created at ascending":
-				// BasicWithOrder - use ordered response
-				matcher := githubv4mock.NewQueryMatcher(&BasicWithOrder{}, varsOrderByCreatedAsc, mockResponseOrderedCreatedAsc)
+				matcher := githubv4mock.NewQueryMatcher(qBasicWithOrder, varsOrderByCreatedAsc, mockResponseOrderedCreatedAsc)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "order by updated at descending":
-				// BasicWithOrder - use ordered response
-				matcher := githubv4mock.NewQueryMatcher(&BasicWithOrder{}, varsOrderByUpdatedDesc, mockResponseOrderedUpdatedDesc)
+				matcher := githubv4mock.NewQueryMatcher(qBasicWithOrder, varsOrderByUpdatedDesc, mockResponseOrderedUpdatedDesc)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "filter by category with order":
-				// WithCategoryAndOrder - use ordered response
-				matcher := githubv4mock.NewQueryMatcher(&WithCategoryAndOrder{}, varsCategoryWithOrder, mockResponseGeneralOrderedDesc)
+				matcher := githubv4mock.NewQueryMatcher(qWithCategoryAndOrder, varsCategoryWithOrder, mockResponseGeneralOrderedDesc)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "order by without direction (should not use ordering)":
-				// BasicNoOrder - because useOrdering will be false
-				matcher := githubv4mock.NewQueryMatcher(&BasicNoOrder{}, varsListAll, mockResponseListAll)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsListAll, mockResponseListAll)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "direction without order by (should not use ordering)":
-				// BasicNoOrder - because useOrdering will be false
-				matcher := githubv4mock.NewQueryMatcher(&BasicNoOrder{}, varsListAll, mockResponseListAll)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsListAll, mockResponseListAll)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "repository not found error":
-				matcher := githubv4mock.NewQueryMatcher(&BasicNoOrder{}, varsRepoNotFound, mockErrorRepoNotFound)
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsRepoNotFound, mockErrorRepoNotFound)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			}
 
