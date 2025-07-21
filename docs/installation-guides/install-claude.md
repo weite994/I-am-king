@@ -35,7 +35,7 @@ claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Aut
 
 With an environment variable:
 ```bash
-claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Authorization: Bearer $(grep GITHUB_PAT .env | cut -d '=' -f2)
+claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Authorization: Bearer $(grep GITHUB_PAT .env | cut -d '=' -f2)"
 ```
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
