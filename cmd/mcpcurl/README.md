@@ -17,7 +17,7 @@ be executed against the configured MCP server.
 
 ### Prerequisites
 - Go 1.21 or later
-- Access to the GitHub MCP Server form either Docker or local build
+- Access to the GitHub MCP Server from either Docker or local build
 
 ### Build from Source
 ```bash
