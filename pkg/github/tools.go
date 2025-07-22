@@ -46,9 +46,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceCommitContent(getClient, getRawClient, t)),
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceTagContent(getClient, getRawClient, t)),
 			toolsets.NewServerResourceTemplate(GetRepositoryResourcePrContent(getClient, getRawClient, t)),
-		).AddPrompts(
-		toolsets.NewServerPrompt(RepositorySetupWorkflowPrompt(t)),
-	)
+		)
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetIssue(getClient, t)),
@@ -108,9 +106,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(GetCodeScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListCodeScanningAlerts(getClient, t)),
-		).AddPrompts(
-		toolsets.NewServerPrompt(SecurityAlertWorkflowPrompt(t)),
-	)
+		)
 	secretProtection := toolsets.NewToolset("secret_protection", "Secret protection related tools, such as GitHub Secret Scanning").
 		AddReadTools(
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
@@ -120,9 +116,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(GetDependabotAlert(getClient, t)),
 			toolsets.NewServerTool(ListDependabotAlerts(getClient, t)),
-		).AddPrompts(
-		toolsets.NewServerPrompt(SecurityAlertWorkflowPrompt(t)),
-	)
+		)
 
 	notifications := toolsets.NewToolset("notifications", "GitHub Notifications related tools").
 		AddReadTools(
