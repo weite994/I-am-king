@@ -17,61 +17,33 @@ const DefaultGraphQLPageSize = 30
 
 // Common interface for all discussion query types
 type DiscussionQueryResult interface {
-	GetDiscussionNodes() []DiscussionFragment
-	GetPageInfo() PageInfoFragment
-	GetTotalCount() githubv4.Int
+	GetDiscussionFragment() DiscussionFragment
 }
 
 // Implement the interface for all query types
-func (q *BasicNoOrder) GetDiscussionNodes() []DiscussionFragment {
-	return q.Repository.Discussions.Nodes
+func (q *BasicNoOrder) GetDiscussionFragment() DiscussionFragment {
+	return q.Repository.Discussions
 }
 
-func (q *BasicNoOrder) GetPageInfo() PageInfoFragment {
-	return q.Repository.Discussions.PageInfo
+func (q *BasicWithOrder) GetDiscussionFragment() DiscussionFragment {
+	return q.Repository.Discussions
 }
 
-func (q *BasicNoOrder) GetTotalCount() githubv4.Int {
-	return q.Repository.Discussions.TotalCount
+func (q *WithCategoryAndOrder) GetDiscussionFragment() DiscussionFragment {
+	return q.Repository.Discussions
 }
 
-func (q *BasicWithOrder) GetDiscussionNodes() []DiscussionFragment {
-	return q.Repository.Discussions.Nodes
-}
-
-func (q *BasicWithOrder) GetPageInfo() PageInfoFragment {
-	return q.Repository.Discussions.PageInfo
-}
-
-func (q *BasicWithOrder) GetTotalCount() githubv4.Int {
-	return q.Repository.Discussions.TotalCount
-}
-
-func (q *WithCategoryAndOrder) GetDiscussionNodes() []DiscussionFragment {
-	return q.Repository.Discussions.Nodes
-}
-
-func (q *WithCategoryAndOrder) GetPageInfo() PageInfoFragment {
-	return q.Repository.Discussions.PageInfo
-}
-
-func (q *WithCategoryAndOrder) GetTotalCount() githubv4.Int {
-	return q.Repository.Discussions.TotalCount
-}
-
-func (q *WithCategoryNoOrder) GetDiscussionNodes() []DiscussionFragment {
-	return q.Repository.Discussions.Nodes
-}
-
-func (q *WithCategoryNoOrder) GetPageInfo() PageInfoFragment {
-	return q.Repository.Discussions.PageInfo
-}
-
-func (q *WithCategoryNoOrder) GetTotalCount() githubv4.Int {
-	return q.Repository.Discussions.TotalCount
+func (q *WithCategoryNoOrder) GetDiscussionFragment() DiscussionFragment {
+	return q.Repository.Discussions
 }
 
 type DiscussionFragment struct {
+	Nodes      []NodeFragment
+	PageInfo   PageInfoFragment
+	TotalCount githubv4.Int
+}
+
+type NodeFragment struct {
 	Number    githubv4.Int
 	Title     githubv4.String
 	CreatedAt githubv4.DateTime
@@ -94,45 +66,29 @@ type PageInfoFragment struct {
 
 type BasicNoOrder struct {
 	Repository struct {
-		Discussions struct {
-			Nodes      []DiscussionFragment
-			PageInfo   PageInfoFragment
-			TotalCount githubv4.Int
-		} `graphql:"discussions(first: $first, after: $after)"`
+		Discussions DiscussionFragment `graphql:"discussions(first: $first, after: $after)"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type BasicWithOrder struct {
 	Repository struct {
-		Discussions struct {
-			Nodes      []DiscussionFragment
-			PageInfo   PageInfoFragment
-			TotalCount githubv4.Int
-		} `graphql:"discussions(first: $first, after: $after, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+		Discussions DiscussionFragment `graphql:"discussions(first: $first, after: $after, orderBy: { field: $orderByField, direction: $orderByDirection })"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type WithCategoryAndOrder struct {
 	Repository struct {
-		Discussions struct {
-			Nodes      []DiscussionFragment
-			PageInfo   PageInfoFragment
-			TotalCount githubv4.Int
-		} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection })"`
+		Discussions DiscussionFragment `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId, orderBy: { field: $orderByField, direction: $orderByDirection })"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 type WithCategoryNoOrder struct {
 	Repository struct {
-		Discussions struct {
-			Nodes      []DiscussionFragment
-			PageInfo   PageInfoFragment
-			TotalCount githubv4.Int
-		} `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId)"`
+		Discussions DiscussionFragment `graphql:"discussions(first: $first, after: $after, categoryId: $categoryId)"`
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
-func fragmentToDiscussion(fragment DiscussionFragment) *github.Discussion {
+func fragmentToDiscussion(fragment NodeFragment) *github.Discussion {
 	return &github.Discussion{
 		Number:    github.Ptr(int(fragment.Number)),
 		Title:     github.Ptr(string(fragment.Title)),
@@ -268,11 +224,12 @@ func ListDiscussions(getGQLClient GetGQLClientFn, t translations.TranslationHelp
 			var pageInfo PageInfoFragment
 			var totalCount githubv4.Int
 			if queryResult, ok := discussionQuery.(DiscussionQueryResult); ok {
-				for _, node := range queryResult.GetDiscussionNodes() {
+				fragment := queryResult.GetDiscussionFragment()
+				for _, node := range fragment.Nodes {
 					discussions = append(discussions, fragmentToDiscussion(node))
 				}
-				pageInfo = queryResult.GetPageInfo()
-				totalCount = queryResult.GetTotalCount()
+				pageInfo = fragment.PageInfo
+				totalCount = fragment.TotalCount
 			}
 
 			// Create response with pagination info
