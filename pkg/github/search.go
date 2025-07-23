@@ -24,7 +24,7 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 			}),
 			mcp.WithString("query",
 				mcp.Required(),
-				mcp.Description("Repository search query. Examples: 'machine learning in:name start:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering."),
+				mcp.Description("Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering."),
 			),
 			WithPagination(),
 		),
