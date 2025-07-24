@@ -2,74 +2,62 @@
 
 This guide covers installation of the GitHub MCP server for the Gemini CLI.
 
-## Gemini CLI
+To set up the remote GitHub MCP (Model Context Protocol) on the Gemini CLI, you'll need to configure your Gemini settings to point to the GitHub MCP server and provide a Personal Access Token (PAT) for authentication.
 
-The Gemini CLI provides command-line access to Gemini with MCP server integration.
+Here's a step-by-step guide:
 
-### Prerequisites
+## 1. Prerequisites:
+* Node.js and Gemini CLI: Ensure you have Node.js (version 20 or later recommended) and the Gemini CLI installed. If not, you can install the Gemini CLI using npm:
+  ```
+  npm install -g @google/gemini-cli
+  ```
+* GitHub Personal Access Token (PAT): You need a GitHub PAT with the necessary permissions (at least repo scope for accessing repositories).
+  * Go to GitHub > Profile > Settings > Developer Settings > Personal Access Tokens.
+  * Generate a new token, making sure to copy it immediately as you won't be able to see it again.
 
-1. Gemini CLI installed
-2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new) with `repo`, `read:org`, and `gist` scopes.
+## 2. Locate (or Create) your Gemini CLI Configuration File:
+The Gemini CLI stores its settings in a settings.json file. This file is typically located in your home directory within a .gemini folder.
+* macOS/Linux:
+  ```
+  mkdir -p ~/.gemini
+  code ~/.gemini/settings.json # or use your preferred editor like nano, vim, etc.
+  ```
+* Windows: The path will be similar, usually C:\\Users\\<YourUsername>\\.gemini\\settings.json.
 
-### Installation
-
-The Gemini CLI can be configured to connect to the remote GitHub MCP server.
-
-#### Configuration
-
-1.  **Locate your settings file**: The Gemini CLI settings are typically located at `~/.config/google/gemini/settings.json`.
-2.  **Edit the settings file**: Add the following `mcp_server` configuration to your `settings.json` file.
-
+## 3. Configure the settings.json file for the Remote GitHub MCP:
+Open the settings.json file you located or created and add the following JSON object to configure the GitHub MCP server. If you already have other settings, ensure you add this within the main JSON object.
 ```json
 {
-  "mcp_server": {
+  "mcpServers": {
     "github": {
-      "display_name": "GitHub",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "auth": {
-        "github_pat": {
-          "token": "YOUR_GITHUB_PAT"
-        }
-      }
+      "httpUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "YOUR_GITHUB_PAT"
+      },
+      "timeout": 5000
     }
   }
 }
 ```
 
-Replace `YOUR_GITHUB_PAT` with your GitHub Personal Access Token.
+**Important:**
+* Replace "YOUR_GITHUB_PAT" with the actual Personal Access Token you generated in GitHub.
+* The httpUrl for the GitHub MCP server is typically https://api.githubcopilot.com/mcp/.
+* The Authorization header should use Bearer followed by your PAT.
 
-#### Using Environment Variables
-
-For better security, you can reference an environment variable instead of hardcoding the token:
-
-```json
-{
-  "mcp_server": {
-    "github": {
-      "display_name": "GitHub",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "auth": {
-        "github_pat": {
-          "token": "$GITHUB_PAT"
-        }
-      }
-    }
-  }
-}
+## 4. Save the settings.json file.
+## 5. Launch or Restart Gemini CLI:
+If your Gemini CLI is already running, you might need to restart it for the new configuration to take effect. Just type gemini at your command prompt.
+## 6. Verify MCP Server Installation:
+Once Gemini CLI is running, you can verify that the GitHub MCP server is recognized by running the /mcp command at the Gemini CLI prompt:
 ```
-
-Then, set the `GITHUB_PAT` environment variable in your shell's configuration file (e.g., `.bashrc`, `.zshrc`):
-
-```bash
-export GITHUB_PAT="your_github_pat"
+/mcp
 ```
+This should list the configured MCP servers, and you should see "github" among them.
 
-### Verification
+### Key Concepts:
+* Model Context Protocol (MCP): A standardized way for AI models like Gemini to interact with external tools and data.
+* MCP Server: A component that acts as an adapter, exposing a tool's functionality to the AI model. The GitHub MCP server allows Gemini to interact with GitHub repositories.
+* Personal Access Token (PAT): A secure alternative to using your GitHub password for authentication, often required for programmatic access.
 
-Run the following command to verify the installation:
-
-```bash
-gemini status
-```
-
-You should see the GitHub MCP server listed as a connected tool provider.
+By following these steps, your Gemini CLI will be set up to leverage the remote GitHub MCP, enabling it to interact with your GitHub repositories for tasks like code analysis, issue tracking, and more.
