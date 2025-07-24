@@ -6,7 +6,7 @@ import (
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/toolsets"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v73/github"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/shurcooL/githubv4"
 )
@@ -56,12 +56,16 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetIssueTimeline(getClient, t)),
 			toolsets.NewServerTool(GetIssueEvents(getClient, t)),
 			toolsets.NewServerTool(GetIssueEvent(getClient, t)),
+			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateIssue(getClient, t)),
 			toolsets.NewServerTool(AddIssueComment(getClient, t)),
 			toolsets.NewServerTool(UpdateIssue(getClient, t)),
 			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
+			toolsets.NewServerTool(AddSubIssue(getClient, t)),
+			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
+			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
 		).AddPrompts(toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)))
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
@@ -92,7 +96,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			// Reviews
 			toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)),
 			toolsets.NewServerTool(CreatePendingPullRequestReview(getGQLClient, t)),
-			toolsets.NewServerTool(AddPullRequestReviewCommentToPendingReview(getGQLClient, t)),
+			toolsets.NewServerTool(AddCommentToPendingReview(getGQLClient, t)),
 			toolsets.NewServerTool(SubmitPendingPullRequestReview(getGQLClient, t)),
 			toolsets.NewServerTool(DeletePendingPullRequestReview(getGQLClient, t)),
 		)
