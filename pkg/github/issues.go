@@ -1107,8 +1107,8 @@ func GetIssueTimeline(getClient GetClientFn, t translations.TranslationHelperFun
 			}
 
 			opts := &github.ListOptions{
-				Page:    pagination.page,
-				PerPage: pagination.perPage,
+				Page:    pagination.Page,
+				PerPage: pagination.PerPage,
 			}
 
 			client, err := getClient(ctx)
@@ -1180,8 +1180,8 @@ func GetIssueEvents(getClient GetClientFn, t translations.TranslationHelperFunc)
 			}
 
 			opts := &github.ListOptions{
-				Page:    pagination.page,
-				PerPage: pagination.perPage,
+				Page:    pagination.Page,
+				PerPage: pagination.PerPage,
 			}
 
 			client, err := getClient(ctx)
