@@ -3,7 +3,7 @@
     "title": "Search code",
     "readOnlyHint": true
   },
-  "description": "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns. Use this FIRST before trying semantic alternatives - it's faster and more accurate for exact matches.",
+  "description": "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns.",
   "inputSchema": {
     "properties": {
       "order": {

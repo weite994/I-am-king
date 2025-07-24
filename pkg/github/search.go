@@ -79,7 +79,7 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 // SearchCode creates a tool to search for code across GitHub repositories.
 func SearchCode(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("search_code",
-			mcp.WithDescription(t("TOOL_SEARCH_CODE_DESCRIPTION", "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns. Use this FIRST before trying semantic alternatives - it's faster and more accurate for exact matches.")),
+			mcp.WithDescription(t("TOOL_SEARCH_CODE_DESCRIPTION", "Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_SEARCH_CODE_USER_TITLE", "Search code"),
 				ReadOnlyHint: ToBoolPtr(true),
