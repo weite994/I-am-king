@@ -304,6 +304,11 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			// If no updates and no reviewers, return error early
+			if !updateNeeded && len(reviewers) == 0 {
+				return mcp.NewToolResultError("No update parameters provided"), nil
+			}
+
 			// Create the GitHub client
 			client, err := getClient(ctx)
 			if err != nil {
@@ -313,7 +318,7 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			var pr *github.PullRequest
 			var resp *http.Response
 
-			// First, update the PR if needed
+			// Update the PR if needed
 			if updateNeeded {
 				var ghResp *github.Response
 				pr, ghResp, err = client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
@@ -337,31 +342,6 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 						return nil, fmt.Errorf("failed to read response body: %w", err)
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("failed to update pull request: %s", string(body))), nil
-				}
-			} else {
-				// If no update needed, just get the current PR
-				var ghResp *github.Response
-				pr, ghResp, err = client.PullRequests.Get(ctx, owner, repo, pullNumber)
-				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx,
-						"failed to get pull request",
-						ghResp,
-						err,
-					), nil
-				}
-				resp = ghResp.Response
-				defer func() {
-					if resp != nil && resp.Body != nil {
-						_ = resp.Body.Close()
-					}
-				}()
-
-				if resp.StatusCode != http.StatusOK {
-					body, err := io.ReadAll(resp.Body)
-					if err != nil {
-						return nil, fmt.Errorf("failed to read response body: %w", err)
-					}
-					return mcp.NewToolResultError(fmt.Sprintf("failed to get pull request: %s", string(body))), nil
 				}
 			}
 
@@ -396,11 +376,6 @@ func UpdatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 
 				// Use the updated PR with reviewers
 				pr = updatedPR
-			}
-
-			// If no updates and no reviewers, return error
-			if !updateNeeded && len(reviewers) == 0 {
-				return mcp.NewToolResultError("No update parameters provided"), nil
 			}
 
 			r, err := json.Marshal(pr)
