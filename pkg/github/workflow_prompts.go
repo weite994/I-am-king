@@ -127,7 +127,7 @@ func IssueInvestigationWorkflowPrompt(t translations.TranslationHelperFunc) (too
 				},
 				{
 					Role:    "assistant",
-					Content: mcp.NewTextContent("Excellent criteria! I'll evaluate each issue against these requirements:\n\n Clear problem description\n Defined acceptance criteria  \n Appropriate scope\n Technical feasibility\n\nLet me start by finding and examining the issues."),
+					Content: mcp.NewTextContent("Excellent criteria! I'll evaluate each issue against these requirements:\n\n- Clear problem description\n- Defined acceptance criteria\n- Appropriate scope\n- Technical feasibility\n\nLet me start by finding and examining the issues."),
 				},
 			}
 			return &mcp.GetPromptResult{
