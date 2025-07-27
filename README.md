@@ -462,6 +462,8 @@ The following sets of tools are available (all are on by default):
 - **list_discussions** - List discussions
   - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
   - `category`: Optional filter by discussion category ID. If provided, only discussions with this category are listed. (string, optional)
+  - `direction`: Order direction. (string, optional)
+  - `orderBy`: Order discussions by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
@@ -836,7 +838,7 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `q`: Search query using GitHub code search syntax (string, required)
+  - `query`: Search query using GitHub code search syntax (string, required)
   - `sort`: Sort field ('indexed' only) (string, optional)
 
 - **search_repositories** - Search repositories
