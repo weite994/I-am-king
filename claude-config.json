@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "/Users/shunsuke/Dev/organized/mcp-servers/github-mcp-server/github-mcp-server",
+      "args": ["stdio"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
+      }
+    }
+  }
+}

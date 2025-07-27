@@ -15,3 +15,11 @@ bin/
 
 # macOS
 .DS_Store
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Binary
+github-mcp-server
