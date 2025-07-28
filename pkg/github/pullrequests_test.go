@@ -137,7 +137,7 @@ func Test_GetPullRequest(t *testing.T) {
 func Test_UpdatePullRequest(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := UpdatePullRequest(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	tool, _ := UpdatePullRequest(stubGetClientFn(mockClient), stubGetGQLClientFn(githubv4.NewClient(nil)), translations.NullTranslationHelper)
 	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
 	assert.Equal(t, "update_pull_request", tool.Name)
@@ -145,6 +145,7 @@ func Test_UpdatePullRequest(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "pullNumber")
+	assert.Contains(t, tool.InputSchema.Properties, "draft")
 	assert.Contains(t, tool.InputSchema.Properties, "title")
 	assert.Contains(t, tool.InputSchema.Properties, "body")
 	assert.Contains(t, tool.InputSchema.Properties, "state")
@@ -194,6 +195,10 @@ func Test_UpdatePullRequest(t *testing.T) {
 						mockResponse(t, http.StatusOK, mockUpdatedPR),
 					),
 				),
+				mock.WithRequestMatch(
+					mock.GetReposPullsByOwnerByRepoByPullNumber,
+					mockUpdatedPR,
+				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner":                 "owner",
@@ -217,6 +222,10 @@ func Test_UpdatePullRequest(t *testing.T) {
 					}).andThen(
 						mockResponse(t, http.StatusOK, mockClosedPR),
 					),
+				),
+				mock.WithRequestMatch(
+					mock.GetReposPullsByOwnerByRepoByPullNumber,
+					mockClosedPR,
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -266,7 +275,7 @@ func Test_UpdatePullRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := UpdatePullRequest(stubGetClientFn(client), translations.NullTranslationHelper)
+			_, handler := UpdatePullRequest(stubGetClientFn(client), stubGetGQLClientFn(githubv4.NewClient(nil)), translations.NullTranslationHelper)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
