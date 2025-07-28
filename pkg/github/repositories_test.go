@@ -721,6 +721,7 @@ func Test_ListCommits(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "author")
 	assert.Contains(t, tool.InputSchema.Properties, "since")
 	assert.Contains(t, tool.InputSchema.Properties, "until")
+	assert.Contains(t, tool.InputSchema.Properties, "path")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
@@ -921,6 +922,56 @@ func Test_ListCommits(t *testing.T) {
 			},
 			expectError:    false, // This returns a tool error, not a Go error
 			expectedErrMsg: "invalid until date format",
+		},
+		{
+			name: "successful commits fetch with path filtering",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposCommitsByOwnerByRepo,
+					expectQueryParams(t, map[string]string{
+						"path":     "src/main.go",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockCommits),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"path":  "src/main.go",
+			},
+			expectError:     false,
+			expectedCommits: mockCommits,
+		},
+		{
+			name: "successful commits fetch with path and time filtering",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposCommitsByOwnerByRepo,
+					expectQueryParams(t, map[string]string{
+						"path":     "docs/README.md",
+						"since":    "2024-01-01T00:00:00Z",
+						"until":    "2024-12-31T23:59:59Z",
+						"author":   "testuser",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockCommits),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":  "owner",
+				"repo":   "repo",
+				"path":   "docs/README.md",
+				"since":  "2024-01-01T00:00:00Z",
+				"until":  "2024-12-31T23:59:59Z",
+				"author": "testuser",
+			},
+			expectError:     false,
+			expectedCommits: mockCommits,
 		},
 		{
 			name: "commits fetch fails",

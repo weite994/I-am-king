@@ -97,7 +97,7 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 // ListCommits creates a tool to get commits of a branch in a repository.
 func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_commits",
-			mcp.WithDescription(t("TOOL_LIST_COMMITS_DESCRIPTION", "Get list of commits of a branch in a GitHub repository. Returns at least 30 results per page by default, but can return more if specified using the perPage parameter (up to 100).")),
+			mcp.WithDescription(t("TOOL_LIST_COMMITS_DESCRIPTION", "Get list of commits of a branch in a GitHub repository. Can be filtered by author, date range (since/until), or file path. Returns at least 30 results per page by default, but can return more if specified using the perPage parameter (up to 100).")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_LIST_COMMITS_USER_TITLE", "List commits"),
 				ReadOnlyHint: ToBoolPtr(true),
@@ -121,6 +121,9 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			),
 			mcp.WithString("until",
 				mcp.Description("Only return commits before this date (ISO 8601 format, e.g., '2024-12-31T23:59:59Z')"),
+			),
+			mcp.WithString("path",
+				mcp.Description("Only return commits that touch the specified file path"),
 			),
 			WithPagination(),
 		),
@@ -149,6 +152,10 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			path, err := OptionalParam[string](request, "path")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -162,6 +169,7 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			opts := &github.CommitsListOptions{
 				SHA:    sha,
 				Author: author,
+				Path:   path,
 				ListOptions: github.ListOptions{
 					Page:    pagination.Page,
 					PerPage: perPage,
