@@ -350,7 +350,7 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 				err = gqlClient.Query(ctx, &prQuery, map[string]interface{}{
 					"owner": githubv4.String(owner),
 					"repo":  githubv4.String(repo),
-					"prNum": githubv4.Int(int32(pullNumber)),
+					"prNum": githubv4.Int(pullNumber), // #nosec G115 - pull request numbers are always small positive integers
 				})
 				if err != nil {
 					return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to find pull request", err), nil
