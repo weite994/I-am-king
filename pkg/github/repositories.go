@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/raw"
@@ -115,6 +116,12 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithString("author",
 				mcp.Description("Author username or email address to filter commits by"),
 			),
+			mcp.WithString("since",
+				mcp.Description("Only return commits after this date (ISO 8601 format, e.g., '2024-01-01T00:00:00Z')"),
+			),
+			mcp.WithString("until",
+				mcp.Description("Only return commits before this date (ISO 8601 format, e.g., '2024-12-31T23:59:59Z')"),
+			),
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -134,6 +141,14 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			since, err := OptionalParam[string](request, "since")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			until, err := OptionalParam[string](request, "until")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -143,6 +158,7 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if perPage == 0 {
 				perPage = 30
 			}
+
 			opts := &github.CommitsListOptions{
 				SHA:    sha,
 				Author: author,
@@ -150,6 +166,24 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 					Page:    pagination.Page,
 					PerPage: perPage,
 				},
+			}
+
+			// Parse since time if provided
+			if since != "" {
+				sinceTime, err := time.Parse(time.RFC3339, since)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("invalid since date format (use ISO 8601/RFC3339): %s", err.Error())), nil
+				}
+				opts.Since = sinceTime
+			}
+
+			// Parse until time if provided
+			if until != "" {
+				untilTime, err := time.Parse(time.RFC3339, until)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("invalid until date format (use ISO 8601/RFC3339): %s", err.Error())), nil
+				}
+				opts.Until = untilTime
 			}
 
 			client, err := getClient(ctx)
