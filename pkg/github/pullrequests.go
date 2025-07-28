@@ -414,7 +414,7 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 
 			r, err := json.Marshal(finalPR)
 			if err != nil {
-				return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to marshal response: %v", err), nil
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal response: %v", err)), nil
 			}
 
 			return mcp.NewToolResultText(string(r)), nil
