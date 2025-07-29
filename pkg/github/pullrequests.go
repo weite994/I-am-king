@@ -315,33 +315,38 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// If no updates and no reviewers, return error early
-			if !restUpdateNeeded && len(reviewers) == 0 && !draftProvided {
-				return mcp.NewToolResultError("No update parameters provided"), nil
+			// If no updates, no draft change, and no reviewers, return error early
+			if !restUpdateNeeded && !draftProvided && len(reviewers) == 0 {
+				return mcp.NewToolResultError("No update parameters provided."), nil
 			}
 
-			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
-			pr, resp, err := client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
-			if err != nil {
-				return ghErrors.NewGitHubAPIErrorResponse(ctx,
-					"failed to update pull request",
-					resp,
-					err,
-				), nil
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if resp.StatusCode != http.StatusOK {
-				body, err := io.ReadAll(resp.Body)
+			// Handle REST API updates
+			if restUpdateNeeded {
+				client, err := getClient(ctx)
 				if err != nil {
-					return nil, fmt.Errorf("failed to read response body: %w", err)
+					return nil, fmt.Errorf("failed to get GitHub client: %w", err)
 				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to update pull request: %s", string(body))), nil
+
+				_, resp, err := client.PullRequests.Edit(ctx, owner, repo, pullNumber, update)
+				if err != nil {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to update pull request",
+						resp,
+						err,
+					), nil
+				}
+				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != http.StatusOK {
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read response body: %w", err)
+					}
+					return mcp.NewToolResultError(fmt.Sprintf("failed to update pull request: %s", string(body))), nil
+				}
 			}
 
+			// Handle draft status changes using GraphQL
 			if draftProvided {
 				gqlClient, err := getGQLClient(ctx)
 				if err != nil {
@@ -407,6 +412,41 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 				}
 			}
 
+			// Handle reviewer requests
+			if len(reviewers) > 0 {
+				client, err := getClient(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+				}
+
+				reviewersRequest := github.ReviewersRequest{
+					Reviewers: reviewers,
+				}
+
+				_, resp, err := client.PullRequests.RequestReviewers(ctx, owner, repo, pullNumber, reviewersRequest)
+				if err != nil {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx,
+						"failed to request reviewers",
+						resp,
+						err,
+					), nil
+				}
+				defer func() {
+					if resp != nil && resp.Body != nil {
+						_ = resp.Body.Close()
+					}
+				}()
+
+				if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read response body: %w", err)
+					}
+					return mcp.NewToolResultError(fmt.Sprintf("failed to request reviewers: %s", string(body))), nil
+				}
+			}
+
+			// Get the final state of the PR to return
 			client, err := getClient(ctx)
 			if err != nil {
 				return nil, err

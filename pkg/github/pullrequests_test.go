@@ -257,22 +257,28 @@ func Test_UpdatePullRequest(t *testing.T) {
 			expectedPR:  mockClosedPR,
 		},
 		{
-<<<<<<< HEAD
 			name: "successful PR update with reviewers",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatch(
-					mock.GetReposPullsByOwnerByRepoByPullNumber,
-					&github.PullRequest{
-						Number: github.Ptr(42),
-						Title:  github.Ptr("Test PR"),
-						State:  github.Ptr("open"),
-					},
-				),
 				// Mock for RequestReviewers call, returning the PR with reviewers
 				mock.WithRequestMatch(
 					mock.PostReposPullsRequestedReviewersByOwnerByRepoByPullNumber,
 					mockPRWithReviewers,
-=======
+				),
+				mock.WithRequestMatch(
+					mock.GetReposPullsByOwnerByRepoByPullNumber,
+					mockPRWithReviewers,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": float64(42),
+				"reviewers":  []interface{}{"reviewer1", "reviewer2"},
+			},
+			expectError: false,
+			expectedPR:  mockPRWithReviewers,
+		},
+		{
 			name: "successful PR update (title only)",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
@@ -286,29 +292,12 @@ func Test_UpdatePullRequest(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetReposPullsByOwnerByRepoByPullNumber,
 					mockUpdatedPR,
->>>>>>> d5e1f48 (Add updating draft state to `update_pull_request` tool (#774))
 				),
 			),
 			requestArgs: map[string]interface{}{
 				"owner":      "owner",
 				"repo":       "repo",
 				"pullNumber": float64(42),
-<<<<<<< HEAD
-				"reviewers":  []interface{}{"reviewer1", "reviewer2"},
-			},
-			expectError: false,
-			expectedPR:  mockPRWithReviewers,
-		},
-		{
-			name: "no update parameters provided",
-			mockedClient: mock.NewMockedHTTPClient(
-				// Mock a response for the GET PR request in case of no updates
-				mock.WithRequestMatch(
-					mock.GetReposPullsByOwnerByRepoByPullNumber,
-					mockNoUpdatePR,
-				),
-			),
-=======
 				"title":      "Updated Test PR Title",
 			},
 			expectError: false,
@@ -317,7 +306,6 @@ func Test_UpdatePullRequest(t *testing.T) {
 		{
 			name:         "no update parameters provided",
 			mockedClient: mock.NewMockedHTTPClient(), // No API call expected
->>>>>>> d5e1f48 (Add updating draft state to `update_pull_request` tool (#774))
 			requestArgs: map[string]interface{}{
 				"owner":      "owner",
 				"repo":       "repo",
