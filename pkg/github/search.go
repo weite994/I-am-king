@@ -86,7 +86,7 @@ func SearchCode(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			}),
 			mcp.WithString("query",
 				mcp.Required(),
-				mcp.Description("Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go'. Supports exact matching, language filters, path filters, and more."),
+				mcp.Description("Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more."),
 			),
 			mcp.WithString("sort",
 				mcp.Description("Sort field ('indexed' only)"),
