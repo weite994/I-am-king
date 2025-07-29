@@ -262,15 +262,17 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			// Check if draft parameter is provided
 			draftProvided := request.GetArguments()["draft"] != nil
 			var draftValue bool
 			if draftProvided {
 				draftValue, err = OptionalParam[bool](request, "draft")
 				if err != nil {
-					return nil, err
+					return mcp.NewToolResultError(err.Error()), nil
 				}
 			}
 
+			// Build the update struct only with provided fields
 			update := &github.PullRequest{}
 			restUpdateNeeded := false
 
@@ -320,13 +322,7 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 				return mcp.NewToolResultError("No update parameters provided."), nil
 			}
 
-			// Handle REST API updates
-			}
-
-			if !restUpdateNeeded && !draftProvided {
-				return mcp.NewToolResultError("No update parameters provided."), nil
-			}
-
+			// Handle REST API updates (title, body, state, base, maintainer_can_modify)
 			if restUpdateNeeded {
 				client, err := getClient(ctx)
 				if err != nil {
@@ -453,90 +449,6 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 			}
 
 			// Get the final state of the PR to return
-			client, err := getClient(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			finalPR, resp, err := client.PullRequests.Get(ctx, owner, repo, pullNumber)
-			if err != nil {
-				return ghErrors.NewGitHubAPIErrorResponse(ctx, "Failed to get pull request", resp, err), nil
-			}
-			defer func() {
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
-			}()
-
-			r, err := json.Marshal(finalPR)
-			if err != nil {
-			}
-
-			if draftProvided {
-				gqlClient, err := getGQLClient(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get GitHub GraphQL client: %w", err)
-				}
-
-				var prQuery struct {
-					Repository struct {
-						PullRequest struct {
-							ID      githubv4.ID
-							IsDraft githubv4.Boolean
-						} `graphql:"pullRequest(number: $prNum)"`
-					} `graphql:"repository(owner: $owner, name: $repo)"`
-				}
-
-				err = gqlClient.Query(ctx, &prQuery, map[string]interface{}{
-					"owner": githubv4.String(owner),
-					"repo":  githubv4.String(repo),
-					"prNum": githubv4.Int(pullNumber), // #nosec G115 - pull request numbers are always small positive integers
-				})
-				if err != nil {
-					return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to find pull request", err), nil
-				}
-
-				currentIsDraft := bool(prQuery.Repository.PullRequest.IsDraft)
-
-				if currentIsDraft != draftValue {
-					if draftValue {
-						// Convert to draft
-						var mutation struct {
-							ConvertPullRequestToDraft struct {
-								PullRequest struct {
-									ID      githubv4.ID
-									IsDraft githubv4.Boolean
-								}
-							} `graphql:"convertPullRequestToDraft(input: $input)"`
-						}
-
-						err = gqlClient.Mutate(ctx, &mutation, githubv4.ConvertPullRequestToDraftInput{
-							PullRequestID: prQuery.Repository.PullRequest.ID,
-						}, nil)
-						if err != nil {
-							return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to convert pull request to draft", err), nil
-						}
-					} else {
-						// Mark as ready for review
-						var mutation struct {
-							MarkPullRequestReadyForReview struct {
-								PullRequest struct {
-									ID      githubv4.ID
-									IsDraft githubv4.Boolean
-								}
-							} `graphql:"markPullRequestReadyForReview(input: $input)"`
-						}
-
-						err = gqlClient.Mutate(ctx, &mutation, githubv4.MarkPullRequestReadyForReviewInput{
-							PullRequestID: prQuery.Repository.PullRequest.ID,
-						}, nil)
-						if err != nil {
-							return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to mark pull request ready for review", err), nil
-						}
-					}
-				}
-			}
-
 			client, err := getClient(ctx)
 			if err != nil {
 				return nil, err
