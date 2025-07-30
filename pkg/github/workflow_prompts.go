@@ -9,54 +9,6 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// IssueInvestigationWorkflowPrompt provides guided workflow for investigating and delegating issues
-func IssueInvestigationWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
-	return mcp.NewPrompt("IssueInvestigationWorkflow",
-			mcp.WithPromptDescription(t("PROMPT_ISSUE_INVESTIGATION_WORKFLOW_DESCRIPTION", "Investigate issues and delegate appropriate ones to Copilot coding agent")),
-			mcp.WithArgument("owner", mcp.ArgumentDescription("Repository owner"), mcp.RequiredArgument()),
-			mcp.WithArgument("repo", mcp.ArgumentDescription("Repository name"), mcp.RequiredArgument()),
-			mcp.WithArgument("searchQuery", mcp.ArgumentDescription("Search query for issues (optional)")),
-		), func(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-			owner := request.Params.Arguments["owner"]
-			repo := request.Params.Arguments["repo"]
-			searchQuery := ""
-			if q, exists := request.Params.Arguments["searchQuery"]; exists {
-				searchQuery = fmt.Sprintf("%v", q)
-			}
-
-			messages := []mcp.PromptMessage{
-				{
-					Role:    "system",
-					Content: mcp.NewTextContent("You are an issue management assistant helping to investigate GitHub issues and identify which ones are suitable for delegation to Copilot coding agent. You should examine issues for clarity, scope, and complexity to determine suitability for autonomous work."),
-				},
-				{
-					Role: "user",
-					Content: mcp.NewTextContent(fmt.Sprintf("I need to investigate issues in %s/%s and identify which ones can be assigned to Copilot. %s", owner, repo, func() string {
-						if searchQuery != "" {
-							return fmt.Sprintf("Please focus on issues matching: '%s'", searchQuery)
-						}
-						return "Please help me find suitable issues."
-					}())),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent(fmt.Sprintf("I'll help you investigate issues in %s/%s and identify which ones are suitable for Copilot assignment. Let me search for relevant issues and examine them for clarity, scope, and complexity.", owner, repo)),
-				},
-				{
-					Role:    "user",
-					Content: mcp.NewTextContent("Perfect! For each issue, please check if it has:\n- Clear problem description\n- Defined acceptance criteria\n- Appropriate scope (not too large/complex)\n- Technical feasibility for autonomous work\n\nThen assign suitable ones to Copilot."),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent("Excellent criteria! I'll evaluate each issue against these requirements:\n\n- Clear problem description\n- Defined acceptance criteria\n- Appropriate scope\n- Technical feasibility\n\nLet me start by finding and examining the issues."),
-				},
-			}
-			return &mcp.GetPromptResult{
-				Messages: messages,
-			}, nil
-		}
-}
-
 // IssueToFixWorkflowPrompt provides a guided workflow for creating an issue and then generating a PR to fix it
 func IssueToFixWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
 	return mcp.NewPrompt("IssueToFixWorkflow",

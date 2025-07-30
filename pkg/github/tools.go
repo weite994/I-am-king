@@ -65,7 +65,6 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
 		).AddPrompts(
 		toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)),
-		toolsets.NewServerPrompt(IssueInvestigationWorkflowPrompt(t)),
 		toolsets.NewServerPrompt(IssueToFixWorkflowPrompt(t)),
 	)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
