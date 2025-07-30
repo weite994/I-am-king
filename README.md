@@ -467,7 +467,7 @@ The following sets of tools are available (all are on by default):
   - `orderBy`: Order discussions by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `repo`: Repository name (string, required)
+  - `repo`: Repository name. If not provided, discussions will be queried at the organisation level. (string, optional)
 
 </details>
 
@@ -636,7 +636,7 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub organizations search syntax scoped to type:org (string, required)
+  - `query`: Organization search query. Examples: 'microsoft', 'location:california', 'created:>=2025-01-01'. Search is automatically scoped to type:org. (string, required)
   - `sort`: Sort field by category (string, optional)
 
 </details>
@@ -761,6 +761,7 @@ The following sets of tools are available (all are on by default):
 - **update_pull_request** - Edit pull request
   - `base`: New base branch name (string, optional)
   - `body`: New description (string, optional)
+  - `draft`: Mark pull request as draft (true) or ready for review (false) (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number to update (number, required)
@@ -860,16 +861,16 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
 
 - **search_code** - Search code
-  - `order`: Sort order (string, optional)
+  - `order`: Sort order for results (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub code search syntax (string, required)
+  - `query`: Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more. (string, required)
   - `sort`: Sort field ('indexed' only) (string, optional)
 
 - **search_repositories** - Search repositories
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query (string, required)
+  - `query`: Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering. (string, required)
 
 </details>
 
@@ -899,8 +900,8 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub users search syntax scoped to type:user (string, required)
-  - `sort`: Sort field by category (string, optional)
+  - `query`: User search query. Examples: 'john smith', 'location:seattle', 'followers:>100'. Search is automatically scoped to type:user. (string, required)
+  - `sort`: Sort users by number of followers or repositories, or when the person joined GitHub. (string, optional)
 
 </details>
 <!-- END AUTOMATED TOOLS -->
