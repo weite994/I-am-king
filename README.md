@@ -466,7 +466,7 @@ The following sets of tools are available (all are on by default):
   - `orderBy`: Order discussions by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `repo`: Repository name (string, required)
+  - `repo`: Repository name. If not provided, discussions will be queried at the organisation level. (string, optional)
 
 </details>
 
@@ -736,6 +736,7 @@ The following sets of tools are available (all are on by default):
 - **update_pull_request** - Edit pull request
   - `base`: New base branch name (string, optional)
   - `body`: New description (string, optional)
+  - `draft`: Mark pull request as draft (true) or ready for review (false) (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number to update (number, required)
