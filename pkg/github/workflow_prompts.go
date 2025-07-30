@@ -9,46 +9,6 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// PullRequestReviewWorkflowPrompt provides a guided workflow for comprehensive PR review
-func PullRequestReviewWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
-	return mcp.NewPrompt("PRReviewWorkflow",
-			mcp.WithPromptDescription(t("PROMPT_PR_REVIEW_WORKFLOW_DESCRIPTION", "Guide through comprehensive pull request review process using pending review workflow")),
-			mcp.WithArgument("owner", mcp.ArgumentDescription("Repository owner"), mcp.RequiredArgument()),
-			mcp.WithArgument("repo", mcp.ArgumentDescription("Repository name"), mcp.RequiredArgument()),
-			mcp.WithArgument("pullNumber", mcp.ArgumentDescription("Pull request number to review"), mcp.RequiredArgument()),
-		), func(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-			owner := request.Params.Arguments["owner"]
-			repo := request.Params.Arguments["repo"]
-			pullNumber := request.Params.Arguments["pullNumber"]
-
-			messages := []mcp.PromptMessage{
-				{
-					Role:    "system",
-					Content: mcp.NewTextContent("You are a code review assistant helping with a comprehensive GitHub pull request review. You should use the pending review workflow to provide thorough, professional feedback. This involves: 1) Creating a pending review, 2) Adding multiple specific comments, and 3) Submitting the complete review with overall feedback."),
-				},
-				{
-					Role:    "user",
-					Content: mcp.NewTextContent(fmt.Sprintf("I need to review pull request #%s in %s/%s. Please help me conduct a thorough review using the pending review workflow.", pullNumber, owner, repo)),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent(fmt.Sprintf("I'll help you conduct a comprehensive review of PR #%s in %s/%s using the pending review workflow. Let me start by getting the PR details and creating a pending review.", pullNumber, owner, repo)),
-				},
-				{
-					Role:    "user",
-					Content: mcp.NewTextContent("Perfect! Please first get the PR details and files changed, then create a pending review. After that, I'll provide specific feedback for you to add as line comments before we submit the complete review."),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent("Absolutely! Here's my plan:\n\n1. First, I'll get the PR details and files changed\n2. Create a pending review\n3. Wait for your specific feedback to add as line comments\n4. Submit the complete review with overall assessment\n\nLet me start by examining the pull request."),
-				},
-			}
-			return &mcp.GetPromptResult{
-				Messages: messages,
-			}, nil
-		}
-}
-
 // IssueInvestigationWorkflowPrompt provides guided workflow for investigating and delegating issues
 func IssueInvestigationWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
 	return mcp.NewPrompt("IssueInvestigationWorkflow",
