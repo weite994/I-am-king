@@ -53,13 +53,20 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
 			toolsets.NewServerTool(ListIssues(getClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateIssue(getClient, t)),
 			toolsets.NewServerTool(AddIssueComment(getClient, t)),
 			toolsets.NewServerTool(UpdateIssue(getClient, t)),
 			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
-		).AddPrompts(toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)))
+			toolsets.NewServerTool(AddSubIssue(getClient, t)),
+			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
+			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
+		).AddPrompts(
+		toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)),
+		toolsets.NewServerPrompt(IssueToFixWorkflowPrompt(t)),
+	)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchUsers(getClient, t)),
@@ -83,7 +90,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(MergePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
 			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
-			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
+			toolsets.NewServerTool(UpdatePullRequest(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
 
 			// Reviews

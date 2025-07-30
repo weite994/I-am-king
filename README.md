@@ -449,22 +449,24 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
 
 - **get_discussion_comments** - Get discussion comments
+  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
   - `discussionNumber`: Discussion Number (number, required)
   - `owner`: Repository owner (string, required)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
 - **list_discussion_categories** - List discussion categories
-  - `after`: Cursor for pagination, use the 'after' field from the previous response (string, optional)
-  - `before`: Cursor for pagination, use the 'before' field from the previous response (string, optional)
-  - `first`: Number of categories to return per page (min 1, max 100) (number, optional)
-  - `last`: Number of categories to return from the end (min 1, max 100) (number, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
 - **list_discussions** - List discussions
+  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
   - `category`: Optional filter by discussion category ID. If provided, only discussions with this category are listed. (string, optional)
+  - `direction`: Order direction. (string, optional)
+  - `orderBy`: Order discussions by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name. If not provided, discussions will be queried at the organisation level. (string, optional)
 
 </details>
 
@@ -477,6 +479,13 @@ The following sets of tools are available (all are on by default):
   - `issue_number`: Issue number to comment on (number, required)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
+
+- **add_sub_issue** - Add sub-issue
+  - `issue_number`: The number of the parent issue (number, required)
+  - `owner`: Repository owner (string, required)
+  - `replace_parent`: When true, replaces the sub-issue's current parent issue (boolean, optional)
+  - `repo`: Repository name (string, required)
+  - `sub_issue_id`: The ID of the sub-issue to add. ID is not the same as issue number (number, required)
 
 - **assign_copilot_to_issue** - Assign Copilot to issue
   - `issueNumber`: Issue number (number, required)
@@ -514,6 +523,27 @@ The following sets of tools are available (all are on by default):
   - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
   - `sort`: Sort order (string, optional)
   - `state`: Filter by state (string, optional)
+
+- **list_sub_issues** - List sub-issues
+  - `issue_number`: Issue number (number, required)
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (default: 1) (number, optional)
+  - `per_page`: Number of results per page (max 100, default: 30) (number, optional)
+  - `repo`: Repository name (string, required)
+
+- **remove_sub_issue** - Remove sub-issue
+  - `issue_number`: The number of the parent issue (number, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `sub_issue_id`: The ID of the sub-issue to remove. ID is not the same as issue number (number, required)
+
+- **reprioritize_sub_issue** - Reprioritize sub-issue
+  - `after_id`: The ID of the sub-issue to be prioritized after (either after_id OR before_id should be specified) (number, optional)
+  - `before_id`: The ID of the sub-issue to be prioritized before (either after_id OR before_id should be specified) (number, optional)
+  - `issue_number`: The number of the parent issue (number, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `sub_issue_id`: The ID of the sub-issue to reprioritize. ID is not the same as issue number (number, required)
 
 - **search_issues** - Search issues
   - `order`: Sort order (string, optional)
@@ -581,7 +611,7 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub organizations search syntax scoped to type:org (string, required)
+  - `query`: Organization search query. Examples: 'microsoft', 'location:california', 'created:>=2025-01-01'. Search is automatically scoped to type:org. (string, required)
   - `sort`: Sort field by category (string, optional)
 
 </details>
@@ -706,6 +736,7 @@ The following sets of tools are available (all are on by default):
 - **update_pull_request** - Edit pull request
   - `base`: New base branch name (string, optional)
   - `body`: New description (string, optional)
+  - `draft`: Mark pull request as draft (true) or ready for review (false) (boolean, optional)
   - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number to update (number, required)
@@ -805,16 +836,16 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
 
 - **search_code** - Search code
-  - `order`: Sort order (string, optional)
+  - `order`: Sort order for results (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `q`: Search query using GitHub code search syntax (string, required)
+  - `query`: Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more. (string, required)
   - `sort`: Sort field ('indexed' only) (string, optional)
 
 - **search_repositories** - Search repositories
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query (string, required)
+  - `query`: Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering. (string, required)
 
 </details>
 
@@ -844,8 +875,8 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub users search syntax scoped to type:user (string, required)
-  - `sort`: Sort field by category (string, optional)
+  - `query`: User search query. Examples: 'john smith', 'location:seattle', 'followers:>100'. Search is automatically scoped to type:user. (string, required)
+  - `sort`: Sort users by number of followers or repositories, or when the person joined GitHub. (string, optional)
 
 </details>
 <!-- END AUTOMATED TOOLS -->
