@@ -129,9 +129,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(MarkAllNotificationsRead(getClient, t)),
 			toolsets.NewServerTool(ManageNotificationSubscription(getClient, t)),
 			toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)),
-		).AddPrompts(
-		toolsets.NewServerPrompt(NotificationTriageWorkflowPrompt(t)),
-	)
+		)
 
 	discussions := toolsets.NewToolset("discussions", "GitHub Discussions related tools").
 		AddReadTools(

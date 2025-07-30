@@ -49,45 +49,6 @@ func PullRequestReviewWorkflowPrompt(t translations.TranslationHelperFunc) (tool
 		}
 }
 
-// NotificationTriageWorkflowPrompt provides a guided workflow for processing notifications
-func NotificationTriageWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
-	return mcp.NewPrompt("NotificationTriageWorkflow",
-			mcp.WithPromptDescription(t("PROMPT_NOTIFICATION_TRIAGE_WORKFLOW_DESCRIPTION", "Systematically process and triage GitHub notifications")),
-			mcp.WithArgument("filter", mcp.ArgumentDescription("Notification filter (default, include_read_notifications, only_participating)")),
-		), func(_ context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-			filter := "default"
-			if f, exists := request.Params.Arguments["filter"]; exists {
-				filter = fmt.Sprintf("%v", f)
-			}
-
-			messages := []mcp.PromptMessage{
-				{
-					Role:    "system",
-					Content: mcp.NewTextContent("You are a notification management assistant helping to efficiently process GitHub notifications. You should help triage notifications by examining them and taking appropriate actions like dismissing, unsubscribing, or marking as read."),
-				},
-				{
-					Role:    "user",
-					Content: mcp.NewTextContent(fmt.Sprintf("I need to triage my GitHub notifications. Please help me process them systematically using filter '%s'.", filter)),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent(fmt.Sprintf("I'll help you efficiently triage your GitHub notifications using the '%s' filter. Let me start by listing your notifications and then we can examine each one to determine the appropriate action.", filter)),
-				},
-				{
-					Role:    "user",
-					Content: mcp.NewTextContent("Great! For each notification, please show me the details and suggest what action to take - whether to dismiss it, unsubscribe from the thread, or take other action."),
-				},
-				{
-					Role:    "assistant",
-					Content: mcp.NewTextContent("Perfect! I'll examine each notification and provide recommendations. Let me start by getting your notification list and then we'll go through them systematically."),
-				},
-			}
-			return &mcp.GetPromptResult{
-				Messages: messages,
-			}, nil
-		}
-}
-
 // IssueInvestigationWorkflowPrompt provides guided workflow for investigating and delegating issues
 func IssueInvestigationWorkflowPrompt(t translations.TranslationHelperFunc) (tool mcp.Prompt, handler server.PromptHandlerFunc) {
 	return mcp.NewPrompt("IssueInvestigationWorkflow",
