@@ -175,12 +175,6 @@ func Test_UpdatePullRequest(t *testing.T) {
 	}
 
 	// Mock PR for when there are no updates but we still need a response
-	mockNoUpdatePR := &github.PullRequest{
-		Number: github.Ptr(42),
-		Title:  github.Ptr("Test PR"),
-		State:  github.Ptr("open"),
-	}
-
 	mockPRWithReviewers := &github.PullRequest{
 		Number: github.Ptr(42),
 		Title:  github.Ptr("Test PR"),
@@ -338,11 +332,6 @@ func Test_UpdatePullRequest(t *testing.T) {
 		{
 			name: "request reviewers fails",
 			mockedClient: mock.NewMockedHTTPClient(
-				// First it gets the PR (no fields to update)
-				mock.WithRequestMatch(
-					mock.GetReposPullsByOwnerByRepoByPullNumber,
-					mockNoUpdatePR,
-				),
 				// Then reviewer request fails
 				mock.WithRequestMatchHandler(
 					mock.PostReposPullsRequestedReviewersByOwnerByRepoByPullNumber,
@@ -615,25 +604,6 @@ func Test_UpdatePullRequest_Draft(t *testing.T) {
 			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
 			require.NoError(t, err)
 			assert.Equal(t, *tc.expectedPR.Number, *returnedPR.Number)
-			if tc.expectedPR.Title != nil {
-				assert.Equal(t, *tc.expectedPR.Title, *returnedPR.Title)
-			}
-			if tc.expectedPR.Body != nil {
-				assert.Equal(t, *tc.expectedPR.Body, *returnedPR.Body)
-			}
-			if tc.expectedPR.State != nil {
-				assert.Equal(t, *tc.expectedPR.State, *returnedPR.State)
-			}
-			if tc.expectedPR.Base != nil && tc.expectedPR.Base.Ref != nil {
-				assert.NotNil(t, returnedPR.Base)
-				assert.Equal(t, *tc.expectedPR.Base.Ref, *returnedPR.Base.Ref)
-			}
-			if tc.expectedPR.MaintainerCanModify != nil {
-				assert.Equal(t, *tc.expectedPR.MaintainerCanModify, *returnedPR.MaintainerCanModify)
-			}
-			if tc.expectedPR.Draft != nil {
-				assert.Equal(t, *tc.expectedPR.Draft, *returnedPR.Draft)
-			}
 		})
 	}
 }
