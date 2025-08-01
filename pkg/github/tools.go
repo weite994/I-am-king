@@ -66,7 +66,10 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(AddSubIssue(getClient, t)),
 			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
 			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
-		).AddPrompts(toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)))
+		).AddPrompts(
+		toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)),
+		toolsets.NewServerPrompt(IssueToFixWorkflowPrompt(t)),
+	)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchUsers(getClient, t)),
@@ -90,7 +93,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(MergePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
 			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
-			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
+			toolsets.NewServerTool(UpdatePullRequest(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
 
 			// Reviews
@@ -164,6 +167,15 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetMe(getClient, t)),
 		)
 
+	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListGists(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateGist(getClient, t)),
+			toolsets.NewServerTool(UpdateGist(getClient, t)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
@@ -178,6 +190,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
 	tsg.AddToolset(discussions)
+	tsg.AddToolset(gists)
 
 	return tsg
 }
