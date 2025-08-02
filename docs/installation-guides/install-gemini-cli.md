@@ -14,13 +14,15 @@ npm install -g @google/gemini-cli
 
 ### Option 2: npx (No Installation Required)
 ```bash
-npx https://github.com/google-gemini/gemini-cli
+npx @google/gemini-cli
 ```
 
 ### Option 3: Homebrew
 ```bash
 brew install gemini-cli
 ```
+
+For more detailed installation instructions, see the [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli).
 
 ## Authentication Setup
 
@@ -40,7 +42,32 @@ Before using Gemini CLI, you need to authenticate with Google:
    export GOOGLE_CLOUD_PROJECT=your_project_id
    ```
 
-## Local Server Setup
+## GitHub MCP Server Configuration
+
+### Method 1: Remote Server (Recommended)
+
+The simplest way is to use GitHub's hosted MCP server:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "httpUrl": "https://api.githubcopilot.com/mcp/",
+      "trust": true,
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PAT}"
+      }
+    }
+  }
+}
+```
+
+Store your GitHub token in `~/.gemini/.env`:
+```bash
+GITHUB_PAT=your_github_token_here
+```
+
+### Method 2: Local Docker Setup (Alternative)
 
 **Important**: The npm package `@modelcontextprotocol/server-github` is no longer supported as of April 2025. Use the official Docker image `ghcr.io/github/github-mcp-server` instead.
 
@@ -100,8 +127,8 @@ Then configure:
 
 Gemini CLI uses a settings JSON file to configure MCP servers:
 
-- **Global configuration**: `~/.gemini-cli/settings.json`
-- **Project-specific**: `.gemini/settings.json` in your project directory
+- **Global configuration**: `~/.gemini/config.json`
+- **Project-specific**: `.gemini/config.json` in your project directory
 
 ### Setup Steps
 
@@ -232,17 +259,17 @@ After configuration, verify the installation:
 
 1. **Check MCP server status**:
    ```bash
-   gemini-cli mcp status
+   gemini --prompt "/mcp list"
    ```
 
 2. **List available tools**:
    ```bash
-   gemini-cli mcp list-tools
+   gemini --prompt "/tools"
    ```
 
 3. **Test with a simple command**:
    ```bash
-   gemini-cli "List my GitHub repositories"
+   gemini "List my GitHub repositories"
    ```
 
 ## Usage Examples
@@ -251,16 +278,16 @@ Once configured, use natural language commands:
 
 ```bash
 # Repository operations
-gemini-cli "Show me the latest commits in microsoft/vscode"
+gemini "Show me the latest commits in microsoft/vscode"
 
 # Issue management  
-gemini-cli "Create an issue titled 'Bug report' in my-org/my-repo"
+gemini "Create an issue titled 'Bug report' in my-org/my-repo"
 
 # Pull request operations
-gemini-cli "Review the latest pull request in my repository"
+gemini "Review the latest pull request in my repository"
 
 # Code analysis
-gemini-cli "Analyze the security alerts in my repositories"
+gemini "Analyze the security alerts in my repositories"
 ```
 
 ## Troubleshooting
@@ -282,11 +309,11 @@ gemini-cli "Analyze the security alerts in my repositories"
 ### Configuration Issues
 - **Invalid JSON**: Validate your configuration:
   ```bash
-  cat ~/.gemini-cli/settings.json | jq .
+  cat ~/.gemini/config.json | jq .
   ```
 - **MCP connection issues**: Check logs for connection errors:
   ```bash
-  gemini-cli mcp logs github
+  gemini --debug "test command"
   ```
 
 ### Debug Mode
@@ -294,8 +321,7 @@ gemini-cli "Analyze the security alerts in my repositories"
 Enable debug mode for detailed logging:
 
 ```bash
-export GEMINI_CLI_DEBUG=1
-gemini-cli "Your command here"
+gemini --debug "Your command here"
 ```
 
 ## Important Notes
@@ -304,3 +330,4 @@ gemini-cli "Your command here"
 - **Docker image**: `ghcr.io/github/github-mcp-server` (official and supported)
 - **npm package**: `@modelcontextprotocol/server-github` (deprecated as of April 2025 - no longer functional)
 - **Gemini CLI specifics**: Uses `mcpServers` key, supports both global and project configurations
+- **Remote server method**: Preferred approach using GitHub's hosted MCP server at `https://api.githubcopilot.com/mcp/`
