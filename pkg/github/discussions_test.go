@@ -50,6 +50,45 @@ var (
 		},
 	}
 
+	discussionsOrgLevel = []map[string]any{
+		{
+			"number":    1,
+			"title":     "Org Discussion 1 - Community Guidelines",
+			"createdAt": "2023-01-15T00:00:00Z",
+			"updatedAt": "2023-01-15T00:00:00Z",
+			"author":    map[string]any{"login": "org-admin"},
+			"url":       "https://github.com/owner/.github/discussions/1",
+			"category":  map[string]any{"name": "Announcements"},
+		},
+		{
+			"number":    2,
+			"title":     "Org Discussion 2 - Roadmap 2023",
+			"createdAt": "2023-02-20T00:00:00Z",
+			"updatedAt": "2023-02-20T00:00:00Z",
+			"author":    map[string]any{"login": "org-admin"},
+			"url":       "https://github.com/owner/.github/discussions/2",
+			"category":  map[string]any{"name": "General"},
+		},
+		{
+			"number":    3,
+			"title":     "Org Discussion 3 - Roadmap 2024",
+			"createdAt": "2023-02-20T00:00:00Z",
+			"updatedAt": "2023-02-20T00:00:00Z",
+			"author":    map[string]any{"login": "org-admin"},
+			"url":       "https://github.com/owner/.github/discussions/3",
+			"category":  map[string]any{"name": "General"},
+		},
+		{
+			"number":    4,
+			"title":     "Org Discussion 4 - Roadmap 2025",
+			"createdAt": "2023-02-20T00:00:00Z",
+			"updatedAt": "2023-02-20T00:00:00Z",
+			"author":    map[string]any{"login": "org-admin"},
+			"url":       "https://github.com/owner/.github/discussions/4",
+			"category":  map[string]any{"name": "General"},
+		},
+	}
+
 	// Ordered mock responses
 	discussionsOrderedCreatedAsc = []map[string]any{
 		discussionsAll[0], // Discussion 1 (created 2023-01-01)
@@ -139,6 +178,22 @@ var (
 			},
 		},
 	})
+
+	mockResponseOrgLevel = githubv4mock.DataResponse(map[string]any{
+		"repository": map[string]any{
+			"discussions": map[string]any{
+				"nodes": discussionsOrgLevel,
+				"pageInfo": map[string]any{
+					"hasNextPage":     false,
+					"hasPreviousPage": false,
+					"startCursor":     "",
+					"endCursor":       "",
+				},
+				"totalCount": 4,
+			},
+		},
+	})
+
 	mockErrorRepoNotFound = githubv4mock.ErrorResponse("repository not found")
 )
 
@@ -151,7 +206,7 @@ func Test_ListDiscussions(t *testing.T) {
 	assert.Contains(t, toolDef.InputSchema.Properties, "repo")
 	assert.Contains(t, toolDef.InputSchema.Properties, "orderBy")
 	assert.Contains(t, toolDef.InputSchema.Properties, "direction")
-	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo"})
+	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner"})
 
 	// Variables matching what GraphQL receives after JSON marshaling/unmarshaling
 	varsListAll := map[string]interface{}{
@@ -202,6 +257,13 @@ func Test_ListDiscussions(t *testing.T) {
 		"orderByDirection": "DESC",
 		"first":            float64(30),
 		"after":            (*string)(nil),
+	}
+
+	varsOrgLevel := map[string]interface{}{
+		"owner": "owner",
+		"repo":  ".github", // This is what gets set when repo is not provided
+		"first": float64(30),
+		"after": (*string)(nil),
 	}
 
 	tests := []struct {
@@ -314,6 +376,15 @@ func Test_ListDiscussions(t *testing.T) {
 			expectError: true,
 			errContains: "repository not found",
 		},
+		{
+			name: "list org-level discussions (no repo provided)",
+			reqParams: map[string]interface{}{
+				"owner": "owner",
+				// repo is not provided, it will default to ".github"
+			},
+			expectError:   false,
+			expectedCount: 4,
+		},
 	}
 
 	// Define the actual query strings that match the implementation
@@ -350,6 +421,9 @@ func Test_ListDiscussions(t *testing.T) {
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			case "repository not found error":
 				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsRepoNotFound, mockErrorRepoNotFound)
+				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
+			case "list org-level discussions (no repo provided)":
+				matcher := githubv4mock.NewQueryMatcher(qBasicNoOrder, varsOrgLevel, mockResponseOrgLevel)
 				httpClient = githubv4mock.NewMockedHTTPClient(matcher)
 			}
 
@@ -410,7 +484,7 @@ func Test_GetDiscussion(t *testing.T) {
 	assert.ElementsMatch(t, toolDef.InputSchema.Required, []string{"owner", "repo", "discussionNumber"})
 
 	// Use exact string query that matches implementation output
-	qGetDiscussion := "query($discussionNumber:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){number,body,createdAt,url,category{name}}}}"
+    qGetDiscussion := "query($discussionNumber:Int!$owner:String!$repo:String!){repository(owner: $owner, name: $repo){discussion(number: $discussionNumber){number,title,body,createdAt,url,category{name}}}}"
 
 	vars := map[string]interface{}{
 		"owner":            "owner",
@@ -429,6 +503,7 @@ func Test_GetDiscussion(t *testing.T) {
 			response: githubv4mock.DataResponse(map[string]any{
 				"repository": map[string]any{"discussion": map[string]any{
 					"number":    1,
+					"title":     "Test Discussion Title",
 					"body":      "This is a test discussion",
 					"url":       "https://github.com/owner/repo/discussions/1",
 					"createdAt": "2025-04-25T12:00:00Z",
@@ -439,6 +514,7 @@ func Test_GetDiscussion(t *testing.T) {
 			expected: &github.Discussion{
 				HTMLURL:   github.Ptr("https://github.com/owner/repo/discussions/1"),
 				Number:    github.Ptr(1),
+				Title:     github.Ptr("Test Discussion Title"),
 				Body:      github.Ptr("This is a test discussion"),
 				CreatedAt: &github.Timestamp{Time: time.Date(2025, 4, 25, 12, 0, 0, 0, time.UTC)},
 				DiscussionCategory: &github.DiscussionCategory{
@@ -475,6 +551,7 @@ func Test_GetDiscussion(t *testing.T) {
 			require.NoError(t, json.Unmarshal([]byte(text), &out))
 			assert.Equal(t, *tc.expected.HTMLURL, *out.HTMLURL)
 			assert.Equal(t, *tc.expected.Number, *out.Number)
+			assert.Equal(t, *tc.expected.Title, *out.Title)
 			assert.Equal(t, *tc.expected.Body, *out.Body)
 			// Check category label
 			assert.Equal(t, *tc.expected.DiscussionCategory.Name, *out.DiscussionCategory.Name)
