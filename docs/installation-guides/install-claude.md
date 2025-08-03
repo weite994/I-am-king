@@ -38,6 +38,50 @@ Claude Code CLI provides command-line access to Claude with MCP server integrati
 2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)
 3. [Docker](https://www.docker.com/) installed and running
 
+### Container Runtime Alternatives for macOS
+
+While Docker is the default container runtime, macOS users can use these alternatives:
+
+#### OrbStack (Recommended for macOS)
+[OrbStack](https://orbstack.dev/) is a fast, lightweight Docker alternative for macOS:
+
+```bash
+# Install OrbStack
+brew install orbstack
+
+# Use docker command (OrbStack provides Docker compatibility)
+claude mcp add github -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
+```
+
+#### Podman
+[Podman](https://podman.io/) is a daemonless container engine:
+
+```bash
+# Install Podman
+brew install podman
+
+# Initialize Podman machine
+podman machine init
+podman machine start
+
+# Use podman command instead of docker
+claude mcp add github -- podman run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
+```
+
+#### Lima
+[Lima](https://lima-vm.io/) provides Linux virtual machines for macOS:
+
+```bash
+# Install Lima
+brew install lima
+
+# Start default instance with Docker
+limactl start default
+
+# Use lima nerdctl command
+claude mcp add github -- lima nerdctl run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
+```
+
 ### Installation
 
 Run the following command to add the GitHub MCP server using Docker:
@@ -82,6 +126,78 @@ Claude Desktop provides a graphical interface for interacting with the GitHub MC
 1. Claude Desktop installed
 2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)
 3. [Docker](https://www.docker.com/) installed and running
+
+### Container Runtime Alternatives for macOS
+
+macOS users can use alternative container runtimes in their Claude Desktop configuration:
+
+#### OrbStack Configuration
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_pat"
+      }
+    }
+  }
+}
+```
+*Note: OrbStack provides Docker CLI compatibility, so use "docker" as the command*
+
+#### Podman Configuration
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "podman",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_pat"
+      }
+    }
+  }
+}
+```
+
+#### Lima Configuration
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "lima",
+      "args": [
+        "nerdctl",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_pat"
+      }
+    }
+  }
+}
+```
 
 ### Configuration File Location
 
@@ -179,6 +295,12 @@ After restarting, you should see:
 - Ensure configuration file is valid JSON
 - Try running the Docker command manually in terminal to diagnose issues
 
+### Container Runtime Issues (macOS)
+- **OrbStack**: Ensure OrbStack is running and has Docker compatibility enabled
+- **Podman**: Verify Podman machine is started with `podman machine start`
+- **Lima**: Check Lima instance status with `limactl list`
+- Test container runtime manually: `[runtime] run --rm hello-world`
+
 ### Common Issues
 - **Invalid JSON**: Validate your configuration at [jsonlint.com](https://jsonlint.com)
 - **PAT issues**: Ensure your GitHub PAT has required scopes
@@ -202,3 +324,6 @@ After restarting, you should see:
 - [Model Context Protocol Documentation](https://modelcontextprotocol.io)
 - [Claude Code MCP Documentation](https://docs.anthropic.com/en/docs/claude-code/mcp)
 - [Claude Web Integrations Support](https://support.anthropic.com/en/articles/11175166-about-custom-integrations-using-remote-mcp)
+- [OrbStack Documentation](https://docs.orbstack.dev/)
+- [Podman Documentation](https://podman.io/docs)
+- [Lima Documentation](https://lima-vm.io/docs/)
