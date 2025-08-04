@@ -46,41 +46,16 @@ func ListStarredRepositories(getClient GetClientFn, t translations.TranslationHe
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			// Validate sort parameter
-			if sort != "" && sort != "created" && sort != "updated" {
-				return mcp.NewToolResultError("invalid value for sort parameter"), nil
-			}
-
-			// Validate direction parameter
-			if direction != "" && direction != "asc" && direction != "desc" {
-				return mcp.NewToolResultError("invalid value for direction parameter"), nil
-			}
-
-			// Validate pagination parameters directly from request before using OptionalPaginationParams
-			if pageVal, ok := request.GetArguments()["page"].(float64); ok {
-				if pageVal <= 0 {
-					return mcp.NewToolResultError("page must be greater than 0"), nil
-				}
-			}
-
-			if perPageVal, ok := request.GetArguments()["perPage"].(float64); ok {
-				if perPageVal <= 0 || perPageVal > 100 {
-					return mcp.NewToolResultError("perPage must be between 1 and 100"), nil
-				}
-			}
-
 			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			// Set default perPage to 30 if not provided (this should not happen due to validation above)
 			perPage := pagination.PerPage
 			if perPage == 0 {
 				perPage = 30
 			}
 
-			// Set default page to 1 if not provided (this should not happen due to validation above)
 			page := pagination.Page
 			if page == 0 {
 				page = 1
