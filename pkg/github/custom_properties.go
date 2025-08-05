@@ -124,7 +124,7 @@ func GetOrganizationCustomProperties(getClient GetClientFn, t translations.Trans
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return mcp.NewToolResultText(fmt.Sprintf("Organization custom properties for %s: %v", org, props)), nil
+			return MarshalledTextResult("Organization custom properties for "+org, props)
 		}
 }
 
