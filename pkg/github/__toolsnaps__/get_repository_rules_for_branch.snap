@@ -1,0 +1,41 @@
+{
+  "annotations": {
+    "title": "Get rules for branch",
+    "readOnlyHint": true
+  },
+  "description": "Get all repository rules that apply to a specific branch",
+  "inputSchema": {
+    "properties": {
+      "branch": {
+        "description": "Branch name",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo",
+      "branch"
+    ],
+    "type": "object"
+  },
+  "name": "get_repository_rules_for_branch"
+}

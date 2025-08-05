@@ -458,7 +458,7 @@ The following sets of tools are available (all are on by default):
 
 - **list_discussion_categories** - List discussion categories
   - `owner`: Repository owner (string, required)
-  - `repo`: Repository name. If not provided, discussion categories will be queried at the organisation level. (string, optional)
+  - `repo`: Repository name (string, required)
 
 - **list_discussions** - List discussions
   - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
@@ -631,6 +631,15 @@ The following sets of tools are available (all are on by default):
 <details>
 
 <summary>Organizations</summary>
+
+- **get_organization_repository_ruleset** - Get organization repository ruleset
+  - `org`: Organization name (string, required)
+  - `rulesetId`: Ruleset ID (number, required)
+
+- **list_organization_repository_rulesets** - List organization repository rulesets
+  - `org`: Organization name (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
 
 - **search_orgs** - Search organizations
   - `order`: Sort order (string, optional)
@@ -829,6 +838,19 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_repository_rules_for_branch** - Get rules for branch
+  - `branch`: Branch name (string, required)
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
+- **get_repository_ruleset** - Get repository ruleset
+  - `includesParents`: Include rulesets configured at higher levels that also apply (boolean, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `rulesetId`: Ruleset ID (number, required)
+
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -847,6 +869,11 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
+
+- **list_repository_rulesets** - List repository rulesets
+  - `includesParents`: Include rulesets configured at higher levels that also apply (boolean, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)

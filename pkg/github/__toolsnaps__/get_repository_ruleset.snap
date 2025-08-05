@@ -1,0 +1,34 @@
+{
+  "annotations": {
+    "title": "Get repository ruleset",
+    "readOnlyHint": true
+  },
+  "description": "Get details of a specific repository ruleset",
+  "inputSchema": {
+    "properties": {
+      "includesParents": {
+        "description": "Include rulesets configured at higher levels that also apply",
+        "type": "boolean"
+      },
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "rulesetId": {
+        "description": "Ruleset ID",
+        "type": "number"
+      }
+    },
+    "required": [
+      "owner",
+      "repo",
+      "rulesetId"
+    ],
+    "type": "object"
+  },
+  "name": "get_repository_ruleset"
+}
