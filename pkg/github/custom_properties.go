@@ -191,7 +191,7 @@ func GetEnterpriseCustomProperties(getClient GetClientFn, t translations.Transla
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return mcp.NewToolResultText(fmt.Sprintf("Enterprise custom properties for %s: %v", enterprise, props)), nil
+			return MarshalledTextResult(props)
 		}
 }
 
