@@ -1,0 +1,30 @@
+{
+  "annotations": {
+    "title": "Get repository rule suite",
+    "readOnlyHint": true
+  },
+  "description": "Get details of a specific repository rule suite",
+  "inputSchema": {
+    "properties": {
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "ruleSuiteId": {
+        "description": "Rule suite ID",
+        "type": "number"
+      }
+    },
+    "required": [
+      "owner",
+      "repo",
+      "ruleSuiteId"
+    ],
+    "type": "object"
+  },
+  "name": "get_repository_rule_suite"
+}

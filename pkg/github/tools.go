@@ -31,6 +31,13 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ListBranches(getClient, t)),
 			toolsets.NewServerTool(ListTags(getClient, t)),
 			toolsets.NewServerTool(GetTag(getClient, t)),
+			// Repository rulesets and rules
+			toolsets.NewServerTool(GetRepositoryRuleset(getClient, t)),
+			toolsets.NewServerTool(ListRepositoryRulesets(getClient, t)),
+			toolsets.NewServerTool(GetRepositoryRulesForBranch(getClient, t)),
+			// Repository rule suites
+			toolsets.NewServerTool(ListRepositoryRuleSuites(getClient, t)),
+			toolsets.NewServerTool(GetRepositoryRuleSuite(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
@@ -39,6 +46,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(CreateBranch(getClient, t)),
 			toolsets.NewServerTool(PushFiles(getClient, t)),
 			toolsets.NewServerTool(DeleteFile(getClient, t)),
+			toolsets.NewServerTool(CreateRepositoryRuleset(getClient, t)),
 		).
 		AddResourceTemplates(
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceContent(getClient, getRawClient, t)),
@@ -46,7 +54,15 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceCommitContent(getClient, getRawClient, t)),
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceTagContent(getClient, getRawClient, t)),
 			toolsets.NewServerResourceTemplate(GetRepositoryResourcePrContent(getClient, getRawClient, t)),
-		)
+		).
+		AddReadTools(func() server.ServerTool {
+			tool, handler := GetRepositoryCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}()).
+		AddWriteTools(func() server.ServerTool {
+			tool, handler := CreateOrUpdateRepositoryCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}())
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetIssue(getClient, t)),
@@ -74,7 +90,33 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	orgs := toolsets.NewToolset("orgs", "GitHub Organization related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchOrgs(getClient, t)),
-		)
+			// Organization repository rulesets
+			toolsets.NewServerTool(GetOrganizationRepositoryRuleset(getClient, t)),
+			toolsets.NewServerTool(ListOrganizationRepositoryRulesets(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateOrganizationRepositoryRuleset(getClient, t)),
+		).
+		AddReadTools(func() server.ServerTool {
+			tool, handler := GetOrganizationCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}()).
+		AddWriteTools(func() server.ServerTool {
+			tool, handler := CreateOrUpdateOrganizationCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}())
+	enterprise := toolsets.NewToolset("enterprise", "GitHub Enterprise related tools").
+		AddWriteTools(
+			toolsets.NewServerTool(CreateEnterpriseRepositoryRuleset(getClient, t)),
+		).
+		AddReadTools(func() server.ServerTool {
+			tool, handler := GetEnterpriseCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}()).
+		AddWriteTools(func() server.ServerTool {
+			tool, handler := CreateOrUpdateEnterpriseCustomProperties(getClient, t)
+			return toolsets.NewServerTool(tool, handler)
+		}())
 	pullRequests := toolsets.NewToolset("pull_requests", "GitHub Pull Request related tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetPullRequest(getClient, t)),
@@ -178,6 +220,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(repos)
 	tsg.AddToolset(issues)
 	tsg.AddToolset(orgs)
+	tsg.AddToolset(enterprise)
 	tsg.AddToolset(users)
 	tsg.AddToolset(pullRequests)
 	tsg.AddToolset(actions)

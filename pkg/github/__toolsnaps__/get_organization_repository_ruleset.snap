@@ -1,0 +1,25 @@
+{
+  "annotations": {
+    "title": "Get organization repository ruleset",
+    "readOnlyHint": true
+  },
+  "description": "Get details of a specific organization repository ruleset",
+  "inputSchema": {
+    "properties": {
+      "org": {
+        "description": "Organization name",
+        "type": "string"
+      },
+      "rulesetId": {
+        "description": "Ruleset ID",
+        "type": "number"
+      }
+    },
+    "required": [
+      "org",
+      "rulesetId"
+    ],
+    "type": "object"
+  },
+  "name": "get_organization_repository_ruleset"
+}

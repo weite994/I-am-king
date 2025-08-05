@@ -1,0 +1,29 @@
+{
+  "annotations": {
+    "title": "List repository rulesets",
+    "readOnlyHint": true
+  },
+  "description": "List all repository rulesets",
+  "inputSchema": {
+    "properties": {
+      "includesParents": {
+        "description": "Include rulesets configured at higher levels that also apply",
+        "type": "boolean"
+      },
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "list_repository_rulesets"
+}

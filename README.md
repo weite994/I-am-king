@@ -286,6 +286,7 @@ The following sets of tools are available (all are on by default):
 | `code_security` | Code security related tools, such as GitHub Code Scanning |
 | `dependabot` | Dependabot tools |
 | `discussions` | GitHub Discussions related tools |
+| `enterprise` | GitHub Enterprise related tools |
 | `experiments` | Experimental features that are not considered stable yet |
 | `gists` | GitHub Gist related tools |
 | `issues` | GitHub Issues related tools |
@@ -473,6 +474,28 @@ The following sets of tools are available (all are on by default):
 
 <details>
 
+<summary>Enterprise</summary>
+
+- **create_enterprise_repository_ruleset** - Create enterprise repository ruleset
+  - `bypass_actors`: The actors that can bypass the rules in this ruleset (object[], optional)
+  - `conditions`: Conditions for when this ruleset applies (object, optional)
+  - `enforcement`: The enforcement level of the ruleset. Can be 'disabled', 'active', or 'evaluate' (string, required)
+  - `enterprise`: Enterprise name (string, required)
+  - `name`: The name of the ruleset (string, required)
+  - `rules`: An array of rules within the ruleset (object[], required)
+  - `target`: The target of the ruleset. Defaults to 'branch'. Can be one of: 'branch', 'tag', or 'push' (string, optional)
+
+- **create_or_update_enterprise_custom_properties** - 
+  - `enterprise`: Enterprise name (string, required)
+  - `properties`: Custom properties as JSON array (string, required)
+
+- **get_enterprise_custom_properties** - 
+  - `enterprise`: Enterprise name (string, required)
+
+</details>
+
+<details>
+
 <summary>Gists</summary>
 
 - **create_gist** - Create Gist
@@ -631,6 +654,31 @@ The following sets of tools are available (all are on by default):
 <details>
 
 <summary>Organizations</summary>
+
+- **create_or_update_organization_custom_properties** - 
+  - `org`: Organization name (string, required)
+  - `properties`: Custom properties as JSON array (string, required)
+
+- **create_organization_repository_ruleset** - Create organization repository ruleset
+  - `bypass_actors`: The actors that can bypass the rules in this ruleset (object[], optional)
+  - `conditions`: Conditions for when this ruleset applies (object, optional)
+  - `enforcement`: The enforcement level of the ruleset. Can be 'disabled', 'active', or 'evaluate' (string, required)
+  - `name`: The name of the ruleset (string, required)
+  - `org`: Organization name (string, required)
+  - `rules`: An array of rules within the ruleset (object[], required)
+  - `target`: The target of the ruleset. Defaults to 'branch'. Can be one of: 'branch', 'tag', or 'push' (string, optional)
+
+- **get_organization_custom_properties** - 
+  - `org`: Organization name (string, required)
+
+- **get_organization_repository_ruleset** - Get organization repository ruleset
+  - `org`: Organization name (string, required)
+  - `rulesetId`: Ruleset ID (number, required)
+
+- **list_organization_repository_rulesets** - List organization repository rulesets
+  - `org`: Organization name (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
 
 - **search_orgs** - Search organizations
   - `order`: Sort order (string, optional)
@@ -797,11 +845,26 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Required if updating an existing file. The blob SHA of the file being replaced. (string, optional)
 
+- **create_or_update_repository_custom_properties** - 
+  - `owner`: Repository owner (string, required)
+  - `properties`: Custom properties as JSON array (string, required)
+  - `repo`: Repository name (string, required)
+
 - **create_repository** - Create repository
   - `autoInit`: Initialize with README (boolean, optional)
   - `description`: Repository description (string, optional)
   - `name`: Repository name (string, required)
   - `private`: Whether repo should be private (boolean, optional)
+
+- **create_repository_ruleset** - Create repository ruleset
+  - `bypass_actors`: The actors that can bypass the rules in this ruleset (object[], optional)
+  - `conditions`: Conditions for when this ruleset applies (object, optional)
+  - `enforcement`: The enforcement level of the ruleset. Can be 'disabled', 'active', or 'evaluate' (string, required)
+  - `name`: The name of the ruleset (string, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `rules`: An array of rules within the ruleset (object[], required)
+  - `target`: The target of the ruleset. Defaults to 'branch'. Can be one of: 'branch', 'tag', or 'push' (string, optional)
 
 - **delete_file** - Delete file
   - `branch`: Branch to delete the file from (string, required)
@@ -829,6 +892,28 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_repository_custom_properties** - 
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
+- **get_repository_rule_suite** - Get repository rule suite
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `ruleSuiteId`: Rule suite ID (number, required)
+
+- **get_repository_rules_for_branch** - Get rules for branch
+  - `branch`: Branch name (string, required)
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
+- **get_repository_ruleset** - Get repository ruleset
+  - `includesParents`: Include rulesets configured at higher levels that also apply (boolean, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `rulesetId`: Ruleset ID (number, required)
+
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -847,6 +932,21 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
+
+- **list_repository_rule_suites** - List repository rule suites
+  - `actorName`: The handle for the GitHub user account to filter on (string, optional)
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `ref`: The name of the ref (branch, tag, etc.) to filter rule suites by (string, optional)
+  - `repo`: Repository name (string, required)
+  - `ruleSuiteResult`: The rule suite result to filter by. Options: pass, fail, bypass (string, optional)
+  - `timePeriod`: The time period to filter by. Options: hour, day, week, month (string, optional)
+
+- **list_repository_rulesets** - List repository rulesets
+  - `includesParents`: Include rulesets configured at higher levels that also apply (boolean, optional)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
