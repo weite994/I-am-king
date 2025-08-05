@@ -62,7 +62,12 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddWriteTools(func() server.ServerTool {
 			tool, handler := CreateOrUpdateRepositoryCustomProperties(getClient, t)
 			return toolsets.NewServerTool(tool, handler)
-		}())
+		AddReadTools(
+			toolsets.NewServerTool(GetRepositoryCustomProperties(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateOrUpdateRepositoryCustomProperties(getClient, t)),
+		)
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetIssue(getClient, t)),
