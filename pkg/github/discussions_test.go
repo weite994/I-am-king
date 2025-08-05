@@ -702,12 +702,13 @@ func Test_ListDiscussionCategories(t *testing.T) {
 	})
 
 	tests := []struct {
-		name          string
-		reqParams     map[string]interface{}
-		vars          map[string]interface{}
-		mockResponse  githubv4mock.GQLResponse
-		expectError   bool
-		expectedCount int
+		name               string
+		reqParams          map[string]interface{}
+		vars               map[string]interface{}
+		mockResponse       githubv4mock.GQLResponse
+		expectError        bool
+		expectedCount      int
+		expectedCategories []map[string]string
 	}{
 		{
 			name: "list repository-level discussion categories",
@@ -719,6 +720,10 @@ func Test_ListDiscussionCategories(t *testing.T) {
 			mockResponse:  mockRespRepo,
 			expectError:   false,
 			expectedCount: 2,
+			expectedCategories: []map[string]string{
+				{"id": "123", "name": "CategoryOne"},
+				{"id": "456", "name": "CategoryTwo"},
+			},
 		},
 		{
 			name: "list org-level discussion categories (no repo provided)",
@@ -730,6 +735,11 @@ func Test_ListDiscussionCategories(t *testing.T) {
 			mockResponse:  mockRespOrg,
 			expectError:   false,
 			expectedCount: 3,
+			expectedCategories: []map[string]string{
+				{"id": "789", "name": "Announcements"},
+				{"id": "101", "name": "General"},
+				{"id": "112", "name": "Ideas"},
+			},
 		},
 	}
 
@@ -762,23 +772,7 @@ func Test_ListDiscussionCategories(t *testing.T) {
 				TotalCount int `json:"totalCount"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(text), &response))
-			assert.Len(t, response.Categories, tc.expectedCount)
-
-			// Verify specific content based on test case
-			switch tc.name {
-			case "list repository-level discussion categories":
-				assert.Equal(t, "123", response.Categories[0]["id"])
-				assert.Equal(t, "CategoryOne", response.Categories[0]["name"])
-				assert.Equal(t, "456", response.Categories[1]["id"])
-				assert.Equal(t, "CategoryTwo", response.Categories[1]["name"])
-			case "list org-level discussion categories (no repo provided)":
-				assert.Equal(t, "789", response.Categories[0]["id"])
-				assert.Equal(t, "Announcements", response.Categories[0]["name"])
-				assert.Equal(t, "101", response.Categories[1]["id"])
-				assert.Equal(t, "General", response.Categories[1]["name"])
-				assert.Equal(t, "112", response.Categories[2]["id"])
-				assert.Equal(t, "Ideas", response.Categories[2]["name"])
-			}
+			assert.Equal(t, tc.expectedCategories, response.Categories)
 		})
 	}
 }
