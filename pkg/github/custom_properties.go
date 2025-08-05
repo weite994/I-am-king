@@ -52,7 +52,7 @@ func GetRepositoryCustomProperties(getClient GetClientFn, t translations.Transla
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			return MarshalledTextResult(props)
+			return MarshalledTextResult(props), nil
 		}
 }
 
@@ -124,7 +124,7 @@ func GetOrganizationCustomProperties(getClient GetClientFn, t translations.Trans
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return MarshalledTextResult("Organization custom properties for "+org, props)
+			return MarshalledTextResult(props), nil
 		}
 }
 
@@ -191,7 +191,7 @@ func GetEnterpriseCustomProperties(getClient GetClientFn, t translations.Transla
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return MarshalledTextResult(props)
+			return MarshalledTextResult(props), nil
 		}
 }
 
