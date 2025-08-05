@@ -52,7 +52,7 @@ func GetRepositoryCustomProperties(getClient GetClientFn, t translations.Transla
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			return mcp.NewToolResultText(fmt.Sprintf("Repository custom properties for %s/%s: %v", owner, repo, props)), nil
+			return MarshalledTextResult(props)
 		}
 }
 
