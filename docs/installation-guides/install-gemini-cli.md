@@ -7,22 +7,19 @@
 
 ## Installation Options
 
-### Option 1: npm (Global Installation)
+Install Google Gemini CLI using your preferred method. For the most up-to-date installation instructions and troubleshooting, see the [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli).
+
+### Quick Install Options
 ```bash
+# npm (Global Installation)
 npm install -g @google/gemini-cli
-```
 
-### Option 2: npx (No Installation Required)
-```bash
+# npx (No Installation Required)
 npx @google/gemini-cli
-```
 
-### Option 3: Homebrew
-```bash
+# Homebrew
 brew install gemini-cli
 ```
-
-For more detailed installation instructions, see the [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli).
 
 ## Authentication Setup
 
