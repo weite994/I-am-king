@@ -101,92 +101,68 @@ func Test_hasFilter(t *testing.T) {
 	}
 }
 
-func Test_extractRepoFilter(t *testing.T) {
+func Test_hasRepoFilter(t *testing.T) {
 	tests := []struct {
-		name          string
-		query         string
-		expectedOwner string
-		expectedRepo  string
-		expectedFound bool
+		name     string
+		query    string
+		expected bool
 	}{
 		{
-			name:          "query with repo: filter at beginning",
-			query:         "repo:github/github-mcp-server is:issue",
-			expectedOwner: "github",
-			expectedRepo:  "github-mcp-server",
-			expectedFound: true,
+			name:     "query with repo: filter at beginning",
+			query:    "repo:github/github-mcp-server is:issue",
+			expected: true,
 		},
 		{
-			name:          "query with repo: filter in middle",
-			query:         "is:issue repo:octocat/Hello-World bug",
-			expectedOwner: "octocat",
-			expectedRepo:  "Hello-World",
-			expectedFound: true,
+			name:     "query with repo: filter in middle",
+			query:    "is:issue repo:octocat/Hello-World bug",
+			expected: true,
 		},
 		{
-			name:          "query with repo: filter at end",
-			query:         "is:issue critical repo:owner/repo-name",
-			expectedOwner: "owner",
-			expectedRepo:  "repo-name",
-			expectedFound: true,
+			name:     "query with repo: filter at end",
+			query:    "is:issue critical repo:owner/repo-name",
+			expected: true,
 		},
 		{
-			name:          "query with complex repo name",
-			query:         "repo:microsoft/vscode-extension-samples bug",
-			expectedOwner: "microsoft",
-			expectedRepo:  "vscode-extension-samples",
-			expectedFound: true,
+			name:     "query with complex repo name",
+			query:    "repo:microsoft/vscode-extension-samples bug",
+			expected: true,
 		},
 		{
-			name:          "query without repo: filter",
-			query:         "is:issue bug critical",
-			expectedOwner: "",
-			expectedRepo:  "",
-			expectedFound: false,
+			name:     "query without repo: filter",
+			query:    "is:issue bug critical",
+			expected: false,
 		},
 		{
-			name:          "query with malformed repo: filter (no slash)",
-			query:         "repo:github bug",
-			expectedOwner: "",
-			expectedRepo:  "",
-			expectedFound: false,
+			name:     "query with malformed repo: filter (no slash)",
+			query:    "repo:github bug",
+			expected: true, // hasRepoFilter only checks for repo: prefix, not format
 		},
 		{
-			name:          "empty query",
-			query:         "",
-			expectedOwner: "",
-			expectedRepo:  "",
-			expectedFound: false,
+			name:     "empty query",
+			query:    "",
+			expected: false,
 		},
 		{
-			name:          "query with multiple repo: filters (should match first)",
-			query:         "repo:github/first repo:octocat/second",
-			expectedOwner: "github",
-			expectedRepo:  "first",
-			expectedFound: true,
+			name:     "query with multiple repo: filters",
+			query:    "repo:github/first repo:octocat/second",
+			expected: true,
 		},
 		{
-			name:          "query with repo: in text but not as filter",
-			query:         "this repo: is important",
-			expectedOwner: "",
-			expectedRepo:  "",
-			expectedFound: false,
+			name:     "query with repo: in text but not as filter",
+			query:    "this repo: is important",
+			expected: false,
 		},
 		{
-			name:          "query with complex OR expression",
-			query:         "repo:github/github-mcp-server is:issue (label:critical OR label:urgent)",
-			expectedOwner: "github",
-			expectedRepo:  "github-mcp-server",
-			expectedFound: true,
+			name:     "query with complex OR expression",
+			query:    "repo:github/github-mcp-server is:issue (label:critical OR label:urgent)",
+			expected: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			owner, repo, found := extractRepoFilter(tt.query)
-			assert.Equal(t, tt.expectedOwner, owner, "extractRepoFilter(%q) owner = %q, expected %q", tt.query, owner, tt.expectedOwner)
-			assert.Equal(t, tt.expectedRepo, repo, "extractRepoFilter(%q) repo = %q, expected %q", tt.query, repo, tt.expectedRepo)
-			assert.Equal(t, tt.expectedFound, found, "extractRepoFilter(%q) found = %v, expected %v", tt.query, found, tt.expectedFound)
+			result := hasRepoFilter(tt.query)
+			assert.Equal(t, tt.expected, result, "hasRepoFilter(%q) = %v, expected %v", tt.query, result, tt.expected)
 		})
 	}
 }

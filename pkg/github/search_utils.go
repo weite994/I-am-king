@@ -24,15 +24,8 @@ func hasSpecificFilter(query, filterType, filterValue string) bool {
 	return matched
 }
 
-func extractRepoFilter(query string) (owner, repo string, found bool) {
-	pattern := `(?:^|\s)repo:([^/\s]+)/([^\s]+)`
-	re := regexp.MustCompile(pattern)
-	matches := re.FindStringSubmatch(query)
-
-	if len(matches) >= 3 {
-		return matches[1], matches[2], true
-	}
-	return "", "", false
+func hasRepoFilter(query string) bool {
+	return hasFilter(query, "repo")
 }
 
 func searchHandler(
@@ -61,14 +54,8 @@ func searchHandler(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	if owner != "" && repo != "" {
-		_, _, hasRepoFilter := extractRepoFilter(query)
-
-		// TODO: Existing owner and existing repo?
-		if !hasRepoFilter {
-			query = fmt.Sprintf("repo:%s/%s %s", owner, repo, query)
-		}
-
+	if owner != "" && repo != "" && !hasRepoFilter(query) {
+		query = fmt.Sprintf("repo:%s/%s %s", owner, repo, query)
 	}
 
 	sort, err := OptionalParam[string](request, "sort")
