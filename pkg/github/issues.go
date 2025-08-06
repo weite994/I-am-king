@@ -724,7 +724,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 }
 
 // ListIssues creates a tool to list and filter repository issues
-func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func ListIssues(getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("list_issues",
 			mcp.WithDescription(t("TOOL_LIST_ISSUES_DESCRIPTION", "List issues in a GitHub repository.")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
@@ -741,7 +741,7 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			),
 			mcp.WithString("state",
 				mcp.Description("Filter by state"),
-				mcp.Enum("open", "closed", "all"),
+				mcp.Enum("OPEN", "CLOSED"),
 			),
 			mcp.WithArray("labels",
 				mcp.Description("Filter by labels"),
@@ -751,13 +751,13 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 					},
 				),
 			),
-			mcp.WithString("sort",
-				mcp.Description("Sort order"),
-				mcp.Enum("created", "updated", "comments"),
+			mcp.WithString("orderBy",
+				mcp.Description("Order discussions by field. If provided, the 'direction' also needs to be provided."),
+				mcp.Enum("CREATED_AT", "UPDATED_AT"),
 			),
 			mcp.WithString("direction",
-				mcp.Description("Sort direction"),
-				mcp.Enum("asc", "desc"),
+				mcp.Description("Order direction."),
+				mcp.Enum("ASC", "DESC"),
 			),
 			mcp.WithString("since",
 				mcp.Description("Filter by date (ISO 8601 timestamp)"),
@@ -774,28 +774,35 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			opts := &github.IssueListByRepoOptions{}
-
 			// Set optional parameters if provided
-			opts.State, err = OptionalParam[string](request, "state")
+			state, err := OptionalParam[string](request, "state")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if state == "" {
+				state = "OPEN" // Default to OPEN if not provided
 			}
 
 			// Get labels
-			opts.Labels, err = OptionalStringArrayParam(request, "labels")
+			//labels, err := OptionalStringArrayParam(request, "labels")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			opts.Sort, err = OptionalParam[string](request, "sort")
+			orderBy, err := OptionalParam[string](request, "orderBy")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			if orderBy == "" {
+				orderBy = "CREATED_AT"
+			}
 
-			opts.Direction, err = OptionalParam[string](request, "direction")
+			direction, err := OptionalParam[string](request, "direction")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if direction == "" {
+				direction = "DESC"
 			}
 
 			since, err := OptionalParam[string](request, "since")
@@ -803,45 +810,85 @@ func ListIssues(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			if since != "" {
-				timestamp, err := parseISOTimestamp(since)
+				//timestamp, err := parseISOTimestamp(since)
 				if err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("failed to list issues: %s", err.Error())), nil
 				}
-				opts.Since = timestamp
+				//since = timestamp
 			}
 
-			if page, ok := request.GetArguments()["page"].(float64); ok {
-				opts.ListOptions.Page = int(page)
-			}
+			//if page, ok := request.GetArguments()["page"].(float64); ok {
+			//listOptions.Page = int(page)
+			//}
 
-			if perPage, ok := request.GetArguments()["perPage"].(float64); ok {
-				opts.ListOptions.PerPage = int(perPage)
-			}
+			//if perPage, ok := request.GetArguments()["perPage"].(float64); ok {
+			//.PerPage = int(perPage)
+			//}
 
-			client, err := getClient(ctx)
+			client, err := getGQLClient(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+				return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
 			}
-			issues, resp, err := client.Issues.ListByRepo(ctx, owner, repo, opts)
-			if err != nil {
-				return nil, fmt.Errorf("failed to list issues: %w", err)
-			}
-			defer func() { _ = resp.Body.Close() }()
 
-			if resp.StatusCode != http.StatusOK {
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, fmt.Errorf("failed to read response body: %w", err)
+			var q struct {
+				Repository struct {
+					Issues struct {
+						Nodes []struct {
+							Number githubv4.Int
+							Title  githubv4.String
+							Body   githubv4.String
+							Author struct {
+								Login githubv4.String
+							}
+							CreatedAt githubv4.DateTime
+							Labels    struct {
+								Nodes []struct {
+									Name githubv4.String
+								}
+							} `graphql:"labels(first: 10)"`
+						}
+					} `graphql:"issues(first: $first, states: $states, orderBy: {field: $orderBy, direction: $direction})"`
+				} `graphql:"repository(owner: $owner, name: $repo)"`
+			}
+			vars := map[string]interface{}{
+				"owner":     githubv4.String(owner),
+				"repo":      githubv4.String(repo),
+				"first":     githubv4.Int(100),
+				"states":    []githubv4.IssueState{githubv4.IssueState(state)},
+				"orderBy":   githubv4.IssueOrderField(orderBy),
+				"direction": githubv4.OrderDirection(direction),
+			}
+			if err := client.Query(ctx, &q, vars); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			var issues []map[string]interface{}
+			for _, issue := range q.Repository.Issues.Nodes {
+				var labels []string
+				for _, label := range issue.Labels.Nodes {
+					labels = append(labels, string(label.Name))
 				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to list issues: %s", string(body))), nil
+
+				issues = append(issues, map[string]interface{}{
+					"number":    int(issue.Number),
+					"title":     string(issue.Title),
+					"body":      string(issue.Body),
+					"author":    string(issue.Author.Login),
+					"createdAt": issue.CreatedAt.Time,
+					"labels":    labels,
+				})
 			}
 
-			r, err := json.Marshal(issues)
+			// Create response with issues
+			response := map[string]interface{}{
+				"issues": issues,
+			}
+
+			out, err := json.Marshal(response)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal issues: %w", err)
 			}
-
-			return mcp.NewToolResultText(string(r)), nil
+			return mcp.NewToolResultText(string(out)), nil
 		}
 }
 
