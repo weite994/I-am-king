@@ -6,10 +6,34 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 
 	"github.com/google/go-github/v73/github"
 	"github.com/mark3labs/mcp-go/mcp"
 )
+
+func hasFilter(query, filterType string) bool {
+	pattern := fmt.Sprintf(`(^|\s)%s:\S+`, regexp.QuoteMeta(filterType))
+	matched, _ := regexp.MatchString(pattern, query)
+	return matched
+}
+
+func hasSpecificFilter(query, filterType, filterValue string) bool {
+	pattern := fmt.Sprintf(`(^|\s)%s:%s($|\s)`, regexp.QuoteMeta(filterType), regexp.QuoteMeta(filterValue))
+	matched, _ := regexp.MatchString(pattern, query)
+	return matched
+}
+
+func extractRepoFilter(query string) (owner, repo string, found bool) {
+	pattern := `(?:^|\s)repo:([^/\s]+)/([^\s]+)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(query)
+
+	if len(matches) >= 3 {
+		return matches[1], matches[2], true
+	}
+	return "", "", false
+}
 
 func searchHandler(
 	ctx context.Context,
@@ -22,7 +46,10 @@ func searchHandler(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	query = fmt.Sprintf("is:%s %s", searchType, query)
+
+	if !hasSpecificFilter(query, "is", searchType) {
+		query = fmt.Sprintf("is:%s %s", searchType, query)
+	}
 
 	owner, err := OptionalParam[string](request, "owner")
 	if err != nil {
@@ -35,7 +62,13 @@ func searchHandler(
 	}
 
 	if owner != "" && repo != "" {
-		query = fmt.Sprintf("repo:%s/%s %s", owner, repo, query)
+		_, _, hasRepoFilter := extractRepoFilter(query)
+
+		// TODO: Existing owner and existing repo?
+		if !hasRepoFilter {
+			query = fmt.Sprintf("repo:%s/%s %s", owner, repo, query)
+		}
+
 	}
 
 	sort, err := OptionalParam[string](request, "sort")
