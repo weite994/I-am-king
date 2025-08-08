@@ -1,43 +1,9 @@
 # Install GitHub MCP Server in Google Gemini CLI
 
 ## Prerequisites
-1. Google Gemini CLI installed (see [Installation Options](#installation-options))
+1. Google Gemini CLI installed (see [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli))
 2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new) with appropriate scopes
 3. For local installation: [Docker](https://www.docker.com/) installed and running
-
-## Installation Options
-
-Install Google Gemini CLI using your preferred method. For the most up-to-date installation instructions and troubleshooting, see the [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli).
-
-### Quick Install Options
-```bash
-# npm (Global Installation)
-npm install -g @google/gemini-cli
-
-# npx (No Installation Required)
-npx @google/gemini-cli
-
-# Homebrew
-brew install gemini-cli
-```
-
-## Authentication Setup
-
-Before using Gemini CLI, you need to authenticate with Google:
-
-### Using Gemini API Key (Recommended)
-1. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Set it as an environment variable:
-   ```bash
-   export GEMINI_API_KEY=your_api_key_here
-   ```
-
-### Using Vertex AI
-1. Configure Google Cloud credentials for Vertex AI
-2. Set the project ID:
-   ```bash
-   export GOOGLE_CLOUD_PROJECT=your_project_id
-   ```
 
 ## GitHub MCP Server Configuration
 
