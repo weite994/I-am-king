@@ -1,9 +1,9 @@
 {
   "annotations": {
-    "title": "Get my teams",
+    "title": "Get teams",
     "readOnlyHint": true
   },
-  "description": "Get details of the teams the authenticated user is a member of.",
+  "description": "Get details of the teams the user is a member of",
   "inputSchema": {
     "properties": {
       "user": {

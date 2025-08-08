@@ -95,12 +95,12 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 
 func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	tool := mcp.NewTool("get_teams",
-		mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the authenticated user is a member of.")),
+		mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the user is a member of")),
 		mcp.WithString("user",
 			mcp.Description(t("TOOL_GET_TEAMS_USER_DESCRIPTION", "Username to get teams for. If not provided, uses the authenticated user.")),
 		),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
-			Title:        t("TOOL_GET_TEAMS_TITLE", "Get my teams"),
+			Title:        t("TOOL_GET_TEAMS_TITLE", "Get teams"),
 			ReadOnlyHint: ToBoolPtr(true),
 		}),
 	)
