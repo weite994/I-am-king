@@ -3,7 +3,7 @@
 ## Prerequisites
 1. Google Gemini CLI installed (see [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli))
 2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new) with appropriate scopes
-3. For local installation: [Docker](https://www.docker.com/) installed and running
+3. For local installation: [Docker](https://www.docker.com/) or [Podman](https://podman.io) installed and running
 
 ## GitHub MCP Server Configuration
 
