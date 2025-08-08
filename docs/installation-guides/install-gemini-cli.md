@@ -25,9 +25,12 @@ The simplest way is to use GitHub's hosted MCP server:
 }
 ```
 
-Store your GitHub token in `~/.gemini/.env`:
+Create or update `~/.gemini/.env` with your environment variables:
 ```bash
-GITHUB_PAT=your_github_token_here
+# ~/.gemini/.env
+GITHUB_PAT=ghp_sample_sample_sample
+GOOGLE_CLOUD_PROJECT=my-gcp-project
+GEMINI_API_KEY=AIzSamplelBQGwHw-62R598eI-HFOWd4Ol847g
 ```
 
 ### Method 2: Local Docker Setup (Alternative)
@@ -123,9 +126,9 @@ For better security, use environment variables:
 }
 ```
 
-Then set the environment variable:
+Then add the environment variable to `~/.gemini/.env`:
 ```bash
-export GITHUB_PAT=your_github_pat
+GITHUB_PAT=your_github_pat
 ```
 
 ## Configuration Options
