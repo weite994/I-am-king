@@ -178,14 +178,14 @@ func Test_GetTeams(t *testing.T) {
 						"teams": map[string]any{
 							"nodes": []map[string]any{
 								{
-									"name":        "Frontend Team",
-									"slug":        "frontend-team",
-									"description": "Team responsible for frontend development",
+									"name":        "team1",
+									"slug":        "team1",
+									"description": "Team 1",
 								},
 								{
-									"name":        "Backend Team",
-									"slug":        "backend-team",
-									"description": "Team responsible for backend development",
+									"name":        "team2",
+									"slug":        "team2",
+									"description": "Team 2",
 								},
 							},
 						},
@@ -195,9 +195,9 @@ func Test_GetTeams(t *testing.T) {
 						"teams": map[string]any{
 							"nodes": []map[string]any{
 								{
-									"name":        "DevOps Team",
-									"slug":        "devops-team",
-									"description": "Team responsible for DevOps and infrastructure",
+									"name":        "team3",
+									"slug":        "team3",
+									"description": "Team 3",
 								},
 							},
 						},
@@ -363,12 +363,12 @@ func Test_GetTeams(t *testing.T) {
 			if tc.expectedTeamsCount > 0 {
 				assert.Equal(t, "testorg1", organizations[0].Login)
 				assert.Len(t, organizations[0].Teams.Nodes, 2)
-				assert.Equal(t, "Frontend Team", organizations[0].Teams.Nodes[0].Name)
-				assert.Equal(t, "frontend-team", organizations[0].Teams.Nodes[0].Slug)
+				assert.Equal(t, "team1", organizations[0].Teams.Nodes[0].Name)
+				assert.Equal(t, "team1", organizations[0].Teams.Nodes[0].Slug)
 
 				assert.Equal(t, "testorg2", organizations[1].Login)
 				assert.Len(t, organizations[1].Teams.Nodes, 1)
-				assert.Equal(t, "DevOps Team", organizations[1].Teams.Nodes[0].Name)
+				assert.Equal(t, "team3", organizations[1].Teams.Nodes[0].Name)
 			}
 		})
 	}
