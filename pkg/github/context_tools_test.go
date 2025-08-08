@@ -235,7 +235,6 @@ func Test_GetTeams(t *testing.T) {
 				),
 			),
 			stubbedGetGQLClientFn: func(_ context.Context) (*githubv4.Client, error) {
-				// The GraphQL query constructed by the Go struct
 				queryStr := "query($login:String!){user(login: $login){organizations(first: 100){nodes{login,teams(first: 100, userLogins: [$login]){nodes{name,slug,description}}}}}}"
 				vars := map[string]interface{}{
 					"login": "testuser",
@@ -250,7 +249,7 @@ func Test_GetTeams(t *testing.T) {
 		},
 		{
 			name:               "successful get teams for specific user",
-			stubbedGetClientFn: nil, // No REST client needed when user is provided
+			stubbedGetClientFn: nil,
 			stubbedGetGQLClientFn: func(_ context.Context) (*githubv4.Client, error) {
 				queryStr := "query($login:String!){user(login: $login){organizations(first: 100){nodes{login,teams(first: 100, userLogins: [$login]){nodes{name,slug,description}}}}}}"
 				vars := map[string]interface{}{
