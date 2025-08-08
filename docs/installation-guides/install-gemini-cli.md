@@ -124,8 +124,8 @@ Then configure:
 
 Gemini CLI uses a settings JSON file to configure MCP servers:
 
-- **Global configuration**: `~/.gemini/config.json`
-- **Project-specific**: `.gemini/config.json` in your project directory
+- **Global configuration**: `~/.gemini/settings.json`
+- **Project-specific**: `.gemini/settings.json` in your project directory
 
 ### Setup Steps
 
