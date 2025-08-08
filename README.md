@@ -421,8 +421,8 @@ The following sets of tools are available (all are on by default):
 - **get_me** - Get my user profile
   - No parameters required
 
-- **get_my_teams** - Get my teams
-  - No parameters required
+- **get_teams** - Get my teams
+  - `user`: Username to get teams for. If not provided, uses the authenticated user. (string, optional)
 
 </details>
 

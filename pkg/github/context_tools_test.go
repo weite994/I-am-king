@@ -143,14 +143,14 @@ func Test_GetMe(t *testing.T) {
 	}
 }
 
-func Test_GetMyTeams(t *testing.T) {
+func Test_GetTeams(t *testing.T) {
 	t.Parallel()
 
-	tool, _ := GetMyTeams(nil, nil, translations.NullTranslationHelper)
+	tool, _ := GetTeams(nil, nil, translations.NullTranslationHelper)
 	require.NoError(t, toolsnaps.Test(tool.Name, tool))
 
-	assert.Equal(t, "get_my_teams", tool.Name)
-	assert.True(t, *tool.Annotations.ReadOnlyHint, "get_my_teams tool should be read-only")
+	assert.Equal(t, "get_teams", tool.Name)
+	assert.True(t, *tool.Annotations.ReadOnlyHint, "get_teams tool should be read-only")
 
 	mockUser := &github.User{
 		Login:           github.Ptr("testuser"),
@@ -333,7 +333,7 @@ func Test_GetMyTeams(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, handler := GetMyTeams(tc.stubbedGetClientFn, tc.stubbedGetGQLClientFn, translations.NullTranslationHelper)
+			_, handler := GetTeams(tc.stubbedGetClientFn, tc.stubbedGetGQLClientFn, translations.NullTranslationHelper)
 
 			request := createMCPRequest(tc.requestArgs)
 			result, err := handler(context.Background(), request)
