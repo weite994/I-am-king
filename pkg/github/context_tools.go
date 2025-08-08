@@ -96,26 +96,37 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 func GetMyTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	tool := mcp.NewTool("get_my_teams",
 		mcp.WithDescription(t("TOOL_GET_MY_TEAMS_DESCRIPTION", "Get details of the teams the authenticated user is a member of.")),
+		mcp.WithString("user",
+			mcp.Description(t("TOOL_GET_MY_TEAMS_USER_DESCRIPTION", "Username to get teams for. If not provided, uses the authenticated user.")),
+		),
 		mcp.WithToolAnnotation(mcp.ToolAnnotation{
 			Title:        t("TOOL_GET_MY_TEAMS_TITLE", "Get my teams"),
 			ReadOnlyHint: ToBoolPtr(true),
 		}),
 	)
 
-	type args struct{}
-	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, _ args) (*mcp.CallToolResult, error) {
-		client, err := getClient(ctx)
-		if err != nil {
-			return mcp.NewToolResultErrorFromErr("failed to get GitHub client", err), nil
-		}
+	type args struct {
+		User *string `json:"user,omitempty"`
+	}
+	handler := mcp.NewTypedToolHandler(func(ctx context.Context, _ mcp.CallToolRequest, a args) (*mcp.CallToolResult, error) {
+		var username string
+		if a.User != nil && *a.User != "" {
+			username = *a.User
+		} else {
+			client, err := getClient(ctx)
+			if err != nil {
+				return mcp.NewToolResultErrorFromErr("failed to get GitHub client", err), nil
+			}
 
-		user, res, err := client.Users.Get(ctx, "")
-		if err != nil {
-			return ghErrors.NewGitHubAPIErrorResponse(ctx,
-				"failed to get user",
-				res,
-				err,
-			), nil
+			user, res, err := client.Users.Get(ctx, "")
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to get user",
+					res,
+					err,
+				), nil
+			}
+			username = user.GetLogin()
 		}
 
 		gqlClient, err := getGQLClient(ctx)
@@ -140,7 +151,7 @@ func GetMyTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translatio
 			} `graphql:"user(login: $login)"`
 		}
 		vars := map[string]interface{}{
-			"login": githubv4.String(user.GetLogin()),
+			"login": githubv4.String(username),
 		}
 		if err := gqlClient.Query(ctx, &q, vars); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
