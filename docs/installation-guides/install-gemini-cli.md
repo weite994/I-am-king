@@ -32,8 +32,6 @@ GITHUB_PAT=your_github_token_here
 
 ### Method 2: Local Docker Setup (Alternative)
 
-**Important**: The npm package `@modelcontextprotocol/server-github` is no longer supported as of April 2025. Use the official Docker image `ghcr.io/github/github-mcp-server` instead.
-
 ### Docker Configuration
 
 ```json
@@ -291,6 +289,5 @@ gemini --debug "Your command here"
 
 - **Official repository**: [github/github-mcp-server](https://github.com/github/github-mcp-server)
 - **Docker image**: `ghcr.io/github/github-mcp-server` (official and supported)
-- **npm package**: `@modelcontextprotocol/server-github` (deprecated as of April 2025 - no longer functional)
 - **Gemini CLI specifics**: Uses `mcpServers` key, supports both global and project configurations
 - **Remote server method**: Preferred approach using GitHub's hosted MCP server at `https://api.githubcopilot.com/mcp/`
