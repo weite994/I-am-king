@@ -157,19 +157,6 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		t := q.User.Organizations.Nodes
-		if len(t) == 0 {
-			return mcp.NewToolResultError("no teams found for user"), nil
-		}
-		// Check if any teams exist within the organizations
-		teamCount := 0
-		for _, org := range t {
-			teamCount += len(org.Teams.Nodes)
-		}
-		if teamCount == 0 {
-			return mcp.NewToolResultError("no teams found for user"), nil
-		}
-
 		return MarshalledTextResult(t), nil
 	})
 
