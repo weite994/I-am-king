@@ -157,7 +157,7 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return MarshalledTextResult(t), nil
+		return MarshalledTextResult(q.User.Organizations.Nodes), nil
 	})
 
 	return tool, handler

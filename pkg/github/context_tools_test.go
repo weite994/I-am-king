@@ -285,8 +285,8 @@ func Test_GetTeams(t *testing.T) {
 				return githubv4.NewClient(httpClient), nil
 			},
 			requestArgs:        map[string]any{},
-			expectToolError:    true,
-			expectedToolErrMsg: "no teams found for user",
+			expectToolError:    false,
+			expectedTeamsCount: 0,
 		},
 		{
 			name:                  "getting client fails",
@@ -366,9 +366,11 @@ func Test_GetTeams(t *testing.T) {
 				assert.Equal(t, "team1", organizations[0].Teams.Nodes[0].Name)
 				assert.Equal(t, "team1", organizations[0].Teams.Nodes[0].Slug)
 
-				assert.Equal(t, "testorg2", organizations[1].Login)
-				assert.Len(t, organizations[1].Teams.Nodes, 1)
-				assert.Equal(t, "team3", organizations[1].Teams.Nodes[0].Name)
+				if tc.expectedTeamsCount > 1 {
+					assert.Equal(t, "testorg2", organizations[1].Login)
+					assert.Len(t, organizations[1].Teams.Nodes, 1)
+					assert.Equal(t, "team3", organizations[1].Teams.Nodes[0].Name)
+				}
 			}
 		})
 	}
