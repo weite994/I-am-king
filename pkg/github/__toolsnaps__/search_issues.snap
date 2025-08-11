@@ -3,7 +3,7 @@
     "title": "Search issues",
     "readOnlyHint": true
   },
-  "description": "Search for issues in GitHub repositories.",
+  "description": "Search for issues in GitHub repositories using issues search syntax already scoped to is:issue",
   "inputSchema": {
     "properties": {
       "order": {
@@ -12,6 +12,10 @@
           "asc",
           "desc"
         ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Optional repository owner. If provided with repo, only issues for this repository are listed.",
         "type": "string"
       },
       "page": {
@@ -25,8 +29,12 @@
         "minimum": 1,
         "type": "number"
       },
-      "q": {
+      "query": {
         "description": "Search query using GitHub issues search syntax",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Optional repository name. If provided with owner, only issues for this repository are listed.",
         "type": "string"
       },
       "sort": {
@@ -48,7 +56,7 @@
       }
     },
     "required": [
-      "q"
+      "query"
     ],
     "type": "object"
   },
