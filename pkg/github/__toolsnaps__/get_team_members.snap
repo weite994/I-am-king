@@ -3,7 +3,7 @@
     "title": "Get team members",
     "readOnlyHint": true
   },
-  "description": "Get member usernames of a specific team in an organization.",
+  "description": "Get member usernames of a specific team in an organization. Limited to organizations accessible with current credentials",
   "inputSchema": {
     "properties": {
       "org": {
