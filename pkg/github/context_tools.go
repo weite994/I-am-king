@@ -165,7 +165,6 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 		}
 		if err := gqlClient.Query(ctx, &q, vars); err != nil {
 			return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to find teams", err), nil
-
 		}
 
 		var organizations []OrganizationTeams
