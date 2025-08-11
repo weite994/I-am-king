@@ -2,7 +2,6 @@ package github
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
@@ -142,7 +141,7 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 
 		gqlClient, err := getGQLClient(ctx)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil
+			return mcp.NewToolResultErrorFromErr("failed to get GitHub GQL client", err), nil
 		}
 
 		var q struct {
@@ -165,7 +164,8 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 			"login": githubv4.String(username),
 		}
 		if err := gqlClient.Query(ctx, &q, vars); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "Failed to find teams", err), nil
+
 		}
 
 		var organizations []OrganizationTeams
