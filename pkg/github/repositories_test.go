@@ -2292,12 +2292,10 @@ func Test_resolveGitReference(t *testing.T) {
 			ref:  "main",
 			sha:  "",
 			mockSetup: func() *http.Client {
-				callCount := 0
 				return mock.NewMockedHTTPClient(
 					mock.WithRequestMatchHandler(
 						mock.GetReposGitRefByOwnerByRepoByRef,
 						http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-							callCount++
 							if strings.Contains(r.URL.Path, "/git/ref/heads/main") {
 								w.WriteHeader(http.StatusOK)
 								_, _ = w.Write([]byte(`{"ref": "refs/heads/main", "object": {"sha": "main-sha"}}`))
