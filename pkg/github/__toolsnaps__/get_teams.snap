@@ -3,7 +3,7 @@
     "title": "Get teams",
     "readOnlyHint": true
   },
-  "description": "Get details of the teams the user is a member of",
+  "description": "Get details of the teams the user is a member of. You will only bne able to see teams in organizations you are a member of.",
   "inputSchema": {
     "properties": {
       "user": {

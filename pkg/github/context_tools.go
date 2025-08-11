@@ -106,7 +106,7 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 	}
 
 	tool := mcp.NewTool("get_teams",
-		mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the user is a member of")),
+		mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the user is a member of. You will only bne able to see teams in organizations you are a member of.")),
 		mcp.WithString("user",
 			mcp.Description(t("TOOL_GET_TEAMS_USER_DESCRIPTION", "Username to get teams for. If not provided, uses the authenticated user.")),
 		),
