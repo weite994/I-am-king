@@ -1363,23 +1363,23 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 //
 // The resolution logic follows a clear priority:
 //
-// 1.  If a specific commit `sha` is provided, it takes precedence and is used directly,
+//  1. If a specific commit `sha` is provided, it takes precedence and is used directly,
 //     and all reference resolution is skipped.
 //
-// 2.  If no `sha` is provided, the function resolves the `ref`
+//  2. If no `sha` is provided, the function resolves the `ref`
 //     string into a fully-qualified format (e.g., "refs/heads/main") by trying
 //     the following steps in order:
-//     a. **Empty Ref:** If `ref` is empty, the repository's default branch is used.
-//     b. **Fully-Qualified:** If `ref` already starts with "refs/", it's considered fully
-//        qualified and used as-is.
-//     c. **Partially-Qualified:** If `ref` starts with "heads/" or "tags/", it is
-//        prefixed with "refs/" to make it fully-qualified.
-//     d. **Short Name:** Otherwise, the `ref` is treated as a short name. The function
-//        first attempts to resolve it as a branch ("refs/heads/<ref>"). If that
-//        returns a 404 Not Found error, it then attempts to resolve it as a tag
-//        ("refs/tags/<ref>").
+//     a). **Empty Ref:** If `ref` is empty, the repository's default branch is used.
+//     b). **Fully-Qualified:** If `ref` already starts with "refs/", it's considered fully
+//     qualified and used as-is.
+//     c). **Partially-Qualified:** If `ref` starts with "heads/" or "tags/", it is
+//     prefixed with "refs/" to make it fully-qualified.
+//     d). **Short Name:** Otherwise, the `ref` is treated as a short name. The function
+//     first attempts to resolve it as a branch ("refs/heads/<ref>"). If that
+//     returns a 404 Not Found error, it then attempts to resolve it as a tag
+//     ("refs/tags/<ref>").
 //
-// 3.  **Final Lookup:** Once a fully-qualified ref is determined, a final API call
+//  3. **Final Lookup:** Once a fully-qualified ref is determined, a final API call
 //     is made to fetch that reference's definitive commit SHA.
 //
 // Any unexpected (non-404) errors during the resolution process are returned
@@ -1414,7 +1414,7 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 		// try to resolve the ref as a branch first.
 		if err == nil {
 			ref = "refs/heads/" + ref // It's a branch.
-		} else { 
+		} else {
 			// The branch lookup failed. Check if it was a 404 Not Found error.
 			// If it was, we will try to resolve it as a tag.
 			ghErr, isGhErr := err.(*github.ErrorResponse)
