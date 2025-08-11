@@ -94,6 +94,17 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 }
 
 func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+	type TeamInfo struct {
+		Name        string `json:"name"`
+		Slug        string `json:"slug"`
+		Description string `json:"description"`
+	}
+
+	type OrganizationTeams struct {
+		Login string     `json:"login"`
+		Teams []TeamInfo `json:"teams"`
+	}
+
 	tool := mcp.NewTool("get_teams",
 		mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the user is a member of")),
 		mcp.WithString("user",
@@ -157,7 +168,25 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return MarshalledTextResult(q.User.Organizations.Nodes), nil
+		var organizations []OrganizationTeams
+		for _, org := range q.User.Organizations.Nodes {
+			orgTeams := OrganizationTeams{
+				Login: string(org.Login),
+				Teams: make([]TeamInfo, 0, len(org.Teams.Nodes)),
+			}
+
+			for _, team := range org.Teams.Nodes {
+				orgTeams.Teams = append(orgTeams.Teams, TeamInfo{
+					Name:        string(team.Name),
+					Slug:        string(team.Slug),
+					Description: string(team.Description),
+				})
+			}
+
+			organizations = append(organizations, orgTeams)
+		}
+
+		return MarshalledTextResult(organizations), nil
 	})
 
 	return tool, handler
