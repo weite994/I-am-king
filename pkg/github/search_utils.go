@@ -28,6 +28,10 @@ func hasRepoFilter(query string) bool {
 	return hasFilter(query, "repo")
 }
 
+func hasTypeFilter(query string) bool {
+	return hasFilter(query, "type")
+}
+
 func searchHandler(
 	ctx context.Context,
 	getClient GetClientFn,

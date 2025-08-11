@@ -268,3 +268,59 @@ func Test_hasSpecificFilter(t *testing.T) {
 		})
 	}
 }
+
+func Test_hasTypeFilter(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    string
+		expected bool
+	}{
+		{
+			name:     "query with type:user filter at beginning",
+			query:    "type:user location:seattle",
+			expected: true,
+		},
+		{
+			name:     "query with type:org filter in middle",
+			query:    "location:california type:org followers:>100",
+			expected: true,
+		},
+		{
+			name:     "query with type:user filter at end",
+			query:    "location:seattle followers:>50 type:user",
+			expected: true,
+		},
+		{
+			name:     "query without type: filter",
+			query:    "location:seattle followers:>50",
+			expected: false,
+		},
+		{
+			name:     "empty query",
+			query:    "",
+			expected: false,
+		},
+		{
+			name:     "query with type: in text but not as filter",
+			query:    "this type: is important",
+			expected: false,
+		},
+		{
+			name:     "query with multiple type: filters",
+			query:    "type:user type:org",
+			expected: true,
+		},
+		{
+			name:     "complex query with OR expression",
+			query:    "type:user (location:seattle OR location:california)",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasTypeFilter(tt.query)
+			assert.Equal(t, tt.expected, result, "hasTypeFilter(%q) = %v, expected %v", tt.query, result, tt.expected)
+		})
+	}
+}
