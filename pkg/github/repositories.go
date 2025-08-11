@@ -1393,30 +1393,27 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 	originalRef := ref // Keep original ref for clearer error messages down the line.
 
 	// 2) If no SHA is provided, we try to resolve the ref into a fully-qualified format.
-	// 2a) If ref is empty, determine the default branch.
-	if ref == "" {
+	var reference *github.Reference
+	var resp *github.Response
+	var err error
+
+	switch {
+	case originalRef == "":
+		// 2a) If ref is empty, determine the default branch.
 		repoInfo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
 		if err != nil {
 			_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get repository info", resp, err)
 			return nil, fmt.Errorf("failed to get repository info: %w", err)
 		}
 		ref = fmt.Sprintf("refs/heads/%s", repoInfo.GetDefaultBranch())
-
-	}
-
-	var reference *github.Reference
-	var resp *github.Response
-	var err error
-
-	switch {
-	case strings.HasPrefix(ref, "refs/"):
+	case strings.HasPrefix(originalRef, "refs/"):
 		// 2b) Already fully qualified. The reference will be fetched at the end.
-	case strings.HasPrefix(ref, "heads/") || strings.HasPrefix(ref, "tags/"):
+	case strings.HasPrefix(originalRef, "heads/") || strings.HasPrefix(originalRef, "tags/"):
 		// 2c) Partially qualified. Make it fully qualified.
-		ref = "refs/" + ref
+		ref = "refs/" + originalRef
 	default:
 		// 2d) It's a short name, so we try to resolve it to either a branch or a tag.
-		branchRef := "refs/heads/" + ref
+		branchRef := "refs/heads/" + originalRef
 		reference, resp, err = githubClient.Git.GetRef(ctx, owner, repo, branchRef)
 
 		if err == nil {
@@ -1425,7 +1422,7 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 			// The branch lookup failed. Check if it was a 404 Not Found error.
 			ghErr, isGhErr := err.(*github.ErrorResponse)
 			if isGhErr && ghErr.Response.StatusCode == http.StatusNotFound {
-				tagRef := "refs/tags/" + ref
+				tagRef := "refs/tags/" + originalRef
 				reference, resp, err = githubClient.Git.GetRef(ctx, owner, repo, tagRef)
 				if err == nil {
 					ref = tagRef // It's a tag.
