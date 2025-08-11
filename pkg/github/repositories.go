@@ -1400,7 +1400,8 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 			_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get repository info", resp, err)
 			return nil, fmt.Errorf("failed to get repository info: %w", err)
 		}
-		ref = repoInfo.GetDefaultBranch()
+		ref = fmt.Sprintf("refs/heads/%s", repoInfo.GetDefaultBranch())
+
 	}
 
 	var reference *github.Reference
