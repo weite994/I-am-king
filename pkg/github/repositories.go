@@ -1403,45 +1403,45 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 
 	originalRef := ref // Keep original ref for clearer error messages down the line.
 
-	if strings.HasPrefix(ref, "refs/") {
-		// 2b) Already fully qualified. We will use it.
-	} else if strings.HasPrefix(ref, "heads/") || strings.HasPrefix(ref, "tags/") {
-		ref = "refs/" + ref // 2c) Partially qualified. Make it fully qualified.
-	} else {
-		// 2d) Short name. Try to resolve it as a branch or tag.
-		_, resp, err := githubClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+ref)
-
-		// try to resolve the ref as a branch first.
-		if err == nil {
-			ref = "refs/heads/" + ref // It's a branch.
+	// Only enter the resolution logic if the ref is NOT already fully qualified.
+	if !strings.HasPrefix(ref, "refs/") {
+		if strings.HasPrefix(ref, "heads/") || strings.HasPrefix(ref, "tags/") {
+			// 2c) It's partially qualified. Make it fully qualified.
+			ref = "refs/" + ref
 		} else {
-			// The branch lookup failed. Check if it was a 404 Not Found error.
-			// If it was, we will try to resolve it as a tag.
-			ghErr, isGhErr := err.(*github.ErrorResponse)
-			if isGhErr && ghErr.Response.StatusCode == http.StatusNotFound {
-				// The branch wasn't found, so try as a tag.
-				_, resp2, err2 := githubClient.Git.GetRef(ctx, owner, repo, "refs/tags/"+ref)
-				if err2 == nil {
-					ref = "refs/tags/" + ref // It's a tag.
-				} else {
-					// The tag lookup also failed. Check if it was a 404 Not Found error.
-					ghErr2, isGhErr2 := err2.(*github.ErrorResponse)
-					if isGhErr2 && ghErr2.Response.StatusCode == http.StatusNotFound {
-						return nil, fmt.Errorf("could not resolve ref %q as a branch or a tag", originalRef)
-					}
-					// The tag lookup failed for a different reason.
-					_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (tag)", resp2, err2)
-					return nil, fmt.Errorf("failed to get reference for tag '%s': %w", originalRef, err2)
-				}
+			// 2d) It's a short name; try to resolve it as a branch or tag.
+			_, resp, err := githubClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+ref)
+
+			if err == nil {
+				ref = "refs/heads/" + ref // It's a branch.
 			} else {
-				// The branch lookup failed for a different reason.
-				_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (branch)", resp, err)
-				return nil, fmt.Errorf("failed to get reference for branch '%s': %w", originalRef, err)
+				// The branch lookup failed. Check if it was a 404 Not Found error.
+				ghErr, isGhErr := err.(*github.ErrorResponse)
+				if isGhErr && ghErr.Response.StatusCode == http.StatusNotFound {
+					// The branch wasn't found, so try as a tag.
+					_, resp2, err2 := githubClient.Git.GetRef(ctx, owner, repo, "refs/tags/"+ref)
+					if err2 == nil {
+						ref = "refs/tags/" + ref // It's a tag.
+					} else {
+						// The tag lookup failed. Check if it was a 404 Not Found error.
+						ghErr2, isGhErr2 := err2.(*github.ErrorResponse)
+						if isGhErr2 && ghErr2.Response.StatusCode == http.StatusNotFound {
+							return nil, fmt.Errorf("could not resolve ref %q as a branch or a tag", originalRef)
+						}
+						// The tag lookup failed for a different reason.
+						_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (tag)", resp2, err2)
+						return nil, fmt.Errorf("failed to get reference for tag '%s': %w", originalRef, err2)
+					}
+				} else {
+					// The branch lookup failed for a different reason.
+					_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (branch)", resp, err)
+					return nil, fmt.Errorf("failed to get reference for branch '%s': %w", originalRef, err)
+				}
 			}
 		}
 	}
 
-	// Now that 'ref' is a valid, fully-qualified name, we get the definitive reference object.
+	// Now that 'ref' is fully qualified, we get the definitive reference object.
 	reference, resp, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
 	if err != nil {
 		_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get final reference", resp, err)

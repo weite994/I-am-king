@@ -2324,13 +2324,14 @@ func Test_resolveGitReference(t *testing.T) {
 					mock.WithRequestMatchHandler(
 						mock.GetReposGitRefByOwnerByRepoByRef,
 						http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-							if strings.Contains(r.URL.Path, "/git/ref/heads/v1.0.0") {
+							switch {
+							case strings.Contains(r.URL.Path, "/git/ref/heads/v1.0.0"):
 								w.WriteHeader(http.StatusNotFound)
 								_, _ = w.Write([]byte(`{"message": "Not Found"}`))
-							} else if strings.Contains(r.URL.Path, "/git/ref/tags/v1.0.0") {
+							case strings.Contains(r.URL.Path, "/git/ref/tags/v1.0.0"):
 								w.WriteHeader(http.StatusOK)
 								_, _ = w.Write([]byte(`{"ref": "refs/tags/v1.0.0", "object": {"sha": "tag-sha"}}`))
-							} else {
+							default:
 								t.Errorf("Unexpected path: %s", r.URL.Path)
 								w.WriteHeader(http.StatusNotFound)
 							}
@@ -2396,7 +2397,7 @@ func Test_resolveGitReference(t *testing.T) {
 				return mock.NewMockedHTTPClient(
 					mock.WithRequestMatchHandler(
 						mock.GetReposGitRefByOwnerByRepoByRef,
-						http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 							// Both branch and tag attempts should return 404
 							w.WriteHeader(http.StatusNotFound)
 							_, _ = w.Write([]byte(`{"message": "Not Found"}`))
