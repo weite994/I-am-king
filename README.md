@@ -144,6 +144,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
 - **Minimum scopes**: Only grant necessary permissions
   - `repo` - Repository operations
   - `read:packages` - Docker image access
+  - `read:org` - Organization team access
 - **Separate tokens**: Use different PATs for different projects/environments
 - **Regular rotation**: Update tokens periodically
 - **Never commit**: Keep tokens out of version control
