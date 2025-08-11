@@ -1407,7 +1407,6 @@ func resolveGitReference(ctx context.Context, githubClient *github.Client, owner
 	var resp *github.Response
 	var err error
 
-	// Only enter the resolution logic if the ref is NOT already fully qualified.
 	switch {
 	case strings.HasPrefix(ref, "refs/"):
 		// 2b) Already fully qualified. The reference will be fetched at the end.
