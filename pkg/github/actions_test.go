@@ -328,7 +328,7 @@ func Test_CancelWorkflowRun(t *testing.T) {
 						Pattern: "/repos/owner/repo/actions/runs/12345/cancel",
 						Method:  "POST",
 					},
-					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusAccepted)
 					}),
 				),
@@ -348,7 +348,7 @@ func Test_CancelWorkflowRun(t *testing.T) {
 						Pattern: "/repos/owner/repo/actions/runs/12345/cancel",
 						Method:  "POST",
 					},
-					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusConflict)
 					}),
 				),
