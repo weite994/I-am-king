@@ -1358,36 +1358,96 @@ func filterPaths(entries []*github.TreeEntry, path string, maxResults int) []str
 	return matchedPaths
 }
 
-// resolveGitReference resolves git references with the following logic:
-// 1. If SHA is provided, it takes precedence
-// 2. If neither is provided, use the default branch as ref
-// 3. Get commit SHA from the ref
-// Refs can look like `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head`
-// The function returns the resolved ref, commit SHA and any error.
+// resolveGitReference takes a user-provided ref and sha and resolves them into a
+// definitive commit SHA and its corresponding fully-qualified reference.
+//
+// The resolution logic follows a clear priority:
+//
+// 1.  If a specific commit `sha` is provided, it takes precedence and is used directly,
+//     and all reference resolution is skipped.
+//
+// 2.  If no `sha` is provided, the function resolves the `ref`
+//     string into a fully-qualified format (e.g., "refs/heads/main") by trying
+//     the following steps in order:
+//     a. **Empty Ref:** If `ref` is empty, the repository's default branch is used.
+//     b. **Fully-Qualified:** If `ref` already starts with "refs/", it's considered fully
+//        qualified and used as-is.
+//     c. **Partially-Qualified:** If `ref` starts with "heads/" or "tags/", it is
+//        prefixed with "refs/" to make it fully-qualified.
+//     d. **Short Name:** Otherwise, the `ref` is treated as a short name. The function
+//        first attempts to resolve it as a branch ("refs/heads/<ref>"). If that
+//        returns a 404 Not Found error, it then attempts to resolve it as a tag
+//        ("refs/tags/<ref>").
+//
+// 3.  **Final Lookup:** Once a fully-qualified ref is determined, a final API call
+//     is made to fetch that reference's definitive commit SHA.
+//
+// Any unexpected (non-404) errors during the resolution process are returned
+// immediately. All API errors are logged with rich context to aid diagnostics.
 func resolveGitReference(ctx context.Context, githubClient *github.Client, owner, repo, ref, sha string) (*raw.ContentOpts, error) {
-	// 1. If SHA is provided, use it directly
+	// 1) If SHA explicitly provided, it's the highest priority.
 	if sha != "" {
 		return &raw.ContentOpts{Ref: "", SHA: sha}, nil
 	}
 
-	// 2. If neither provided, use the default branch as ref
+	// 2) If no SHA is provided, we try to resolve the ref into a fully-qualified format.
+	// 2a) If ref is empty, determine the default branch.
 	if ref == "" {
 		repoInfo, resp, err := githubClient.Repositories.Get(ctx, owner, repo)
 		if err != nil {
 			_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get repository info", resp, err)
 			return nil, fmt.Errorf("failed to get repository info: %w", err)
 		}
-		ref = fmt.Sprintf("refs/heads/%s", repoInfo.GetDefaultBranch())
+		ref = repoInfo.GetDefaultBranch()
 	}
 
-	// 3. Get the SHA from the ref
+	originalRef := ref // Keep original ref for clearer error messages down the line.
+
+	if strings.HasPrefix(ref, "refs/") {
+		// 2b) Already fully qualified. We will use it.
+	} else if strings.HasPrefix(ref, "heads/") || strings.HasPrefix(ref, "tags/") {
+		ref = "refs/" + ref // 2c) Partially qualified. Make it fully qualified.
+	} else {
+		// 2d) Short name. Try to resolve it as a branch or tag.
+		_, resp, err := githubClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+ref)
+
+		// try to resolve the ref as a branch first.
+		if err == nil {
+			ref = "refs/heads/" + ref // It's a branch.
+		} else { 
+			// The branch lookup failed. Check if it was a 404 Not Found error.
+			// If it was, we will try to resolve it as a tag.
+			ghErr, isGhErr := err.(*github.ErrorResponse)
+			if isGhErr && ghErr.Response.StatusCode == http.StatusNotFound {
+				// The branch wasn't found, so try as a tag.
+				_, resp2, err2 := githubClient.Git.GetRef(ctx, owner, repo, "refs/tags/"+ref)
+				if err2 == nil {
+					ref = "refs/tags/" + ref // It's a tag.
+				} else {
+					// The tag lookup also failed. Check if it was a 404 Not Found error.
+					ghErr2, isGhErr2 := err2.(*github.ErrorResponse)
+					if isGhErr2 && ghErr2.Response.StatusCode == http.StatusNotFound {
+						return nil, fmt.Errorf("could not resolve ref %q as a branch or a tag", originalRef)
+					}
+					// The tag lookup failed for a different reason.
+					_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (tag)", resp2, err2)
+					return nil, fmt.Errorf("failed to get reference for tag '%s': %w", originalRef, err2)
+				}
+			} else {
+				// The branch lookup failed for a different reason.
+				_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference (branch)", resp, err)
+				return nil, fmt.Errorf("failed to get reference for branch '%s': %w", originalRef, err)
+			}
+		}
+	}
+
+	// Now that 'ref' is a valid, fully-qualified name, we get the definitive reference object.
 	reference, resp, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
 	if err != nil {
-		_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get reference", resp, err)
-		return nil, fmt.Errorf("failed to get reference: %w", err)
+		_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get final reference", resp, err)
+		return nil, fmt.Errorf("failed to get final reference for %q: %w", ref, err)
 	}
-	sha = reference.GetObject().GetSHA()
 
-	// Use provided ref, or it will be empty which defaults to the default branch
+	sha = reference.GetObject().GetSHA()
 	return &raw.ContentOpts{Ref: ref, SHA: sha}, nil
 }
