@@ -376,3 +376,131 @@ func Test_GetTeams(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetTeamMembers(t *testing.T) {
+	t.Parallel()
+
+	tool, _ := GetTeamMembers(nil, translations.NullTranslationHelper)
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
+
+	assert.Equal(t, "get_team_members", tool.Name)
+	assert.True(t, *tool.Annotations.ReadOnlyHint, "get_team_members tool should be read-only")
+
+	mockTeamMembersResponse := githubv4mock.DataResponse(map[string]any{
+		"organization": map[string]any{
+			"team": map[string]any{
+				"members": map[string]any{
+					"nodes": []map[string]any{
+						{
+							"login": "user1",
+						},
+						{
+							"login": "user2",
+						},
+					},
+				},
+			},
+		},
+	})
+
+	mockNoMembersResponse := githubv4mock.DataResponse(map[string]any{
+		"organization": map[string]any{
+			"team": map[string]any{
+				"members": map[string]any{
+					"nodes": []map[string]any{},
+				},
+			},
+		},
+	})
+
+	tests := []struct {
+		name                  string
+		stubbedGetGQLClientFn GetGQLClientFn
+		requestArgs           map[string]any
+		expectToolError       bool
+		expectedToolErrMsg    string
+		expectedMembersCount  int
+	}{
+		{
+			name: "successful get team members",
+			stubbedGetGQLClientFn: func(_ context.Context) (*githubv4.Client, error) {
+				queryStr := "query($org:String!$teamSlug:String!){organization(login: $org){team(slug: $teamSlug){members(first: 100){nodes{login}}}}}"
+				vars := map[string]interface{}{
+					"org":      "testorg",
+					"teamSlug": "testteam",
+				}
+				matcher := githubv4mock.NewQueryMatcher(queryStr, vars, mockTeamMembersResponse)
+				httpClient := githubv4mock.NewMockedHTTPClient(matcher)
+				return githubv4.NewClient(httpClient), nil
+			},
+			requestArgs: map[string]any{
+				"org":       "testorg",
+				"team_slug": "testteam",
+			},
+			expectToolError:      false,
+			expectedMembersCount: 2,
+		},
+		{
+			name: "team with no members",
+			stubbedGetGQLClientFn: func(_ context.Context) (*githubv4.Client, error) {
+				queryStr := "query($org:String!$teamSlug:String!){organization(login: $org){team(slug: $teamSlug){members(first: 100){nodes{login}}}}}"
+				vars := map[string]interface{}{
+					"org":      "testorg",
+					"teamSlug": "emptyteam",
+				}
+				matcher := githubv4mock.NewQueryMatcher(queryStr, vars, mockNoMembersResponse)
+				httpClient := githubv4mock.NewMockedHTTPClient(matcher)
+				return githubv4.NewClient(httpClient), nil
+			},
+			requestArgs: map[string]any{
+				"org":       "testorg",
+				"team_slug": "emptyteam",
+			},
+			expectToolError:      false,
+			expectedMembersCount: 0,
+		},
+		{
+			name: "getting GraphQL client fails",
+			stubbedGetGQLClientFn: func(_ context.Context) (*githubv4.Client, error) {
+				return nil, fmt.Errorf("GraphQL client error")
+			},
+			requestArgs: map[string]any{
+				"org":       "testorg",
+				"team_slug": "testteam",
+			},
+			expectToolError:    true,
+			expectedToolErrMsg: "failed to get GitHub GQL client: GraphQL client error",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, handler := GetTeamMembers(tc.stubbedGetGQLClientFn, translations.NullTranslationHelper)
+
+			request := createMCPRequest(tc.requestArgs)
+			result, err := handler(context.Background(), request)
+			require.NoError(t, err)
+			textContent := getTextResult(t, result)
+
+			if tc.expectToolError {
+				assert.True(t, result.IsError, "expected tool call result to be an error")
+				assert.Contains(t, textContent.Text, tc.expectedToolErrMsg)
+				return
+			}
+
+			var members []string
+			err = json.Unmarshal([]byte(textContent.Text), &members)
+			require.NoError(t, err)
+
+			assert.Len(t, members, tc.expectedMembersCount)
+
+			if tc.expectedMembersCount > 0 {
+				assert.Equal(t, "user1", members[0])
+
+				if tc.expectedMembersCount > 1 {
+					assert.Equal(t, "user2", members[1])
+				}
+			}
+		})
+	}
+}
