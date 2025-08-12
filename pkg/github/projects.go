@@ -102,10 +102,12 @@ func GetProjectFields(getClient GetGQLClientFn, t translations.TranslationHelper
 						Project struct {
 							Fields struct {
 								Nodes []struct {
-									ID       githubv4.ID
-									Name     githubv4.String
-									DataType githubv4.String
-								}
+									ProjectV2Field struct {
+										ID       githubv4.ID
+										Name     githubv4.String
+										DataType githubv4.String
+									} `graphql:"... on ProjectV2Field"`
+								} 
 							} `graphql:"fields(first: 100)"`
 						} `graphql:"projectV2(number: $number)"`
 					} `graphql:"user(login: $login)"`
