@@ -103,67 +103,8 @@ See [Remote Server Documentation](/docs/remote-server.md) on how to pass additio
 
 1. To run the server in a container, you will need to have [Docker](https://www.docker.com/) installed.
 2. Once Docker is installed, you will also need to ensure Docker is running. The image is public; if you get errors on pull, you may have an expired token and need to `docker logout ghcr.io`.
-3. [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
-   Each tool requires specific permissions to function. See the [Required Token Permissions](#required-token-permissions) section below for details.
-
-## Required Token Permissions
-
-Each tool requires specific GitHub Personal Access Token permissions to function. Below are the required permissions for each tool category:
-
-### Users
-- **get_me**
-  - Required permissions:
-    - `read:user` - Read access to profile info
-
-### Issues
-- **get_issue**, **get_issue_comments**, **list_issues**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-
-- **create_issue**, **add_issue_comment**, **update_issue**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-    - `write:discussion` - Write access to repository discussions (if using discussions)
-
-### Pull Requests
-- **get_pull_request**, **list_pull_requests**, **get_pull_request_files**, **get_pull_request_status**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-
-- **merge_pull_request**, **update_pull_request_branch**, **create_pull_request**, **update_pull_request**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-    - `write:discussion` - Write access to repository discussions (if using discussions)
-
-### Repositories
-- **get_file_contents**, **search_repositories**, **list_commits**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-
-- **create_or_update_file**, **push_files**, **create_repository**, **fork_repository**, **create_branch**
-  - Required permissions:
-    - `repo` - Full control of private repositories (for private repos)
-    - `public_repo` - Access public repositories (for public repos)
-    - `delete_repo` - Delete repositories (if needed)
-
-### Search
-- **search_code**, **search_users**
-  - Required permissions:
-    - No special permissions required for public data
-    - `repo` - Required for searching private repositories
-
-### Code Scanning
-- **get_code_scanning_alert**, **list_code_scanning_alerts**
-  - Required permissions:
-    - `security_events` - Read and write security events
-    - `repo` - Full control of private repositories (for private repos)
-
-Note: For organization repositories, additional organization-specific permissions may be required.
+3. Lastly you will need to [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
+The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
 
 <details><summary><b>Handling PATs Securely</b></summary>
 
@@ -887,7 +828,7 @@ The following sets of tools are available (all are on by default):
   - `ref`: Accepts optional git refs such as `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head` (string, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
-
+ 
 - **get_latest_release** - Get latest release
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -910,7 +851,7 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
-
+ 
 - **list_releases** - List releases
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
@@ -1145,4 +1086,3 @@ The exported Go API of this module should currently be considered unstable, and 
 ## License
 
 This project is licensed under the terms of the MIT open source license. Please refer to [MIT](./LICENSE) for the full terms.
-
