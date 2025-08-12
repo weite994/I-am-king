@@ -13,13 +13,16 @@ import (
 )
 
 func hasFilter(query, filterType string) bool {
-	pattern := fmt.Sprintf(`(^|\s)%s:\S+`, regexp.QuoteMeta(filterType))
+	// Match filter at start of string, after whitespace, or after non-word characters like '('
+	pattern := fmt.Sprintf(`(^|\s|\W)%s:\S+`, regexp.QuoteMeta(filterType))
 	matched, _ := regexp.MatchString(pattern, query)
 	return matched
 }
 
 func hasSpecificFilter(query, filterType, filterValue string) bool {
-	pattern := fmt.Sprintf(`(^|\s)%s:%s($|\s)`, regexp.QuoteMeta(filterType), regexp.QuoteMeta(filterValue))
+	// Match specific filter:value at start, after whitespace, or after non-word characters
+	// End with word boundary, whitespace, or non-word characters like ')'
+	pattern := fmt.Sprintf(`(^|\s|\W)%s:%s($|\s|\W)`, regexp.QuoteMeta(filterType), regexp.QuoteMeta(filterValue))
 	matched, _ := regexp.MatchString(pattern, query)
 	return matched
 }

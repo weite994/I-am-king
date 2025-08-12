@@ -91,6 +91,18 @@ func Test_hasFilter(t *testing.T) {
 			filterType: "repo",
 			expected:   true,
 		},
+		{
+			name:       "filter in parentheses at start",
+			query:      "(label:bug OR owner:bob) is:issue",
+			filterType: "label",
+			expected:   true,
+		},
+		{
+			name:       "filter after opening parenthesis",
+			query:      "is:issue (label:critical OR repo:test/test)",
+			filterType: "label",
+			expected:   true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -255,6 +267,20 @@ func Test_hasSpecificFilter(t *testing.T) {
 		{
 			name:        "complex query with parentheses",
 			query:       "repo:github/github-mcp-server is:issue (label:critical OR label:urgent)",
+			filterType:  "is",
+			filterValue: "issue",
+			expected:    true,
+		},
+		{
+			name:        "filter:value in parentheses at start",
+			query:       "(is:issue OR is:pr) label:bug",
+			filterType:  "is",
+			filterValue: "issue",
+			expected:    true,
+		},
+		{
+			name:        "filter:value after opening parenthesis",
+			query:       "repo:test/repo (is:issue AND label:bug)",
 			filterType:  "is",
 			filterValue: "issue",
 			expected:    true,
