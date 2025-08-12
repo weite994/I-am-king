@@ -1327,7 +1327,7 @@ func ListReleases(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			mcp.WithDescription(t("TOOL_LIST_RELEASES_DESCRIPTION", "List releases in a GitHub repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_LIST_RELEASES_USER_TITLE", "List releases"),
-				ReadOnlyHint: toBoolPtr(true),
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -1340,11 +1340,11 @@ func ListReleases(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -1354,8 +1354,8 @@ func ListReleases(getClient GetClientFn, t translations.TranslationHelperFunc) (
 			}
 
 			opts := &github.ListOptions{
-				Page:    pagination.page,
-				PerPage: pagination.perPage,
+				Page:    pagination.Page,
+				PerPage: pagination.PerPage,
 			}
 
 			client, err := getClient(ctx)
@@ -1392,7 +1392,7 @@ func GetLatestRelease(getClient GetClientFn, t translations.TranslationHelperFun
 			mcp.WithDescription(t("TOOL_GET_LATEST_RELEASE_DESCRIPTION", "Get the latest release in a GitHub repository")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
 				Title:        t("TOOL_GET_LATEST_RELEASE_USER_TITLE", "Get latest release"),
-				ReadOnlyHint: toBoolPtr(true),
+				ReadOnlyHint: ToBoolPtr(true),
 			}),
 			mcp.WithString("owner",
 				mcp.Required(),
@@ -1404,11 +1404,11 @@ func GetLatestRelease(getClient GetClientFn, t translations.TranslationHelperFun
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := requiredParam[string](request, "owner")
+			owner, err := RequiredParam[string](request, "owner")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			repo, err := requiredParam[string](request, "repo")
+			repo, err := RequiredParam[string](request, "repo")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -1439,6 +1439,7 @@ func GetLatestRelease(getClient GetClientFn, t translations.TranslationHelperFun
 
 			return mcp.NewToolResultText(string(r)), nil
 		}
+}
 
 // filterPaths filters the entries in a GitHub tree to find paths that
 // match the given suffix.
