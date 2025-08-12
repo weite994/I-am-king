@@ -287,6 +287,7 @@ The following sets of tools are available (all are on by default):
 | `dependabot` | Dependabot tools |
 | `discussions` | GitHub Discussions related tools |
 | `experiments` | Experimental features that are not considered stable yet |
+| `gists` | GitHub Gist related tools |
 | `issues` | GitHub Issues related tools |
 | `notifications` | GitHub Notifications related tools |
 | `orgs` | GitHub Organization related tools |
@@ -457,7 +458,7 @@ The following sets of tools are available (all are on by default):
 
 - **list_discussion_categories** - List discussion categories
   - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
+  - `repo`: Repository name. If not provided, discussion categories will be queried at the organisation level. (string, optional)
 
 - **list_discussions** - List discussions
   - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
@@ -467,6 +468,30 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name. If not provided, discussions will be queried at the organisation level. (string, optional)
+
+</details>
+
+<details>
+
+<summary>Gists</summary>
+
+- **create_gist** - Create Gist
+  - `content`: Content for simple single-file gist creation (string, required)
+  - `description`: Description of the gist (string, optional)
+  - `filename`: Filename for simple single-file gist creation (string, required)
+  - `public`: Whether the gist is public (boolean, optional)
+
+- **list_gists** - List Gists
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `since`: Only gists updated after this time (ISO 8601 timestamp) (string, optional)
+  - `username`: GitHub username (omit for authenticated user's gists) (string, optional)
+
+- **update_gist** - Update Gist
+  - `content`: Content for the file (string, required)
+  - `description`: Updated description of the gist (string, optional)
+  - `filename`: Filename to update or create (string, required)
+  - `gist_id`: ID of the gist to update (string, required)
 
 </details>
 
@@ -513,16 +538,19 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
+- **list_issue_types** - List available issue types
+  - `owner`: The organization owner of the repository (string, required)
+
 - **list_issues** - List issues
-  - `direction`: Sort direction (string, optional)
+  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
+  - `direction`: Order direction. If provided, the 'orderBy' also needs to be provided. (string, optional)
   - `labels`: Filter by labels (string[], optional)
+  - `orderBy`: Order issues by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
-  - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `sort`: Sort order (string, optional)
-  - `state`: Filter by state (string, optional)
+  - `state`: Filter by state, by default both open and closed issues are returned when not provided (string, optional)
 
 - **list_sub_issues** - List sub-issues
   - `issue_number`: Issue number (number, required)
@@ -547,11 +575,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_issues** - Search issues
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only issues for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub issues search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only issues for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **update_issue** - Edit issue
@@ -611,7 +639,7 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub organizations search syntax scoped to type:org (string, required)
+  - `query`: Organization search query. Examples: 'microsoft', 'location:california', 'created:>=2025-01-01'. Search is automatically scoped to type:org. (string, required)
   - `sort`: Sort field by category (string, optional)
 
 </details>
@@ -719,11 +747,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_pull_requests** - Search pull requests
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only pull requests for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub pull request search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only pull requests for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **submit_pending_pull_request_review** - Submit the requester's latest pending pull request review
@@ -741,6 +769,7 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number to update (number, required)
   - `repo`: Repository name (string, required)
+  - `reviewers`: GitHub usernames to request reviews from (string[], optional)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
 
@@ -803,6 +832,10 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_latest_release** - Get latest release
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -822,6 +855,12 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
 
+- **list_releases** - List releases
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
@@ -836,16 +875,16 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
 
 - **search_code** - Search code
-  - `order`: Sort order (string, optional)
+  - `order`: Sort order for results (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub code search syntax (string, required)
+  - `query`: Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more. (string, required)
   - `sort`: Sort field ('indexed' only) (string, optional)
 
 - **search_repositories** - Search repositories
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query (string, required)
+  - `query`: Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering. (string, required)
 
 </details>
 
@@ -875,8 +914,8 @@ The following sets of tools are available (all are on by default):
   - `order`: Sort order (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub users search syntax scoped to type:user (string, required)
-  - `sort`: Sort field by category (string, optional)
+  - `query`: User search query. Examples: 'john smith', 'location:seattle', 'followers:>100'. Search is automatically scoped to type:user. (string, required)
+  - `sort`: Sort users by number of followers or repositories, or when the person joined GitHub. (string, optional)
 
 </details>
 <!-- END AUTOMATED TOOLS -->

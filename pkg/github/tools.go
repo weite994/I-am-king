@@ -6,7 +6,7 @@ import (
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/toolsets"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v73/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/shurcooL/githubv4"
 )
@@ -31,6 +31,8 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ListBranches(getClient, t)),
 			toolsets.NewServerTool(ListTags(getClient, t)),
 			toolsets.NewServerTool(GetTag(getClient, t)),
+			toolsets.NewServerTool(ListReleases(getClient, t)),
+			toolsets.NewServerTool(GetLatestRelease(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
@@ -51,8 +53,9 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(GetIssue(getClient, t)),
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
-			toolsets.NewServerTool(ListIssues(getClient, t)),
+			toolsets.NewServerTool(ListIssues(getGQLClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			toolsets.NewServerTool(ListIssueTypes(getClient, t)),
 			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
@@ -63,7 +66,10 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(AddSubIssue(getClient, t)),
 			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
 			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
-		).AddPrompts(toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)))
+		).AddPrompts(
+		toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)),
+		toolsets.NewServerPrompt(IssueToFixWorkflowPrompt(t)),
+	)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchUsers(getClient, t)),
@@ -161,6 +167,15 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetMe(getClient, t)),
 		)
 
+	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListGists(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateGist(getClient, t)),
+			toolsets.NewServerTool(UpdateGist(getClient, t)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
@@ -175,6 +190,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
 	tsg.AddToolset(discussions)
+	tsg.AddToolset(gists)
 
 	return tsg
 }
