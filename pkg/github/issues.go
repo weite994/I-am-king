@@ -38,6 +38,9 @@ type IssueFragment struct {
 			Description githubv4.String
 		}
 	} `graphql:"labels(first: 100)"`
+	Comments struct {
+		TotalCount githubv4.Int
+	} `graphql:"comments"`
 }
 
 // Common interface for all issue query types
@@ -133,10 +136,11 @@ func fragmentToIssue(fragment IssueFragment) *github.Issue {
 		User: &github.User{
 			Login: github.Ptr(string(fragment.Author.Login)),
 		},
-		State:  github.Ptr(string(fragment.State)),
-		ID:     github.Ptr(fragment.DatabaseID),
-		Body:   github.Ptr(string(fragment.Body)),
-		Labels: foundLabels,
+		State:    github.Ptr(string(fragment.State)),
+		ID:       github.Ptr(fragment.DatabaseID),
+		Body:     github.Ptr(string(fragment.Body)),
+		Labels:   foundLabels,
+		Comments: github.Ptr(int(fragment.Comments.TotalCount)),
 	}
 }
 
@@ -196,6 +200,53 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
 			r, err := json.Marshal(issue)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal issue: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
+// ListIssueTypes creates a tool to list defined issue types for an organization. This can be used to understand supported issue type values for creating or updating issues.
+func ListIssueTypes(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+
+	return mcp.NewTool("list_issue_types",
+			mcp.WithDescription(t("TOOL_LIST_ISSUE_TYPES_FOR_ORG", "List supported issue types for repository owner (organization).")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_ISSUE_TYPES_USER_TITLE", "List available issue types"),
+				ReadOnlyHint: ToBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("The organization owner of the repository"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := RequiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+			issueTypes, resp, err := client.Organizations.ListIssueTypes(ctx, owner)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list issue types: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to list issue types: %s", string(body))), nil
+			}
+
+			r, err := json.Marshal(issueTypes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal issue types: %w", err)
 			}
 
 			return mcp.NewToolResultText(string(r)), nil
@@ -502,67 +553,39 @@ func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc)
 			}
 
 			client, err := getClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
+            if err != nil {
+                return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+            }
 
-			// Create the request body
-			requestBody := map[string]interface{}{
-				"sub_issue_id": subIssueID,
-			}
-			reqBodyBytes, err := json.Marshal(requestBody)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal request body: %w", err)
-			}
+            subIssueRequest := github.SubIssueRequest{
+                SubIssueID: int64(subIssueID),
+            }
 
-			// Create the HTTP request
-			url := fmt.Sprintf("%srepos/%s/%s/issues/%d/sub_issue",
-				client.BaseURL.String(), owner, repo, issueNumber)
-			req, err := http.NewRequestWithContext(ctx, "DELETE", url, strings.NewReader(string(reqBodyBytes)))
-			if err != nil {
-				return nil, fmt.Errorf("failed to create request: %w", err)
-			}
-			req.Header.Set("Accept", "application/vnd.github+json")
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+            subIssue, resp, err := client.SubIssue.Remove(ctx, owner, repo, int64(issueNumber), subIssueRequest)
+            if err != nil {
+                return ghErrors.NewGitHubAPIErrorResponse(ctx,
+                    "failed to remove sub-issue",
+                    resp,
+                    err,
+                ), nil
+            }
+            defer func() { _ = resp.Body.Close() }()
 
-			httpClient := client.Client() // Use authenticated GitHub client
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				var ghResp *github.Response
-				if resp != nil {
-					ghResp = &github.Response{Response: resp}
-				}
-				return ghErrors.NewGitHubAPIErrorResponse(ctx,
-					"failed to remove sub-issue",
-					ghResp,
-					err,
-				), nil
-			}
-			defer func() { _ = resp.Body.Close() }()
+            if resp.StatusCode != http.StatusOK {
+                body, err := io.ReadAll(resp.Body)
+                if err != nil {
+                    return nil, fmt.Errorf("failed to read response body: %w", err)
+                }
+                return mcp.NewToolResultError(fmt.Sprintf("failed to remove sub-issue: %s", string(body))), nil
+            }
 
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read response body: %w", err)
-			}
+            r, err := json.Marshal(subIssue)
+            if err != nil {
+                return nil, fmt.Errorf("failed to marshal response: %w", err)
+            }
 
-			if resp.StatusCode != http.StatusOK {
-				return mcp.NewToolResultError(fmt.Sprintf("failed to remove sub-issue: %s", string(body))), nil
-			}
-
-			// Parse and re-marshal to ensure consistent formatting
-			var result interface{}
-			if err := json.Unmarshal(body, &result); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-			}
-
-			r, err := json.Marshal(result)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal response: %w", err)
-			}
-
-			return mcp.NewToolResultText(string(r)), nil
-		}
+            return mcp.NewToolResultText(string(r)), nil
+        }
 }
 
 // ReprioritizeSubIssue creates a tool to reprioritize a sub-issue to a different position in the parent list.
@@ -875,7 +898,7 @@ func ListIssues(getGQLClient GetGQLClientFn, t translations.TranslationHelperFun
 			),
 			mcp.WithString("orderBy",
 				mcp.Description("Order issues by field. If provided, the 'direction' also needs to be provided."),
-				mcp.Enum("CREATED_AT", "UPDATED_AT"),
+				mcp.Enum("CREATED_AT", "UPDATED_AT", "COMMENTS"),
 			),
 			mcp.WithString("direction",
 				mcp.Description("Order direction. If provided, the 'orderBy' also needs to be provided."),
