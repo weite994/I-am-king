@@ -513,12 +513,6 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
-- **edit_issue_comment** - Edit issue comment
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `comment_id`: The ID of the comment to edit (number, required)
-  - `body`: New comment text content (string, required)
-
 - **add_sub_issue** - Add sub-issue
   - `issue_number`: The number of the parent issue (number, required)
   - `owner`: Repository owner (string, required)
@@ -539,6 +533,12 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `title`: Issue title (string, required)
+
+- **edit_issue_comment** - Edit issue comment
+  - `body`: New comment text content (string, required)
+  - `comment_id`: The ID of the comment to edit (number, required)
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
 
 - **get_issue** - Get issue details
   - `issue_number`: The number of the issue (number, required)
