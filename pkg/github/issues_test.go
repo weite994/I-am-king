@@ -303,7 +303,7 @@ func Test_EditIssueComment(t *testing.T) {
 				"body":       "This is the edited comment",
 			},
 			expectError:    false,
-			expectedErrMsg: "failed to edit comment: PATCH",
+			expectedErrMsg: "failed to edit comment:",
 		},
 		{
 			name:         "missing body parameter",
