@@ -55,6 +55,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
 			toolsets.NewServerTool(ListIssues(getGQLClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			toolsets.NewServerTool(ListIssueTypes(getClient, t)),
 			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
@@ -164,6 +165,8 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
 		AddReadTools(
 			toolsets.NewServerTool(GetMe(getClient, t)),
+			toolsets.NewServerTool(GetTeams(getClient, getGQLClient, t)),
+			toolsets.NewServerTool(GetTeamMembers(getGQLClient, t)),
 		)
 
 	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").
