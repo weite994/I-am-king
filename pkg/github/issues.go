@@ -381,27 +381,9 @@ func EditIssueComment(getClient GetClientFn, t translations.TranslationHelperFun
 			}
 			editedComment, resp, err := client.Issues.EditComment(ctx, owner, repo, commentID, comment)
 			if err != nil {
-				if resp != nil {
-					defer func() { _ = resp.Body.Close() }()
-					if resp.StatusCode != http.StatusOK {
-						body, err := io.ReadAll(resp.Body)
-						if err != nil {
-							return nil, fmt.Errorf("failed to read response body: %w", err)
-						}
-						return mcp.NewToolResultError(fmt.Sprintf("failed to edit comment: %s", string(body))), nil
-					}
-				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to edit comment: %v", err)), nil
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to edit comment", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
-
-			if resp.StatusCode != http.StatusOK {
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, fmt.Errorf("failed to read response body: %w", err)
-				}
-				return mcp.NewToolResultError(fmt.Sprintf("failed to edit comment: %s", string(body))), nil
-			}
 
 			r, err := json.Marshal(editedComment)
 			if err != nil {
