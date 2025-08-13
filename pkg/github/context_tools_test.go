@@ -345,28 +345,21 @@ func Test_GetTeams(t *testing.T) {
 				return
 			}
 
-			var organizations []struct {
-				Login string `json:"login"`
-				Teams []struct {
-					Name        string `json:"name"`
-					Slug        string `json:"slug"`
-					Description string `json:"description"`
-				} `json:"teams"`
-			}
+			var organizations []OrganizationTeams
 			err = json.Unmarshal([]byte(textContent.Text), &organizations)
 			require.NoError(t, err)
 
 			assert.Len(t, organizations, tc.expectedTeamsCount)
 
 			if tc.expectedTeamsCount > 0 {
-				assert.Equal(t, "testorg1", organizations[0].Login)
+				assert.Equal(t, "testorg1", organizations[0].Org)
 				assert.Len(t, organizations[0].Teams, 2)
 				assert.Equal(t, "team1", organizations[0].Teams[0].Name)
 				assert.Equal(t, "team1", organizations[0].Teams[0].Slug)
 				assert.Equal(t, "Team 1", organizations[0].Teams[0].Description)
 
 				if tc.expectedTeamsCount > 1 {
-					assert.Equal(t, "testorg2", organizations[1].Login)
+					assert.Equal(t, "testorg2", organizations[1].Org)
 					assert.Len(t, organizations[1].Teams, 1)
 					assert.Equal(t, "team3", organizations[1].Teams[0].Name)
 					assert.Equal(t, "team3", organizations[1].Teams[0].Slug)

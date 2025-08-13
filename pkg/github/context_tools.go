@@ -92,18 +92,18 @@ func GetMe(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Too
 	return tool, handler
 }
 
+type TeamInfo struct {
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	Description string `json:"description"`
+}
+
+type OrganizationTeams struct {
+	Org   string     `json:"org"`
+	Teams []TeamInfo `json:"teams"`
+}
+
 func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
-	type TeamInfo struct {
-		Name        string `json:"name"`
-		Slug        string `json:"slug"`
-		Description string `json:"description"`
-	}
-
-	type OrganizationTeams struct {
-		Login string     `json:"login"`
-		Teams []TeamInfo `json:"teams"`
-	}
-
 	return mcp.NewTool("get_teams",
 			mcp.WithDescription(t("TOOL_GET_TEAMS_DESCRIPTION", "Get details of the teams the user is a member of. Limited to organizations accessible with current credentials")),
 			mcp.WithString("user",
@@ -171,7 +171,7 @@ func GetTeams(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations
 			var organizations []OrganizationTeams
 			for _, org := range q.User.Organizations.Nodes {
 				orgTeams := OrganizationTeams{
-					Login: string(org.Login),
+					Org:   string(org.Login),
 					Teams: make([]TeamInfo, 0, len(org.Teams.Nodes)),
 				}
 
