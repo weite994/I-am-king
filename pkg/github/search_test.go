@@ -8,7 +8,7 @@ import (
 
 	"github.com/github/github-mcp-server/internal/toolsnaps"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v73/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -173,12 +173,12 @@ func Test_SearchCode(t *testing.T) {
 
 	assert.Equal(t, "search_code", tool.Name)
 	assert.NotEmpty(t, tool.Description)
-	assert.Contains(t, tool.InputSchema.Properties, "q")
+	assert.Contains(t, tool.InputSchema.Properties, "query")
 	assert.Contains(t, tool.InputSchema.Properties, "sort")
 	assert.Contains(t, tool.InputSchema.Properties, "order")
 	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
-	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"q"})
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"query"})
 
 	// Setup mock search results
 	mockSearchResult := &github.CodeSearchResult{
@@ -227,7 +227,7 @@ func Test_SearchCode(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]interface{}{
-				"q":       "fmt.Println language:go",
+				"query":   "fmt.Println language:go",
 				"sort":    "indexed",
 				"order":   "desc",
 				"page":    float64(1),
@@ -251,7 +251,7 @@ func Test_SearchCode(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]interface{}{
-				"q": "fmt.Println language:go",
+				"query": "fmt.Println language:go",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -268,7 +268,7 @@ func Test_SearchCode(t *testing.T) {
 				),
 			),
 			requestArgs: map[string]interface{}{
-				"q": "invalid:query",
+				"query": "invalid:query",
 			},
 			expectError:    true,
 			expectedErrMsg: "failed to search code",
@@ -411,6 +411,46 @@ func Test_SearchUsers(t *testing.T) {
 			expectedResult: mockSearchResult,
 		},
 		{
+			name: "query with existing type:user filter - no duplication",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchUsers,
+					expectQueryParams(t, map[string]string{
+						"q":        "type:user location:seattle followers:>100",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "type:user location:seattle followers:>100",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "complex query with existing type:user filter and OR operators",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchUsers,
+					expectQueryParams(t, map[string]string{
+						"q":        "type:user (location:seattle OR location:california) followers:>50",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "type:user (location:seattle OR location:california) followers:>50",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
 			name: "search users fails",
 			mockedClient: mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
@@ -533,6 +573,46 @@ func Test_SearchOrgs(t *testing.T) {
 			),
 			requestArgs: map[string]interface{}{
 				"query": "github",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "query with existing type:org filter - no duplication",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchUsers,
+					expectQueryParams(t, map[string]string{
+						"q":        "type:org location:california followers:>1000",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "type:org location:california followers:>1000",
+			},
+			expectError:    false,
+			expectedResult: mockSearchResult,
+		},
+		{
+			name: "complex query with existing type:org filter and OR operators",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetSearchUsers,
+					expectQueryParams(t, map[string]string{
+						"q":        "type:org (location:seattle OR location:california OR location:newyork) repos:>10",
+						"page":     "1",
+						"per_page": "30",
+					}).andThen(
+						mockResponse(t, http.StatusOK, mockSearchResult),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"query": "type:org (location:seattle OR location:california OR location:newyork) repos:>10",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
