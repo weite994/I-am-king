@@ -144,6 +144,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
 - **Minimum scopes**: Only grant necessary permissions
   - `repo` - Repository operations
   - `read:packages` - Docker image access
+  - `read:org` - Organization team access
 - **Separate tokens**: Use different PATs for different projects/environments
 - **Regular rotation**: Update tokens periodically
 - **Never commit**: Keep tokens out of version control
@@ -422,6 +423,13 @@ The following sets of tools are available (all are on by default):
 - **get_me** - Get my user profile
   - No parameters required
 
+- **get_team_members** - Get team members
+  - `org`: Organization login (owner) that contains the team. (string, required)
+  - `team_slug`: Team slug (string, required)
+
+- **get_teams** - Get teams
+  - `user`: Username to get teams for. If not provided, uses the authenticated user. (string, optional)
+
 </details>
 
 <details>
@@ -459,7 +467,7 @@ The following sets of tools are available (all are on by default):
 
 - **list_discussion_categories** - List discussion categories
   - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
+  - `repo`: Repository name. If not provided, discussion categories will be queried at the organisation level. (string, optional)
 
 - **list_discussions** - List discussions
   - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
@@ -539,16 +547,19 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
+- **list_issue_types** - List available issue types
+  - `owner`: The organization owner of the repository (string, required)
+
 - **list_issues** - List issues
-  - `direction`: Sort direction (string, optional)
+  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
+  - `direction`: Order direction. If provided, the 'orderBy' also needs to be provided. (string, optional)
   - `labels`: Filter by labels (string[], optional)
+  - `orderBy`: Order issues by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
-  - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `sort`: Sort order (string, optional)
-  - `state`: Filter by state (string, optional)
+  - `state`: Filter by state, by default both open and closed issues are returned when not provided (string, optional)
 
 - **list_sub_issues** - List sub-issues
   - `issue_number`: Issue number (number, required)
@@ -573,11 +584,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_issues** - Search issues
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only issues for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub issues search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only issues for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **update_issue** - Edit issue
@@ -745,11 +756,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_pull_requests** - Search pull requests
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only pull requests for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub pull request search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only pull requests for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **submit_pending_pull_request_review** - Submit the requester's latest pending pull request review
@@ -830,6 +841,10 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_latest_release** - Get latest release
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -848,6 +863,12 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
+
+- **list_releases** - List releases
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
