@@ -144,6 +144,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
 - **Minimum scopes**: Only grant necessary permissions
   - `repo` - Repository operations
   - `read:packages` - Docker image access
+  - `read:org` - Organization team access
 - **Separate tokens**: Use different PATs for different projects/environments
 - **Regular rotation**: Update tokens periodically
 - **Never commit**: Keep tokens out of version control
@@ -421,6 +422,13 @@ The following sets of tools are available (all are on by default):
 - **get_me** - Get my user profile
   - No parameters required
 
+- **get_team_members** - Get team members
+  - `org`: Organization login (owner) that contains the team. (string, required)
+  - `team_slug`: Team slug (string, required)
+
+- **get_teams** - Get teams
+  - `user`: Username to get teams for. If not provided, uses the authenticated user. (string, optional)
+
 </details>
 
 <details>
@@ -525,6 +533,7 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `title`: Issue title (string, required)
+  - `type`: Type of this issue (string, optional)
 
 - **get_issue** - Get issue details
   - `issue_number`: The number of the issue (number, required)
@@ -592,6 +601,7 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
+  - `type`: New issue type (string, optional)
 
 </details>
 
