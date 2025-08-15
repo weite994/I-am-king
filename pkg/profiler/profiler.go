@@ -44,13 +44,12 @@ func safeMemoryDelta(after, before uint64) int64 {
 				return math.MaxInt64
 			}
 			return int64(diff)
-		} else {
-			diff := before - after
-			if diff > math.MaxInt64 {
-				return -math.MaxInt64
-			}
-			return -int64(diff)
 		}
+		diff := before - after
+		if diff > math.MaxInt64 {
+			return -math.MaxInt64
+		}
+		return -int64(diff)
 	}
 
 	return int64(after) - int64(before)

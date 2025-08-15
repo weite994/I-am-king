@@ -1251,8 +1251,8 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 		if err != nil {
 			return 0, 0, err
 		}
-		defer resp1.Body.Close() //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
-		content, totalLines, _, err := buffer.ProcessResponseAsRingBufferToEnd(resp1, bufferSize)
+		defer resp1.Body.Close()                                                                  //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		content, totalLines, _, err := buffer.ProcessResponseAsRingBufferToEnd(resp1, bufferSize) //nolint:bodyclose
 		return totalLines, int64(len(content)), err
 	})
 	require.NoError(t, err1)
