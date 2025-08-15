@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -773,10 +772,6 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 
 		lines[writeIndex] = line
 		writeIndex = (writeIndex + 1) % maxLines
-
-		if totalLines%10000 == 0 {
-			runtime.GC()
-		}
 	}
 
 	if err := scanner.Err(); err != nil {
