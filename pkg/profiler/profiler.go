@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"log/slog"
+	"math"
 )
 
 // Profile represents performance metrics for an operation
@@ -33,6 +34,26 @@ func (p *Profile) String() string {
 		p.LinesCount,
 		p.BytesCount,
 	)
+}
+
+func safeMemoryDelta(after, before uint64) int64 {
+	if after > math.MaxInt64 || before > math.MaxInt64 {
+		if after >= before {
+			diff := after - before
+			if diff > math.MaxInt64 {
+				return math.MaxInt64
+			}
+			return int64(diff)
+		} else {
+			diff := before - after
+			if diff > math.MaxInt64 {
+				return -math.MaxInt64
+			}
+			return -int64(diff)
+		}
+	}
+
+	return int64(after) - int64(before)
 }
 
 // Profiler provides minimal performance profiling capabilities
@@ -71,7 +92,7 @@ func (p *Profiler) ProfileFunc(ctx context.Context, operation string, fn func() 
 	var memAfter runtime.MemStats
 	runtime.ReadMemStats(&memAfter)
 	profile.MemoryAfter = memAfter.Alloc
-	profile.MemoryDelta = int64(memAfter.Alloc) - int64(memBefore.Alloc)
+	profile.MemoryDelta = safeMemoryDelta(memAfter.Alloc, memBefore.Alloc)
 
 	if p.logger != nil {
 		p.logger.InfoContext(ctx, "Performance profile", "profile", profile.String())
@@ -105,7 +126,7 @@ func (p *Profiler) ProfileFuncWithMetrics(ctx context.Context, operation string,
 	var memAfter runtime.MemStats
 	runtime.ReadMemStats(&memAfter)
 	profile.MemoryAfter = memAfter.Alloc
-	profile.MemoryDelta = int64(memAfter.Alloc) - int64(memBefore.Alloc)
+	profile.MemoryDelta = safeMemoryDelta(memAfter.Alloc, memBefore.Alloc)
 
 	if p.logger != nil {
 		p.logger.InfoContext(ctx, "Performance profile", "profile", profile.String())
@@ -139,7 +160,7 @@ func (p *Profiler) Start(ctx context.Context, operation string) func(lines int, 
 		var memAfter runtime.MemStats
 		runtime.ReadMemStats(&memAfter)
 		profile.MemoryAfter = memAfter.Alloc
-		profile.MemoryDelta = int64(memAfter.Alloc) - int64(memBefore.Alloc)
+		profile.MemoryDelta = safeMemoryDelta(memAfter.Alloc, memBefore.Alloc)
 
 		if p.logger != nil {
 			p.logger.InfoContext(ctx, "Performance profile", "profile", profile.String())
