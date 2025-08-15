@@ -10,6 +10,7 @@ import (
 
 	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
+	"github.com/github/github-mcp-server/pkg/profiler"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -722,7 +723,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 	if returnContent {
 		// Download and return the actual log content
-		content, originalLength, httpResp, err := downloadLogContent(url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		content, originalLength, httpResp, err := downloadLogContent(ctx, url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
 		if err != nil {
 			// To keep the return value consistent wrap the response as a GitHub Response
 			ghRes := &github.Response{
@@ -743,7 +744,10 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 	return result, resp, nil
 }
 
-func downloadLogContent(logURL string, tailLines int) (string, int, *http.Response, error) {
+func downloadLogContent(ctx context.Context, logURL string, tailLines int) (string, int, *http.Response, error) {
+	prof := profiler.New(nil, profiler.IsProfilingEnabled())
+	finish := prof.Start(ctx, "log_buffer_processing")
+
 	httpResp, err := http.Get(logURL) //nolint:gosec
 	if err != nil {
 		return "", 0, httpResp, fmt.Errorf("failed to download logs: %w", err)
@@ -763,7 +767,7 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		bufferSize = maxJobLogLines
 	}
 
-	processedInput, totalLines, httpResp, err := buffer.ProcessAsRingBufferToEnd(httpResp, bufferSize)
+	processedInput, totalLines, httpResp, err := buffer.ProcessResponseAsRingBufferToEnd(httpResp, bufferSize)
 	if err != nil {
 		return "", 0, httpResp, fmt.Errorf("failed to process log content: %w", err)
 	}
@@ -773,6 +777,8 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		lines = lines[len(lines)-tailLines:]
 	}
 	finalResult := strings.Join(lines, "\n")
+
+	_ = finish(len(lines), int64(len(finalResult)))
 
 	return finalResult, totalLines, httpResp, nil
 }

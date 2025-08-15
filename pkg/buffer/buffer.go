@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func ProcessAsRingBufferToEnd(httpResp *http.Response, maxJobLogLines int) (string, int, *http.Response, error) {
+func ProcessResponseAsRingBufferToEnd(httpResp *http.Response, maxJobLogLines int) (string, int, *http.Response, error) {
 	lines := make([]string, maxJobLogLines)
 	validLines := make([]bool, maxJobLogLines)
 	totalLines := 0

@@ -3,10 +3,17 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"runtime"
+	"runtime/debug"
+	"strings"
 	"testing"
 
+	buffer "github.com/github/github-mcp-server/pkg/buffer"
+	"github.com/github/github-mcp-server/pkg/profiler"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v74/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -1213,4 +1220,67 @@ func Test_GetJobLogs_WithContentReturnAndLargeTailLines(t *testing.T) {
 	assert.Equal(t, expectedLogContent, response["logs_content"])
 	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
 	assert.NotContains(t, response, "logs_url")
+}
+
+func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping memory profiling test in short mode")
+	}
+
+	const logLines = 100000
+	const bufferSize = 1000
+	largeLogContent := strings.Repeat("log line with some content\n", logLines)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(largeLogContent))
+	}))
+	defer testServer.Close()
+
+	os.Setenv("GITHUB_MCP_PROFILING_ENABLED", "true")
+	defer os.Unsetenv("GITHUB_MCP_PROFILING_ENABLED")
+
+	// Initialize the global profiler
+	profiler.InitFromEnv(nil)
+
+	ctx := context.Background()
+
+	debug.SetGCPercent(-1)
+	profile1, err1 := profiler.ProfileFuncWithMetrics(ctx, "sliding_window", func() (int, int64, error) {
+		resp1, err := http.Get(testServer.URL)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer resp1.Body.Close()
+		content, totalLines, _, err := buffer.ProcessResponseAsRingBufferToEnd(resp1, bufferSize)
+		return totalLines, int64(len(content)), err
+	})
+	require.NoError(t, err1)
+
+	runtime.GC()
+	profile2, err2 := profiler.ProfileFuncWithMetrics(ctx, "no_window", func() (int, int64, error) {
+		resp2, err := http.Get(testServer.URL)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer resp2.Body.Close()
+		content, err := io.ReadAll(resp2.Body)
+		if err != nil {
+			return 0, 0, err
+		}
+		lines := strings.Split(string(content), "\n")
+		if len(lines) > bufferSize {
+			lines = lines[len(lines)-bufferSize:]
+		}
+		result := strings.Join(lines, "\n")
+		return len(strings.Split(string(content), "\n")), int64(len(result)), nil
+	})
+	require.NoError(t, err2)
+	debug.SetGCPercent(100)
+
+	assert.Greater(t, profile2.MemoryDelta, profile1.MemoryDelta,
+		"Sliding window should use less memory than reading all into memory")
+
+	t.Logf("Sliding window: %s", profile1.String())
+	t.Logf("No window: %s", profile2.String())
 }
