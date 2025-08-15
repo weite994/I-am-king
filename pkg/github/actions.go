@@ -19,6 +19,7 @@ import (
 const (
 	DescriptionRepositoryOwner = "Repository owner"
 	DescriptionRepositoryName  = "Repository name"
+	maxJobLogLines             = 50000
 )
 
 // ListWorkflows creates a tool to list workflows in a repository
@@ -757,9 +758,8 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		tailLines = 1000
 	}
 
-	const maxLines = 50000
-
-	lines := make([]string, maxLines)
+	lines := make([]string, maxJobLogLines)
+	validLines := make([]bool, maxJobLogLines)
 	totalLines := 0
 	writeIndex := 0
 
@@ -771,7 +771,8 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		totalLines++
 
 		lines[writeIndex] = line
-		writeIndex = (writeIndex + 1) % maxLines
+		validLines[writeIndex] = true
+		writeIndex = (writeIndex + 1) % maxJobLogLines
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -780,18 +781,18 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 
 	var result []string
 	linesInBuffer := totalLines
-	if linesInBuffer > maxLines {
-		linesInBuffer = maxLines
+	if linesInBuffer > maxJobLogLines {
+		linesInBuffer = maxJobLogLines
 	}
 
 	startIndex := 0
-	if totalLines > maxLines {
+	if totalLines > maxJobLogLines {
 		startIndex = writeIndex
 	}
 
 	for i := 0; i < linesInBuffer; i++ {
-		idx := (startIndex + i) % maxLines
-		if lines[idx] != "" {
+		idx := (startIndex + i) % maxJobLogLines
+		if validLines[idx] {
 			result = append(result, lines[idx])
 		}
 	}
