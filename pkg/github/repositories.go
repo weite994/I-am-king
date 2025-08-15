@@ -236,7 +236,7 @@ func ListRepositoryContributors(getClient GetClientFn, t translations.Translatio
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read response body: %w", err)
