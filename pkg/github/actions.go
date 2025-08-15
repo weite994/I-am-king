@@ -1,14 +1,13 @@
 package github
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
+	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v74/github"
@@ -758,50 +757,13 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		tailLines = 1000
 	}
 
-	lines := make([]string, maxJobLogLines)
-	validLines := make([]bool, maxJobLogLines)
-	totalLines := 0
-	writeIndex := 0
+	processedInput, totalLines, httpResp, err := buffer.ProcessAsRingBufferToEnd(httpResp, tailLines)
 
-	scanner := bufio.NewScanner(httpResp.Body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		totalLines++
-
-		lines[writeIndex] = line
-		validLines[writeIndex] = true
-		writeIndex = (writeIndex + 1) % maxJobLogLines
+	if len(processedInput) > tailLines {
+		processedInput = processedInput[len(processedInput)-tailLines:]
 	}
 
-	if err := scanner.Err(); err != nil {
-		return "", 0, httpResp, fmt.Errorf("failed to read log content: %w", err)
-	}
-
-	var result []string
-	linesInBuffer := totalLines
-	if linesInBuffer > maxJobLogLines {
-		linesInBuffer = maxJobLogLines
-	}
-
-	startIndex := 0
-	if totalLines > maxJobLogLines {
-		startIndex = writeIndex
-	}
-
-	for i := 0; i < linesInBuffer; i++ {
-		idx := (startIndex + i) % maxJobLogLines
-		if validLines[idx] {
-			result = append(result, lines[idx])
-		}
-	}
-
-	if len(result) > tailLines {
-		result = result[len(result)-tailLines:]
-	}
-
-	finalResult := strings.Join(result, "\n")
+	finalResult := processedInput
 
 	return finalResult, totalLines, httpResp, nil
 }
