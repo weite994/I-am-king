@@ -1167,3 +1167,50 @@ func Test_GetJobLogs_WithContentReturnAndTailLines(t *testing.T) {
 	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
 	assert.NotContains(t, response, "logs_url") // Should not have URL when returning content
 }
+
+func Test_GetJobLogs_WithContentReturnAndLargeTailLines(t *testing.T) {
+	logContent := "Line 1\nLine 2\nLine 3"
+	expectedLogContent := "Line 1\nLine 2\nLine 3"
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(logContent))
+	}))
+	defer testServer.Close()
+
+	mockedClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatchHandler(
+			mock.GetReposActionsJobsLogsByOwnerByRepoByJobId,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Location", testServer.URL)
+				w.WriteHeader(http.StatusFound)
+			}),
+		),
+	)
+
+	client := github.NewClient(mockedClient)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+
+	request := createMCPRequest(map[string]any{
+		"owner":          "owner",
+		"repo":           "repo",
+		"job_id":         float64(123),
+		"return_content": true,
+		"tail_lines":     float64(100),
+	})
+
+	result, err := handler(context.Background(), request)
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+
+	textContent := getTextResult(t, result)
+	var response map[string]any
+	err = json.Unmarshal([]byte(textContent.Text), &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, float64(123), response["job_id"])
+	assert.Equal(t, float64(3), response["original_length"])
+	assert.Equal(t, expectedLogContent, response["logs_content"])
+	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
+	assert.NotContains(t, response, "logs_url")
+}
