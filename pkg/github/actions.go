@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
@@ -762,11 +763,11 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		return "", 0, httpResp, fmt.Errorf("failed to process log content: %w", err)
 	}
 
-	if len(processedInput) > tailLines {
-		processedInput = processedInput[len(processedInput)-tailLines:]
+	lines := strings.Split(processedInput, "\n")
+	if len(lines) > tailLines {
+		lines = lines[len(lines)-tailLines:]
 	}
-
-	finalResult := processedInput
+	finalResult := strings.Join(lines, "\n")
 
 	return finalResult, totalLines, httpResp, nil
 }
