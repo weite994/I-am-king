@@ -757,7 +757,10 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		tailLines = 1000
 	}
 
-	processedInput, totalLines, httpResp, err := buffer.ProcessAsRingBufferToEnd(httpResp, tailLines)
+	processedInput, totalLines, httpResp, err := buffer.ProcessAsRingBufferToEnd(httpResp, maxJobLogLines)
+	if err != nil {
+		return "", 0, httpResp, fmt.Errorf("failed to process log content: %w", err)
+	}
 
 	if len(processedInput) > tailLines {
 		processedInput = processedInput[len(processedInput)-tailLines:]
