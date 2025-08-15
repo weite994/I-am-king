@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -721,7 +722,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 	if returnContent {
 		// Download and return the actual log content
-		content, originalLength, httpResp, err := downloadLogContent(url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		content, originalLength, httpResp, err := downloadLogContent(ctx, url.String(), tailLines) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
 		if err != nil {
 			// To keep the return value consistent wrap the response as a GitHub Response
 			ghRes := &github.Response{
@@ -742,8 +743,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 	return result, resp, nil
 }
 
-// downloadLogContent downloads the actual log content from a GitHub logs URL
-func downloadLogContent(logURL string, tailLines int) (string, int, *http.Response, error) {
+func downloadLogContent(ctx context.Context, logURL string, tailLines int) (string, int, *http.Response, error) {
 	httpResp, err := http.Get(logURL) //nolint:gosec
 	if err != nil {
 		return "", 0, httpResp, fmt.Errorf("failed to download logs: %w", err)
@@ -758,10 +758,11 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 		tailLines = 1000
 	}
 
-	const maxMemoryBytes = 5 * 1024 * 1024
-	var lines []string
+	const maxLines = 50000
+
+	lines := make([]string, maxLines)
 	totalLines := 0
-	currentMemoryUsage := 0
+	writeIndex := 0
 
 	scanner := bufio.NewScanner(httpResp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -769,29 +770,44 @@ func downloadLogContent(logURL string, tailLines int) (string, int, *http.Respon
 	for scanner.Scan() {
 		line := scanner.Text()
 		totalLines++
-		lineSize := len(line) + 1
 
-		// Remove lines from the front until we have space for the new line
-		for currentMemoryUsage+lineSize > maxMemoryBytes && len(lines) > 0 {
-			removedLineSize := len(lines[0]) + 1
-			currentMemoryUsage -= removedLineSize
-			lines = lines[1:]
+		lines[writeIndex] = line
+		writeIndex = (writeIndex + 1) % maxLines
+
+		if totalLines%10000 == 0 {
+			runtime.GC()
 		}
-
-		// Add the new line
-		lines = append(lines, line)
-		currentMemoryUsage += lineSize
 	}
 
 	if err := scanner.Err(); err != nil {
 		return "", 0, httpResp, fmt.Errorf("failed to read log content: %w", err)
 	}
 
-	if len(lines) > tailLines {
-		lines = lines[len(lines)-tailLines:]
+	var result []string
+	linesInBuffer := totalLines
+	if linesInBuffer > maxLines {
+		linesInBuffer = maxLines
 	}
 
-	return strings.Join(lines, "\n"), totalLines, httpResp, nil
+	startIndex := 0
+	if totalLines > maxLines {
+		startIndex = writeIndex
+	}
+
+	for i := 0; i < linesInBuffer; i++ {
+		idx := (startIndex + i) % maxLines
+		if lines[idx] != "" {
+			result = append(result, lines[idx])
+		}
+	}
+
+	if len(result) > tailLines {
+		result = result[len(result)-tailLines:]
+	}
+
+	finalResult := strings.Join(result, "\n")
+
+	return finalResult, totalLines, httpResp, nil
 }
 
 // RerunWorkflowRun creates a tool to re-run an entire workflow run
