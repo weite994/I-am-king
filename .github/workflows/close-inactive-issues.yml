@@ -7,7 +7,7 @@ jobs:
   close-issues:
     runs-on: ubuntu-latest
     env:
-      PR_DAYS_BEFORE_STALE: 60
+      PR_DAYS_BEFORE_STALE: 170
       PR_DAYS_BEFORE_CLOSE: 10
       PR_STALE_LABEL: stale
     permissions:
