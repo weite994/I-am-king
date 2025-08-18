@@ -762,7 +762,7 @@ func downloadLogContent(ctx context.Context, logURL string, tailLines int, maxLi
 	}
 
 	bufferSize := maxLines
-	if tailLines > maxLines && tailLines <= 5000 {
+	if tailLines > maxLines && tailLines <= 500 {
 		bufferSize = tailLines
 	}
 
