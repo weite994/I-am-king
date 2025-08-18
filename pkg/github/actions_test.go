@@ -1229,7 +1229,7 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 
 	const logLines = 100000
 	const bufferSize = 5000
-	largeLogContent := strings.Repeat("log line with some content\n", logLines)
+	largeLogContent := strings.Repeat("log line with some content\n", logLines-1) + "final log line"
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1246,6 +1246,10 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 	ctx := context.Background()
 
 	debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(100)
+
+	runtime.GC()
+	runtime.GC()
 	profile1, err1 := profiler.ProfileFuncWithMetrics(ctx, "sliding_window", func() (int, int64, error) {
 		resp1, err := http.Get(testServer.URL)
 		if err != nil {
@@ -1258,28 +1262,53 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 	require.NoError(t, err1)
 
 	runtime.GC()
+	runtime.GC()
 	profile2, err2 := profiler.ProfileFuncWithMetrics(ctx, "no_window", func() (int, int64, error) {
 		resp2, err := http.Get(testServer.URL)
 		if err != nil {
 			return 0, 0, err
 		}
 		defer resp2.Body.Close() //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
-		content, err := io.ReadAll(resp2.Body)
+
+		allContent, err := io.ReadAll(resp2.Body)
 		if err != nil {
 			return 0, 0, err
 		}
-		lines := strings.Split(string(content), "\n")
-		if len(lines) > bufferSize {
-			lines = lines[len(lines)-bufferSize:]
+
+		allLines := strings.Split(string(allContent), "\n")
+		var nonEmptyLines []string
+		for _, line := range allLines {
+			if line != "" {
+				nonEmptyLines = append(nonEmptyLines, line)
+			}
 		}
-		result := strings.Join(lines, "\n")
-		return len(strings.Split(string(content), "\n")), int64(len(result)), nil
+		totalLines := len(nonEmptyLines)
+
+		var resultLines []string
+		if totalLines > bufferSize {
+			resultLines = nonEmptyLines[totalLines-bufferSize:]
+		} else {
+			resultLines = nonEmptyLines
+		}
+
+		result := strings.Join(resultLines, "\n")
+		return totalLines, int64(len(result)), nil
 	})
 	require.NoError(t, err2)
-	debug.SetGCPercent(100)
 
 	assert.Greater(t, profile2.MemoryDelta, profile1.MemoryDelta,
 		"Sliding window should use less memory than reading all into memory")
+
+	assert.Equal(t, profile1.LinesCount, profile2.LinesCount,
+		"Both approaches should count the same number of input lines")
+	assert.InDelta(t, profile1.BytesCount, profile2.BytesCount, 100,
+		"Both approaches should produce similar output sizes (within 100 bytes)")
+
+	memoryReduction := float64(profile2.MemoryDelta-profile1.MemoryDelta) / float64(profile2.MemoryDelta) * 100
+	t.Logf("Memory reduction: %.1f%% (%.2f MB vs %.2f MB)",
+		memoryReduction,
+		float64(profile2.MemoryDelta)/1024/1024,
+		float64(profile1.MemoryDelta)/1024/1024)
 
 	t.Logf("Sliding window: %s", profile1.String())
 	t.Logf("No window: %s", profile2.String())
