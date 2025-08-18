@@ -86,7 +86,7 @@ func init() {
 	_ = viper.BindPFlag("enable-command-logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
 	_ = viper.BindPFlag("export-translations", rootCmd.PersistentFlags().Lookup("export-translations"))
 	_ = viper.BindPFlag("host", rootCmd.PersistentFlags().Lookup("gh-host"))
-	_ = viper.BindPFlag("content_window_size", rootCmd.PersistentFlags().Lookup("content-window-size"))
+	_ = viper.BindPFlag("content-window-size", rootCmd.PersistentFlags().Lookup("content-window-size"))
 
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
