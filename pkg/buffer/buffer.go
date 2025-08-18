@@ -12,14 +12,16 @@ import (
 // This efficiently retains the most recent lines, overwriting older ones as needed.
 //
 // Parameters:
-//   httpResp:        The HTTP response whose body will be read.
-//   maxJobLogLines:  The maximum number of log lines to retain.
+//
+//	httpResp:        The HTTP response whose body will be read.
+//	maxJobLogLines:  The maximum number of log lines to retain.
 //
 // Returns:
-//   string:          The concatenated log lines (up to maxJobLogLines), separated by newlines.
-//   int:             The total number of lines read from the response.
-//   *http.Response:  The original HTTP response.
-//   error:           Any error encountered during reading.
+//
+//	string:          The concatenated log lines (up to maxJobLogLines), separated by newlines.
+//	int:             The total number of lines read from the response.
+//	*http.Response:  The original HTTP response.
+//	error:           Any error encountered during reading.
 //
 // The function uses a ring buffer to efficiently store only the last maxJobLogLines lines.
 // If the response contains more lines than maxJobLogLines, only the most recent lines are kept.
@@ -30,7 +32,7 @@ func ProcessResponseAsRingBufferToEnd(httpResp *http.Response, maxJobLogLines in
 	writeIndex := 0
 
 	scanner := bufio.NewScanner(httpResp.Body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
 
 	for scanner.Scan() {
 		line := scanner.Text()
