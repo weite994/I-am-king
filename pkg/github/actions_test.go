@@ -1240,35 +1240,40 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 	os.Setenv("GITHUB_MCP_PROFILING_ENABLED", "true")
 	defer os.Unsetenv("GITHUB_MCP_PROFILING_ENABLED")
 
-	// Initialize the global profiler
 	profiler.InitFromEnv(nil)
-
 	ctx := context.Background()
 
 	debug.SetGCPercent(-1)
 	defer debug.SetGCPercent(100)
 
-	runtime.GC()
-	runtime.GC()
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+	}
+
+	var baselineStats runtime.MemStats
+	runtime.ReadMemStats(&baselineStats)
+
 	profile1, err1 := profiler.ProfileFuncWithMetrics(ctx, "sliding_window", func() (int, int64, error) {
 		resp1, err := http.Get(testServer.URL)
 		if err != nil {
 			return 0, 0, err
 		}
-		defer resp1.Body.Close()                                                                  //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		defer resp1.Body.Close()                                                                  //nolint:bodyclose
 		content, totalLines, _, err := buffer.ProcessResponseAsRingBufferToEnd(resp1, bufferSize) //nolint:bodyclose
 		return totalLines, int64(len(content)), err
 	})
 	require.NoError(t, err1)
 
-	runtime.GC()
-	runtime.GC()
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+	}
+
 	profile2, err2 := profiler.ProfileFuncWithMetrics(ctx, "no_window", func() (int, int64, error) {
 		resp2, err := http.Get(testServer.URL)
 		if err != nil {
 			return 0, 0, err
 		}
-		defer resp2.Body.Close() //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		defer resp2.Body.Close() //nolint:bodyclose
 
 		allContent, err := io.ReadAll(resp2.Body)
 		if err != nil {
@@ -1310,6 +1315,7 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 		float64(profile2.MemoryDelta)/1024/1024,
 		float64(profile1.MemoryDelta)/1024/1024)
 
+	t.Logf("Baseline: %d bytes", baselineStats.Alloc)
 	t.Logf("Sliding window: %s", profile1.String())
 	t.Logf("No window: %s", profile2.String())
 }
