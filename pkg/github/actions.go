@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/profiler"
@@ -20,7 +22,6 @@ import (
 const (
 	DescriptionRepositoryOwner = "Repository owner"
 	DescriptionRepositoryName  = "Repository name"
-	maxJobLogLines             = 50000
 )
 
 // ListWorkflows creates a tool to list workflows in a repository
@@ -747,6 +748,11 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 func downloadLogContent(ctx context.Context, logURL string, tailLines int) (string, int, *http.Response, error) {
 	prof := profiler.New(nil, profiler.IsProfilingEnabled())
 	finish := prof.Start(ctx, "log_buffer_processing")
+
+	maxJobLogLines := viper.GetInt("content_window_size")
+	if maxJobLogLines <= 0 || maxJobLogLines > 10000 {
+		maxJobLogLines = 10000
+	}
 
 	httpResp, err := http.Get(logURL) //nolint:gosec
 	if err != nil {

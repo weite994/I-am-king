@@ -75,6 +75,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("enable-command-logging", false, "When enabled, the server will log all command requests and responses to the log file")
 	rootCmd.PersistentFlags().Bool("export-translations", false, "Save translations to a JSON file")
 	rootCmd.PersistentFlags().String("gh-host", "", "Specify the GitHub hostname (for GitHub Enterprise etc.)")
+	rootCmd.PersistentFlags().Int("content-window-size", 5000, "Specify the content window size")
 
 	// Bind flag to viper
 	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
@@ -84,6 +85,7 @@ func init() {
 	_ = viper.BindPFlag("enable-command-logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
 	_ = viper.BindPFlag("export-translations", rootCmd.PersistentFlags().Lookup("export-translations"))
 	_ = viper.BindPFlag("host", rootCmd.PersistentFlags().Lookup("gh-host"))
+	_ = viper.BindPFlag("content_window_size", rootCmd.PersistentFlags().Lookup("content-window-size"))
 
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
