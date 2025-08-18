@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/github/github-mcp-server/internal/profiler"
 	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
+	"github.com/github/github-mcp-server/pkg/profiler"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -761,9 +761,9 @@ func downloadLogContent(ctx context.Context, logURL string, tailLines int, maxLi
 		tailLines = 1000
 	}
 
-	bufferSize := maxLines
-	if tailLines > maxLines && tailLines <= 5000 {
-		bufferSize = tailLines
+	bufferSize := tailLines
+	if bufferSize > maxLines {
+		bufferSize = maxLines
 	}
 
 	processedInput, totalLines, httpResp, err := buffer.ProcessResponseAsRingBufferToEnd(httpResp, bufferSize)
