@@ -757,10 +757,6 @@ func downloadLogContent(ctx context.Context, logURL string, tailLines int, maxLi
 		return "", 0, httpResp, fmt.Errorf("failed to download logs: HTTP %d", httpResp.StatusCode)
 	}
 
-	if tailLines <= 0 {
-		tailLines = 1000
-	}
-
 	bufferSize := tailLines
 	if bufferSize > maxLines {
 		bufferSize = maxLines
