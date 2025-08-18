@@ -814,7 +814,7 @@ func Test_GetWorkflowRunUsage(t *testing.T) {
 func Test_GetJobLogs(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := GetJobLogs(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	tool, _ := GetJobLogs(stubGetClientFn(mockClient), translations.NullTranslationHelper, 5000)
 
 	assert.Equal(t, "get_job_logs", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1043,7 +1043,7 @@ func Test_GetJobLogs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+			_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -1102,7 +1102,7 @@ func Test_GetJobLogs_WithContentReturn(t *testing.T) {
 	)
 
 	client := github.NewClient(mockedClient)
-	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 	request := createMCPRequest(map[string]any{
 		"owner":          "owner",
@@ -1149,7 +1149,7 @@ func Test_GetJobLogs_WithContentReturnAndTailLines(t *testing.T) {
 	)
 
 	client := github.NewClient(mockedClient)
-	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 	request := createMCPRequest(map[string]any{
 		"owner":          "owner",
@@ -1196,7 +1196,7 @@ func Test_GetJobLogs_WithContentReturnAndLargeTailLines(t *testing.T) {
 	)
 
 	client := github.NewClient(mockedClient)
-	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 	request := createMCPRequest(map[string]any{
 		"owner":          "owner",

@@ -55,6 +55,7 @@ var (
 				ExportTranslations:   viper.GetBool("export-translations"),
 				EnableCommandLogging: viper.GetBool("enable-command-logging"),
 				LogFilePath:          viper.GetString("log-file"),
+				ContextWindowSize:    viper.GetInt("content_window_size"),
 			}
 			return ghmcp.RunStdioServer(stdioServerConfig)
 		},
