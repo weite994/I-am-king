@@ -531,7 +531,7 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 }
 
 // GetJobLogs creates a tool to download logs for a specific workflow job or efficiently get all failed job logs for a workflow run
-func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc, contextWindowSize int) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc, contentWindowSize int) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_job_logs",
 			mcp.WithDescription(t("TOOL_GET_JOB_LOGS_DESCRIPTION", "Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
@@ -614,10 +614,10 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc, con
 
 			if failedOnly && runID > 0 {
 				// Handle failed-only mode: get logs for all failed jobs in the workflow run
-				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent, tailLines, contextWindowSize)
+				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent, tailLines, contentWindowSize)
 			} else if jobID > 0 {
 				// Handle single job mode
-				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent, tailLines, contextWindowSize)
+				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent, tailLines, contentWindowSize)
 			}
 
 			return mcp.NewToolResultError("Either job_id must be provided for single job logs, or run_id with failed_only=true for failed job logs"), nil
@@ -625,7 +625,7 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc, con
 }
 
 // handleFailedJobLogs gets logs for all failed jobs in a workflow run
-func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool, tailLines int, contextWindowSize int) (*mcp.CallToolResult, error) {
+func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool, tailLines int, contentWindowSize int) (*mcp.CallToolResult, error) {
 	// First, get all jobs for the workflow run
 	jobs, resp, err := client.Actions.ListWorkflowJobs(ctx, owner, repo, runID, &github.ListWorkflowJobsOptions{
 		Filter: "latest",
@@ -657,7 +657,7 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 	// Collect logs for all failed jobs
 	var logResults []map[string]any
 	for _, job := range failedJobs {
-		jobResult, resp, err := getJobLogData(ctx, client, owner, repo, job.GetID(), job.GetName(), returnContent, tailLines, contextWindowSize)
+		jobResult, resp, err := getJobLogData(ctx, client, owner, repo, job.GetID(), job.GetName(), returnContent, tailLines, contentWindowSize)
 		if err != nil {
 			// Continue with other jobs even if one fails
 			jobResult = map[string]any{
@@ -690,8 +690,8 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // handleSingleJobLogs gets logs for a single job
-func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool, tailLines int, contextWindowSize int) (*mcp.CallToolResult, error) {
-	jobResult, resp, err := getJobLogData(ctx, client, owner, repo, jobID, "", returnContent, tailLines, contextWindowSize)
+func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool, tailLines int, contentWindowSize int) (*mcp.CallToolResult, error) {
+	jobResult, resp, err := getJobLogData(ctx, client, owner, repo, jobID, "", returnContent, tailLines, contentWindowSize)
 	if err != nil {
 		return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get job logs", resp, err), nil
 	}
@@ -705,7 +705,7 @@ func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // getJobLogData retrieves log data for a single job, either as URL or content
-func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool, tailLines int, contextWindowSize int) (map[string]any, *github.Response, error) {
+func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool, tailLines int, contentWindowSize int) (map[string]any, *github.Response, error) {
 	// Get the download URL for the job logs
 	url, resp, err := client.Actions.GetWorkflowJobLogs(ctx, owner, repo, jobID, 1)
 	if err != nil {
@@ -722,7 +722,7 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 	if returnContent {
 		// Download and return the actual log content
-		content, originalLength, httpResp, err := downloadLogContent(ctx, url.String(), tailLines, contextWindowSize) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
+		content, originalLength, httpResp, err := downloadLogContent(ctx, url.String(), tailLines, contentWindowSize) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
 		if err != nil {
 			// To keep the return value consistent wrap the response as a GitHub Response
 			ghRes := &github.Response{
