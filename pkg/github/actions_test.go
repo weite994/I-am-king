@@ -1228,7 +1228,7 @@ func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
 	}
 
 	const logLines = 100000
-	const bufferSize = 1000
+	const bufferSize = 5000
 	largeLogContent := strings.Repeat("log line with some content\n", logLines)
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
