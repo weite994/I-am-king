@@ -171,12 +171,62 @@ func GetProjectItems(getClient GetGQLClientFn, t translations.TranslationHelperF
 				var q struct {
 					User struct {
 						Project struct {
-							Items struct {
-								Nodes []struct {
-									ID githubv4.ID
+						Items struct {
+							Nodes []struct {
+								ID          githubv4.ID
+								FieldValues struct {
+									Nodes []struct {
+										ProjectV2ItemFieldTextValue struct {
+											Text  githubv4.String
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											} 
+										} `graphql:"... on ProjectV2ItemFieldTextValue"`
+										ProjectV2ItemFieldDateValue struct {
+											Date  githubv4.Date
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											}
+										} `graphql:"... on ProjectV2ItemFieldDateValue"`
+										ProjectV2ItemFieldSingleSelectValue struct {
+											Name  githubv4.String
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											}
+										} `graphql:"... on ProjectV2ItemFieldSingleSelectValue"`
+									}
+								} `graphql:"fieldValues(first: 8)"`
+								Content struct {
+									DraftIssue struct {
+										Title githubv4.String
+										Body  githubv4.String
+									} `graphql:"... on DraftIssue"`
+									Issue struct {
+										Title     githubv4.String
+										Assignees struct {
+											Nodes []struct {
+												Login githubv4.String
+											}
+										} `graphql:"assignees(first: 10)"`
+									} `graphql:"... on Issue"`
+									PullRequest struct {
+										Title     githubv4.String
+										Assignees struct {
+											Nodes []struct {
+												Login githubv4.String
+											}
+										} `graphql:"assignees(first: 10)"`
+									} `graphql:"... on PullRequest"`
 								}
-							} `graphql:"items(first: 100)"`
-						} `graphql:"projectV2(number: $number)"`
+							}
+						} `graphql:"items(first: 100)"`
+					} `graphql:"projectV2(number: $number)"`
 					} `graphql:"user(login: $login)"`
 				}
 				if err := client.Query(ctx, &q, map[string]any{"login": githubv4.String(owner), "number": githubv4.Int(number)}); err != nil {
@@ -188,7 +238,59 @@ func GetProjectItems(getClient GetGQLClientFn, t translations.TranslationHelperF
 				Organization struct {
 					Project struct {
 						Items struct {
-							Nodes []struct{ ID githubv4.ID }
+							Nodes []struct {
+								ID          githubv4.ID
+								FieldValues struct {
+									Nodes []struct {
+										ProjectV2ItemFieldTextValue struct {
+											Text  githubv4.String
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											} 
+										} `graphql:"... on ProjectV2ItemFieldTextValue"`
+										ProjectV2ItemFieldDateValue struct {
+											Date  githubv4.Date
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											}
+										} `graphql:"... on ProjectV2ItemFieldDateValue"`
+										ProjectV2ItemFieldSingleSelectValue struct {
+											Name  githubv4.String
+											Field struct {
+												ProjectV2FieldCommon struct {
+													Name githubv4.String
+												} `graphql:"... on ProjectV2FieldCommon"`
+											}
+										} `graphql:"... on ProjectV2ItemFieldSingleSelectValue"`
+									}
+								} `graphql:"fieldValues(first: 8)"`
+								Content struct {
+									DraftIssue struct {
+										Title githubv4.String
+										Body  githubv4.String
+									} `graphql:"... on DraftIssue"`
+									Issue struct {
+										Title     githubv4.String
+										Assignees struct {
+											Nodes []struct {
+												Login githubv4.String
+											}
+										} `graphql:"assignees(first: 10)"`
+									} `graphql:"... on Issue"`
+									PullRequest struct {
+										Title     githubv4.String
+										Assignees struct {
+											Nodes []struct {
+												Login githubv4.String
+											}
+										} `graphql:"assignees(first: 10)"`
+									} `graphql:"... on PullRequest"`
+								}
+							}
 						} `graphql:"items(first: 100)"`
 					} `graphql:"projectV2(number: $number)"`
 				} `graphql:"organization(login: $login)"`
