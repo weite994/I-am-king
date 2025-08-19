@@ -206,6 +206,53 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
 		}
 }
 
+// ListIssueTypes creates a tool to list defined issue types for an organization. This can be used to understand supported issue type values for creating or updating issues.
+func ListIssueTypes(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+
+	return mcp.NewTool("list_issue_types",
+			mcp.WithDescription(t("TOOL_LIST_ISSUE_TYPES_FOR_ORG", "List supported issue types for repository owner (organization).")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_LIST_ISSUE_TYPES_USER_TITLE", "List available issue types"),
+				ReadOnlyHint: ToBoolPtr(true),
+			}),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("The organization owner of the repository"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			owner, err := RequiredParam[string](request, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
+			issueTypes, resp, err := client.Organizations.ListIssueTypes(ctx, owner)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list issue types: %w", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to list issue types: %s", string(body))), nil
+			}
+
+			r, err := json.Marshal(issueTypes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal issue types: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
 // AddIssueComment creates a tool to add a comment to an issue.
 func AddIssueComment(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("add_issue_comment",
@@ -506,39 +553,39 @@ func RemoveSubIssue(getClient GetClientFn, t translations.TranslationHelperFunc)
 			}
 
 			client, err := getClient(ctx)
-            if err != nil {
-                return nil, fmt.Errorf("failed to get GitHub client: %w", err)
-            }
+			if err != nil {
+				return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+			}
 
-            subIssueRequest := github.SubIssueRequest{
-                SubIssueID: int64(subIssueID),
-            }
+			subIssueRequest := github.SubIssueRequest{
+				SubIssueID: int64(subIssueID),
+			}
 
-            subIssue, resp, err := client.SubIssue.Remove(ctx, owner, repo, int64(issueNumber), subIssueRequest)
-            if err != nil {
-                return ghErrors.NewGitHubAPIErrorResponse(ctx,
-                    "failed to remove sub-issue",
-                    resp,
-                    err,
-                ), nil
-            }
-            defer func() { _ = resp.Body.Close() }()
+			subIssue, resp, err := client.SubIssue.Remove(ctx, owner, repo, int64(issueNumber), subIssueRequest)
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					"failed to remove sub-issue",
+					resp,
+					err,
+				), nil
+			}
+			defer func() { _ = resp.Body.Close() }()
 
-            if resp.StatusCode != http.StatusOK {
-                body, err := io.ReadAll(resp.Body)
-                if err != nil {
-                    return nil, fmt.Errorf("failed to read response body: %w", err)
-                }
-                return mcp.NewToolResultError(fmt.Sprintf("failed to remove sub-issue: %s", string(body))), nil
-            }
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read response body: %w", err)
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("failed to remove sub-issue: %s", string(body))), nil
+			}
 
-            r, err := json.Marshal(subIssue)
-            if err != nil {
-                return nil, fmt.Errorf("failed to marshal response: %w", err)
-            }
+			r, err := json.Marshal(subIssue)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal response: %w", err)
+			}
 
-            return mcp.NewToolResultText(string(r)), nil
-        }
+			return mcp.NewToolResultText(string(r)), nil
+		}
 }
 
 // ReprioritizeSubIssue creates a tool to reprioritize a sub-issue to a different position in the parent list.
@@ -741,6 +788,9 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithNumber("milestone",
 				mcp.Description("Milestone number"),
 			),
+			mcp.WithString("type",
+				mcp.Description("Type of this issue"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -785,6 +835,12 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				milestoneNum = &milestone
 			}
 
+			// Get optional type
+			issueType, err := OptionalParam[string](request, "type")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
 			// Create the issue request
 			issueRequest := &github.IssueRequest{
 				Title:     github.Ptr(title),
@@ -792,6 +848,10 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				Assignees: &assignees,
 				Labels:    &labels,
 				Milestone: milestoneNum,
+			}
+
+			if issueType != "" {
+				issueRequest.Type = github.Ptr(issueType)
 			}
 
 			client, err := getClient(ctx)
@@ -1082,6 +1142,9 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithNumber("milestone",
 				mcp.Description("New milestone number"),
 			),
+			mcp.WithString("type",
+				mcp.Description("New issue type"),
+			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -1150,6 +1213,15 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if milestone != 0 {
 				milestoneNum := milestone
 				issueRequest.Milestone = &milestoneNum
+			}
+
+			// Get issue type
+			issueType, err := OptionalParam[string](request, "type")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if issueType != "" {
+				issueRequest.Type = github.Ptr(issueType)
 			}
 
 			client, err := getClient(ctx)

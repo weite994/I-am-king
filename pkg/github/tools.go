@@ -16,7 +16,7 @@ type GetGQLClientFn func(context.Context) (*githubv4.Client, error)
 
 var DefaultTools = []string{"all"}
 
-func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc) *toolsets.ToolsetGroup {
+func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc, contentWindowSize int) *toolsets.ToolsetGroup {
 	tsg := toolsets.NewToolsetGroup(readOnly)
 
 	// Define all available features with their default state (disabled)
@@ -31,6 +31,8 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ListBranches(getClient, t)),
 			toolsets.NewServerTool(ListTags(getClient, t)),
 			toolsets.NewServerTool(GetTag(getClient, t)),
+			toolsets.NewServerTool(ListReleases(getClient, t)),
+			toolsets.NewServerTool(GetLatestRelease(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
@@ -53,6 +55,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
 			toolsets.NewServerTool(ListIssues(getGQLClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			toolsets.NewServerTool(ListIssueTypes(getClient, t)),
 			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
@@ -156,7 +159,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetWorkflowRun(getClient, t)),
 			toolsets.NewServerTool(GetWorkflowRunLogs(getClient, t)),
 			toolsets.NewServerTool(ListWorkflowJobs(getClient, t)),
-			toolsets.NewServerTool(GetJobLogs(getClient, t)),
+			toolsets.NewServerTool(GetJobLogs(getClient, t, contentWindowSize)),
 			toolsets.NewServerTool(ListWorkflowRunArtifacts(getClient, t)),
 			toolsets.NewServerTool(DownloadWorkflowRunArtifact(getClient, t)),
 			toolsets.NewServerTool(GetWorkflowRunUsage(getClient, t)),
@@ -175,6 +178,8 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
 		AddReadTools(
 			toolsets.NewServerTool(GetMe(getClient, t)),
+			toolsets.NewServerTool(GetTeams(getClient, getGQLClient, t)),
+			toolsets.NewServerTool(GetTeamMembers(getGQLClient, t)),
 		)
 
 	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").

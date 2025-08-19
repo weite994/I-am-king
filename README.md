@@ -153,6 +153,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
 - **Minimum scopes**: Only grant necessary permissions
   - `repo` - Repository operations
   - `read:packages` - Docker image access
+  - `read:org` - Organization team access
 - **Separate tokens**: Use different PATs for different projects/environments
 - **Regular rotation**: Update tokens periodically
 - **Never commit**: Keep tokens out of version control
@@ -445,6 +446,13 @@ The following sets of tools are available (all are on by default):
 - **get_me** - Get my user profile
   - No parameters required
 
+- **get_team_members** - Get team members
+  - `org`: Organization login (owner) that contains the team. (string, required)
+  - `team_slug`: Team slug (string, required)
+
+- **get_teams** - Get teams
+  - `user`: Username to get teams for. If not provided, uses the authenticated user. (string, optional)
+
 </details>
 
 <details>
@@ -559,6 +567,7 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `title`: Issue title (string, required)
+  - `type`: Type of this issue (string, optional)
 
 - **get_issue** - Get issue details
 
@@ -573,6 +582,9 @@ The following sets of tools are available (all are on by default):
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
+
+- **list_issue_types** - List available issue types
+  - `owner`: The organization owner of the repository (string, required)
 
 - **list_issues** - List issues
 
@@ -630,6 +642,7 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
+  - `type`: New issue type (string, optional)
 
 </details>
 
@@ -899,6 +912,10 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_latest_release** - Get latest release
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
 - **get_tag** - Get tag details
 
   - `owner`: Repository owner (string, required)
@@ -920,6 +937,12 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
+
+- **list_releases** - List releases
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
 
 - **list_tags** - List tags
 
