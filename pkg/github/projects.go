@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/go-viper/mapstructure/v2"
@@ -66,6 +67,66 @@ func ListProjects(getClient GetGQLClientFn, t translations.TranslationHelperFunc
 			}
 			return MarshalledTextResult(q), nil
 		}
+}
+
+// GetProjectStatuses retrieves the Status field options for a specific GitHub ProjectV2.
+// It returns the status options with their IDs, names, and descriptions.
+func GetProjectStatuses(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+    return mcp.NewTool("get_project_statuses",
+            mcp.WithDescription(t("TOOL_GET_PROJECT_STATUSES_DESCRIPTION", "Get status field options for a project")),
+            mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_GET_PROJECT_STATUSES_TITLE", "Get project statuses"), ReadOnlyHint: ToBoolPtr(true)}),
+            mcp.WithString("project_id", mcp.Required(), mcp.Description("The global node ID of the project (e.g., 'PVT_kwDOA_dmc84A7u-a')")),
+        ), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+            projectID, err := RequiredParam[string](req, "project_id")
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+
+            client, err := getClient(ctx)
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+
+            // This struct defines the shape of the GraphQL query.
+            // It fetches the Status field for a ProjectV2 by ID.
+            var q struct {
+                Node struct {
+                    ProjectV2 struct {
+                        Field struct {
+                            ProjectV2SingleSelectField struct {
+                                ID   githubv4.ID
+                                Name githubv4.String
+                                Options []struct {
+                                    ID          githubv4.ID
+                                    Name        githubv4.String
+                                    Description githubv4.String
+                                }
+                            } `graphql:"... on ProjectV2SingleSelectField"`
+                        } `graphql:"field(name: \"Status\")"`
+                    } `graphql:"... on ProjectV2"`
+                } `graphql:"node(id: $projectId)"`
+            }
+
+            variables := map[string]any{
+                "projectId": githubv4.ID(projectID),
+            }
+
+            if err := client.Query(ctx, &q, variables); err != nil {
+                // Provide a more helpful error message if the ID is malformed.
+                if err.Error() == "Could not resolve to a node with the global id of '"+projectID+"'" {
+                    return mcp.NewToolResultError(fmt.Sprintf("Invalid project_id: '%s'. Please provide a valid global node ID for a project.", projectID)), nil
+                }
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+
+            // Check if the Status field exists and has options
+            statusField := q.Node.ProjectV2.Field.ProjectV2SingleSelectField
+            if statusField.Name == "" {
+                return mcp.NewToolResultError(fmt.Sprintf("Could not find a Status field for project with ID '%s'. The project might not have a Status field configured.", projectID)), nil
+            }
+
+            return MarshalledTextResult(statusField), nil
+        }
 }
 
 // GetProjectFields lists fields for a project.

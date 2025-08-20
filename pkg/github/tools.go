@@ -107,6 +107,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(ListProjects(getGQLClient, t)),
 			toolsets.NewServerTool(GetProjectFields(getGQLClient, t)),
+			toolsets.NewServerTool(GetProjectStatuses(getGQLClient, t)),
 			toolsets.NewServerTool(GetProjectItems(getGQLClient, t)),
 		).
 		AddWriteTools(
