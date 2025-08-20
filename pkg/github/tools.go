@@ -106,6 +106,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	projects := toolsets.NewToolset("projects", "GitHub Projects V2 management tools").
 		AddReadTools(
 			toolsets.NewServerTool(ListProjects(getGQLClient, t)),
+			toolsets.NewServerTool(GetProject(getGQLClient, t)),
 			toolsets.NewServerTool(GetProjectFields(getGQLClient, t)),
 			toolsets.NewServerTool(GetProjectStatuses(getGQLClient, t)),
 			toolsets.NewServerTool(GetProjectItems(getGQLClient, t)),

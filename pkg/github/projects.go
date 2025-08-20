@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/go-viper/mapstructure/v2"
@@ -67,6 +68,323 @@ func ListProjects(getClient GetGQLClientFn, t translations.TranslationHelperFunc
 			}
 			return MarshalledTextResult(q), nil
 		}
+}
+
+// GetProject defines a tool that retrieves detailed information about a specific GitHub ProjectV2.
+// It takes a project number or name and owner as input and works for both organizations and users.
+func GetProject(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+    return mcp.NewTool("get_project",
+            mcp.WithDescription(t("TOOL_GET_PROJECT_DESCRIPTION", "Get details for a specific project using its number or name")),
+            mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_GET_PROJECT_TITLE", "Get project details"), ReadOnlyHint: ToBoolPtr(true)}),
+            mcp.WithString("owner", mcp.Required(), mcp.Description("Owner login (user or organization)")),
+            mcp.WithNumber("number", mcp.Description("Project number (either number or name must be provided)")),
+            mcp.WithString("name", mcp.Description("Project name (either number or name must be provided)")),
+            mcp.WithString("owner_type", mcp.Description("Owner type"), mcp.Enum("user", "organization")),
+        ), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+            owner, err := RequiredParam[string](req, "owner")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			// Get optional parameters
+			number, numberErr := OptionalParam[float64](req, "number")
+			name, nameErr := OptionalParam[string](req, "name")
+
+			// Check if parameters were actually provided (not just no error)
+			nameProvided := nameErr == nil && name != ""
+			numberProvided := numberErr == nil && number != 0
+
+			// CORRECTED VALIDATION:
+			// 1. Check if both were provided
+			if nameProvided && numberProvided {
+				return mcp.NewToolResultError("Cannot provide both 'number' and 'name' parameters. Please use only one."), nil
+			}
+			// 2. Check if neither was provided
+			if !nameProvided && !numberProvided {
+				return mcp.NewToolResultError("Either the 'number' or 'name' parameter must be provided."), nil
+			}
+
+			ownerType, err := OptionalParam[string](req, "owner_type")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if ownerType == "" {
+				ownerType = "organization"
+			}
+
+			client, err := getClient(ctx)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			// Route to the correct helper function based on which parameter was provided
+			if nameProvided {
+				return getProjectByName(ctx, client, owner, name, ownerType)
+			}
+
+			// If it wasn't name, it must be number
+			projectNumber := int(number)
+			return getProjectByNumber(ctx, client, owner, projectNumber, ownerType)
+        }
+}
+
+// Helper function to get project by number
+func getProjectByNumber(ctx context.Context, client interface{}, owner string, number int, ownerType string) (*mcp.CallToolResult, error) {
+    type GraphQLClient interface {
+        Query(ctx context.Context, q interface{}, variables map[string]interface{}) error
+    }
+    
+    gqlClient := client.(GraphQLClient)
+    
+    if ownerType == "user" {
+        var q struct {
+            User struct {
+                ProjectV2 struct {
+                    ID     githubv4.ID
+                    Title  githubv4.String
+                    Number githubv4.Int
+                    Readme githubv4.String
+                    URL    githubv4.URI
+                } `graphql:"projectV2(number: $projectNumber)"`
+            } `graphql:"user(login: $owner)"`
+        }
+        
+        variables := map[string]any{
+            "owner":         githubv4.String(owner),
+            "projectNumber": githubv4.Int(number),
+        }
+
+        if err := gqlClient.Query(ctx, &q, variables); err != nil {
+            return mcp.NewToolResultError(err.Error()), nil
+        }
+
+        // Check if the project was found
+        if q.User.ProjectV2.Title == "" {
+            return mcp.NewToolResultError(fmt.Sprintf("Could not find project number %d for user '%s'.", number, owner)), nil
+        }
+
+        return MarshalledTextResult(q.User.ProjectV2), nil
+    } else {
+        var q struct {
+            Organization struct {
+                ProjectV2 struct {
+                    ID     githubv4.ID
+                    Title  githubv4.String
+                    Number githubv4.Int
+                    Readme githubv4.String
+                    URL    githubv4.URI
+                } `graphql:"projectV2(number: $projectNumber)"`
+            } `graphql:"organization(login: $owner)"`
+        }
+        
+        variables := map[string]any{
+            "owner":         githubv4.String(owner),
+            "projectNumber": githubv4.Int(number),
+        }
+
+        if err := gqlClient.Query(ctx, &q, variables); err != nil {
+            return mcp.NewToolResultError(err.Error()), nil
+        }
+
+        // Check if the project was found
+        if q.Organization.ProjectV2.Title == "" {
+            return mcp.NewToolResultError(fmt.Sprintf("Could not find project number %d for organization '%s'.", number, owner)), nil
+        }
+
+        return MarshalledTextResult(q.Organization.ProjectV2), nil
+    }
+}
+
+// Helper function to get project by name with pagination support
+func getProjectByName(ctx context.Context, client interface{}, owner string, name string, ownerType string) (*mcp.CallToolResult, error) {
+    type GraphQLClient interface {
+        Query(ctx context.Context, q interface{}, variables map[string]interface{}) error
+    }
+    
+    gqlClient := client.(GraphQLClient)
+    
+    if ownerType == "user" {
+        var cursor *githubv4.String
+        
+        for {
+            var q struct {
+                User struct {
+                    Projects struct {
+                        Nodes []struct {
+                            ID     githubv4.ID
+                            Title  githubv4.String
+                            Number githubv4.Int
+                            Readme githubv4.String
+                            URL    githubv4.URI
+                        }
+                        PageInfo struct {
+                            HasNextPage bool
+                            EndCursor   githubv4.String
+                        }
+                    } `graphql:"projectsV2(first: 100, after: $cursor)"`
+                } `graphql:"user(login: $login)"`
+            }
+            
+            variables := map[string]any{
+                "login":  githubv4.String(owner),
+                "cursor": cursor,
+            }
+            
+            if err := gqlClient.Query(ctx, &q, variables); err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            
+            // Search for project by name (case-insensitive exact match first)
+            for _, project := range q.User.Projects.Nodes {
+                if strings.EqualFold(string(project.Title), name) {
+                    return MarshalledTextResult(project), nil
+                }
+            }
+            
+            // Check if we should continue to next page
+            if !q.User.Projects.PageInfo.HasNextPage {
+                break
+            }
+            cursor = &q.User.Projects.PageInfo.EndCursor
+        }
+        
+        // If exact match not found, do a second pass with partial matching
+        cursor = nil
+        for {
+            var q struct {
+                User struct {
+                    Projects struct {
+                        Nodes []struct {
+                            ID     githubv4.ID
+                            Title  githubv4.String
+                            Number githubv4.Int
+                            Readme githubv4.String
+                            URL    githubv4.URI
+                        }
+                        PageInfo struct {
+                            HasNextPage bool
+                            EndCursor   githubv4.String
+                        }
+                    } `graphql:"projectsV2(first: 100, after: $cursor)"`
+                } `graphql:"user(login: $login)"`
+            }
+            
+            variables := map[string]any{
+                "login":  githubv4.String(owner),
+                "cursor": cursor,
+            }
+            
+            if err := gqlClient.Query(ctx, &q, variables); err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            
+            // Search for project by partial name match
+            for _, project := range q.User.Projects.Nodes {
+                if strings.Contains(strings.ToLower(string(project.Title)), strings.ToLower(name)) {
+                    return MarshalledTextResult(project), nil
+                }
+            }
+            
+            // Check if we should continue to next page
+            if !q.User.Projects.PageInfo.HasNextPage {
+                break
+            }
+            cursor = &q.User.Projects.PageInfo.EndCursor
+        }
+        
+        return mcp.NewToolResultError(fmt.Sprintf("Could not find project with name '%s' for user '%s'.", name, owner)), nil
+    } else {
+        var cursor *githubv4.String
+        
+        // First pass: exact match
+        for {
+            var q struct {
+                Organization struct {
+                    Projects struct {
+                        Nodes []struct {
+                            ID     githubv4.ID
+                            Title  githubv4.String
+                            Number githubv4.Int
+                            Readme githubv4.String
+                            URL    githubv4.URI
+                        }
+                        PageInfo struct {
+                            HasNextPage bool
+                            EndCursor   githubv4.String
+                        }
+                    } `graphql:"projectsV2(first: 100, after: $cursor)"`
+                } `graphql:"organization(login: $login)"`
+            }
+            
+            variables := map[string]any{
+                "login":  githubv4.String(owner),
+                "cursor": cursor,
+            }
+            
+            if err := gqlClient.Query(ctx, &q, variables); err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            
+            // Search for project by name (case-insensitive exact match first)
+            for _, project := range q.Organization.Projects.Nodes {
+                if strings.EqualFold(string(project.Title), name) {
+                    return MarshalledTextResult(project), nil
+                }
+            }
+            
+            // Check if we should continue to next page
+            if !q.Organization.Projects.PageInfo.HasNextPage {
+                break
+            }
+            cursor = &q.Organization.Projects.PageInfo.EndCursor
+        }
+        
+        // Second pass: partial match
+        cursor = nil
+        for {
+            var q struct {
+                Organization struct {
+                    Projects struct {
+                        Nodes []struct {
+                            ID     githubv4.ID
+                            Title  githubv4.String
+                            Number githubv4.Int
+                            Readme githubv4.String
+                            URL    githubv4.URI
+                        }
+                        PageInfo struct {
+                            HasNextPage bool
+                            EndCursor   githubv4.String
+                        }
+                    } `graphql:"projectsV2(first: 100, after: $cursor)"`
+                } `graphql:"organization(login: $login)"`
+            }
+            
+            variables := map[string]any{
+                "login":  githubv4.String(owner),
+                "cursor": cursor,
+            }
+            
+            if err := gqlClient.Query(ctx, &q, variables); err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            
+            // Search for project by partial name match
+            for _, project := range q.Organization.Projects.Nodes {
+                if strings.Contains(strings.ToLower(string(project.Title)), strings.ToLower(name)) {
+                    return MarshalledTextResult(project), nil
+                }
+            }
+            
+            // Check if we should continue to next page
+            if !q.Organization.Projects.PageInfo.HasNextPage {
+                break
+            }
+            cursor = &q.Organization.Projects.PageInfo.EndCursor
+        }
+        
+        return mcp.NewToolResultError(fmt.Sprintf("Could not find project with name '%s' for organization '%s'.", name, owner)), nil
+    }
 }
 
 // GetProjectStatuses retrieves the Status field options for a specific GitHub ProjectV2.
