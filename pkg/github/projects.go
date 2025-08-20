@@ -518,167 +518,131 @@ func GetProjectFields(getClient GetGQLClientFn, t translations.TranslationHelper
 		}
 }
 
-// GetProjectItems lists items for a project.
+// FieldNameFragment defines the fields we want from a ProjectV2FieldCommon interface.
+type FieldNameFragment struct {
+	Name githubv4.String
+}
+
+// Field represents the 'field' interface on a project item's field value.
+// It uses an embedded struct with a graphql tag to act as an inline fragment.
+type Field struct {
+	OnProjectV2FieldCommon FieldNameFragment `graphql:"... on ProjectV2FieldCommon"`
+}
+
+// ProjectItem defines the structure of a single item within a project,
+// including its field values and content.
+type ProjectItem struct {
+	ID          githubv4.ID
+	FieldValues struct {
+		Nodes []struct {
+			TypeName string `graphql:"__typename"`
+			// Fragment for Text values
+			OnTextValue struct {
+				Text  githubv4.String
+				Field Field
+			} `graphql:"... on ProjectV2ItemFieldTextValue"`
+			// Fragment for Date values
+			OnDateValue struct {
+				Date  githubv4.DateTime
+				Field Field
+			} `graphql:"... on ProjectV2ItemFieldDateValue"`
+			// Fragment for Single Select values
+			OnSingleSelectValue struct {
+				Name  githubv4.String
+				Field Field
+			} `graphql:"... on ProjectV2ItemFieldSingleSelectValue"`
+		}
+	} `graphql:"fieldValues(first: 8)"`
+	Content struct {
+		TypeName string `graphql:"__typename"`
+		OnDraftIssue struct {
+			Title githubv4.String
+			Body  githubv4.String
+		} `graphql:"... on DraftIssue"`
+		OnIssue struct {
+			Title     githubv4.String
+			Assignees struct {
+				Nodes []struct {
+					Login githubv4.String
+				}
+			} `graphql:"assignees(first: 10)"`
+		} `graphql:"... on Issue"`
+		OnPullRequest struct {
+			Title     githubv4.String
+			Assignees struct {
+				Nodes []struct {
+					Login githubv4.String
+				}
+			} `graphql:"assignees(first: 10)"`
+		} `graphql:"... on PullRequest"`
+	}
+}
+
 func GetProjectItems(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("get_project_items",
-			mcp.WithDescription(t("TOOL_GET_PROJECT_ITEMS_DESCRIPTION", "Get items for a project")),
-			mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_GET_PROJECT_ITEMS_USER_TITLE", "Get project items"), ReadOnlyHint: ToBoolPtr(true)}),
-			mcp.WithString("owner", mcp.Required(), mcp.Description("Owner login")),
-			mcp.WithString("owner_type", mcp.Description("Owner type"), mcp.Enum("user", "organization")),
-			mcp.WithNumber("number", mcp.Required(), mcp.Description("Project number")),
-		), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			owner, err := RequiredParam[string](req, "owner")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			number, err := RequiredInt(req, "number")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			ownerType, err := OptionalParam[string](req, "owner_type")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if ownerType == "" {
-				ownerType = "organization"
-			}
-			client, err := getClient(ctx)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if ownerType == "user" {
-				var q struct {
-					User struct {
-						Project struct {
-						Items struct {
-							Nodes []struct {
-								ID          githubv4.ID
-								FieldValues struct {
-									Nodes []struct {
-										ProjectV2ItemFieldTextValue struct {
-											Text  githubv4.String
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											} 
-										} `graphql:"... on ProjectV2ItemFieldTextValue"`
-										ProjectV2ItemFieldDateValue struct {
-											Date  githubv4.Date
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											}
-										} `graphql:"... on ProjectV2ItemFieldDateValue"`
-										ProjectV2ItemFieldSingleSelectValue struct {
-											Name  githubv4.String
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											}
-										} `graphql:"... on ProjectV2ItemFieldSingleSelectValue"`
-									}
-								} `graphql:"fieldValues(first: 8)"`
-								Content struct {
-									DraftIssue struct {
-										Title githubv4.String
-										Body  githubv4.String
-									} `graphql:"... on DraftIssue"`
-									Issue struct {
-										Title     githubv4.String
-										Assignees struct {
-											Nodes []struct {
-												Login githubv4.String
-											}
-										} `graphql:"assignees(first: 10)"`
-									} `graphql:"... on Issue"`
-									PullRequest struct {
-										Title     githubv4.String
-										Assignees struct {
-											Nodes []struct {
-												Login githubv4.String
-											}
-										} `graphql:"assignees(first: 10)"`
-									} `graphql:"... on PullRequest"`
-								}
-							}
-						} `graphql:"items(first: 100)"`
-					} `graphql:"projectV2(number: $number)"`
-					} `graphql:"user(login: $login)"`
-				}
-				if err := client.Query(ctx, &q, map[string]any{"login": githubv4.String(owner), "number": githubv4.Int(number)}); err != nil {
-					return mcp.NewToolResultError(err.Error()), nil
-				}
-				return MarshalledTextResult(q), nil
-			}
+		mcp.WithDescription(t("TOOL_GET_PROJECT_ITEMS_DESCRIPTION", "Get items for a project")),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_GET_PROJECT_ITEMS_USER_TITLE", "Get project items"), ReadOnlyHint: ToBoolPtr(true)}),
+		mcp.WithString("owner", mcp.Required(), mcp.Description("Owner login")),
+		mcp.WithString("owner_type", mcp.Description("Owner type"), mcp.Enum("user", "organization")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Project number")),
+	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		owner, err := RequiredParam[string](req, "owner")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		number, err := RequiredInt(req, "number")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		ownerType, err := OptionalParam[string](req, "owner_type")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		if ownerType == "" {
+			ownerType = "organization"
+		}
+
+		client, err := getClient(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		variables := map[string]any{
+			"login":  githubv4.String(owner),
+			"number": githubv4.Int(number),
+		}
+
+		if ownerType == "user" {
 			var q struct {
-				Organization struct {
+				User struct {
 					Project struct {
 						Items struct {
-							Nodes []struct {
-								ID          githubv4.ID
-								FieldValues struct {
-									Nodes []struct {
-										ProjectV2ItemFieldTextValue struct {
-											Text  githubv4.String
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											} 
-										} `graphql:"... on ProjectV2ItemFieldTextValue"`
-										ProjectV2ItemFieldDateValue struct {
-											Date  githubv4.Date
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											}
-										} `graphql:"... on ProjectV2ItemFieldDateValue"`
-										ProjectV2ItemFieldSingleSelectValue struct {
-											Name  githubv4.String
-											Field struct {
-												ProjectV2FieldCommon struct {
-													Name githubv4.String
-												} `graphql:"... on ProjectV2FieldCommon"`
-											}
-										} `graphql:"... on ProjectV2ItemFieldSingleSelectValue"`
-									}
-								} `graphql:"fieldValues(first: 8)"`
-								Content struct {
-									DraftIssue struct {
-										Title githubv4.String
-										Body  githubv4.String
-									} `graphql:"... on DraftIssue"`
-									Issue struct {
-										Title     githubv4.String
-										Assignees struct {
-											Nodes []struct {
-												Login githubv4.String
-											}
-										} `graphql:"assignees(first: 10)"`
-									} `graphql:"... on Issue"`
-									PullRequest struct {
-										Title     githubv4.String
-										Assignees struct {
-											Nodes []struct {
-												Login githubv4.String
-											}
-										} `graphql:"assignees(first: 10)"`
-									} `graphql:"... on PullRequest"`
-								}
-							}
+							Nodes []ProjectItem
 						} `graphql:"items(first: 100)"`
 					} `graphql:"projectV2(number: $number)"`
-				} `graphql:"organization(login: $login)"`
+				} `graphql:"user(login: $login)"`
 			}
-			if err := client.Query(ctx, &q, map[string]any{"login": githubv4.String(owner), "number": githubv4.Int(number)}); err != nil {
+			if err := client.Query(ctx, &q, variables); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return MarshalledTextResult(q), nil
+			return MarshalledTextResult(q.User.Project.Items), nil
 		}
+
+		// This code is now reachable and syntactically correct.
+		var q struct {
+			Organization struct {
+				Project struct {
+					Items struct {
+						Nodes []ProjectItem
+					} `graphql:"items(first: 100)"`
+				} `graphql:"projectV2(number: $number)"`
+			} `graphql:"organization(login: $login)"`
+		}
+		if err := client.Query(ctx, &q, variables); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		return MarshalledTextResult(q.Organization.Project.Items), nil
+	}
 }
 
 // CreateIssue creates an issue in a repository.
@@ -800,40 +764,54 @@ func UpdateProjectItemField(getClient GetGQLClientFn, t translations.Translation
 // CreateDraftIssue creates a draft issue in a project.
 func CreateDraftIssue(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("create_draft_issue",
-			mcp.WithDescription(t("TOOL_CREATE_DRAFT_ISSUE_DESCRIPTION", "Create a draft issue in a project")),
-			mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_CREATE_DRAFT_ISSUE_USER_TITLE", "Create draft issue"), ReadOnlyHint: ToBoolPtr(false)}),
-			mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
-			mcp.WithString("title", mcp.Required(), mcp.Description("Issue title")),
-			mcp.WithString("body", mcp.Description("Issue body")),
-		), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			projectID, err := RequiredParam[string](req, "project_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			title, err := RequiredParam[string](req, "title")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			body, err := OptionalParam[string](req, "body")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			client, err := getClient(ctx)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			input := githubv4.AddProjectV2DraftIssueInput{ProjectID: githubv4.ID(projectID), Title: githubv4.String(title)}
-			if body != "" {
-				input.Body = githubv4.NewString(githubv4.String(body))
-			}
-			var mut struct {
-				AddProjectV2DraftIssue struct{ Item struct{ ID githubv4.ID } } `graphql:"addProjectV2DraftIssue(input: $input)"`
-			}
-			if err := client.Mutate(ctx, &mut, input, nil); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			return MarshalledTextResult(mut), nil
+		mcp.WithDescription(t("TOOL_CREATE_DRAFT_ISSUE_DESCRIPTION", "Create a draft issue in a project")),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_CREATE_DRAFT_ISSUE_USER_TITLE", "Create draft issue"), ReadOnlyHint: ToBoolPtr(false)}),
+		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Issue title")),
+		mcp.WithString("body", mcp.Description("Issue body")),
+	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		projectID, err := RequiredParam[string](req, "project_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
+		title, err := RequiredParam[string](req, "title")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		body, err := OptionalParam[string](req, "body")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		client, err := getClient(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		input := githubv4.AddProjectV2DraftIssueInput{
+			ProjectID: githubv4.ID(projectID),
+			Title:     githubv4.String(title),
+		}
+		if body != "" {
+			input.Body = githubv4.NewString(githubv4.String(body))
+		}
+
+		// CORRECTED: The payload field is 'projectItem', not 'item'.
+		var mut struct {
+			AddProjectV2DraftIssue struct {
+				ProjectItem struct {
+					ID githubv4.ID
+				}
+			} `graphql:"addProjectV2DraftIssue(input: $input)"`
+		}
+
+		// The library requires a pointer to the mutation struct, the input, and variables (nil in this case).
+		if err := client.Mutate(ctx, &mut, input, nil); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return MarshalledTextResult(mut.AddProjectV2DraftIssue.ProjectItem), nil
+	}
 }
 
 // DeleteProjectItem removes an item from a project.
