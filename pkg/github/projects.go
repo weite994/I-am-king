@@ -817,30 +817,40 @@ func CreateDraftIssue(getClient GetGQLClientFn, t translations.TranslationHelper
 // DeleteProjectItem removes an item from a project.
 func DeleteProjectItem(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("delete_project_item",
-			mcp.WithDescription(t("TOOL_DELETE_PROJECT_ITEM_DESCRIPTION", "Delete a project item")),
-			mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_DELETE_PROJECT_ITEM_USER_TITLE", "Delete project item"), ReadOnlyHint: ToBoolPtr(false)}),
-			mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
-			mcp.WithString("item_id", mcp.Required(), mcp.Description("Item ID")),
-		), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			projectID, err := RequiredParam[string](req, "project_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			itemID, err := RequiredParam[string](req, "item_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			client, err := getClient(ctx)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			var mut struct {
-				DeleteProjectV2Item struct{ Typename githubv4.String } `graphql:"deleteProjectV2Item(input: $input)"`
-			}
-			input := githubv4.DeleteProjectV2ItemInput{ProjectID: githubv4.ID(projectID), ItemID: githubv4.ID(itemID)}
-			if err := client.Mutate(ctx, &mut, input, nil); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			return MarshalledTextResult(mut), nil
+		mcp.WithDescription(t("TOOL_DELETE_PROJECT_ITEM_DESCRIPTION", "Delete a project item")),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_DELETE_PROJECT_ITEM_USER_TITLE", "Delete project item"), ReadOnlyHint: ToBoolPtr(false)}),
+		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
+		mcp.WithString("item_id", mcp.Required(), mcp.Description("Item ID")),
+	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		projectID, err := RequiredParam[string](req, "project_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
+		itemID, err := RequiredParam[string](req, "item_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		client, err := getClient(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		var mut struct {
+			DeleteProjectV2Item struct {
+				DeletedItemID githubv4.ID `graphql:"deletedItemId"`
+			} `graphql:"deleteProjectV2Item(input: $input)"`
+		}
+
+		input := githubv4.DeleteProjectV2ItemInput{
+			ProjectID: githubv4.ID(projectID),
+			ItemID:    githubv4.ID(itemID),
+		}
+
+		if err := client.Mutate(ctx, &mut, input, nil); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return MarshalledTextResult(mut.DeleteProjectV2Item), nil
+	}
 }
+
