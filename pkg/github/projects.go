@@ -716,49 +716,158 @@ func AddIssueToProject(getClient GetGQLClientFn, t translations.TranslationHelpe
 		}
 }
 
+// UpdateProjectItemStatus updates the status field of a project item, allowing items to be moved between columns.
+func UpdateProjectItemStatus(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
+	return mcp.NewTool("update_project_item_status",
+		mcp.WithDescription(t("TOOL_UPDATE_PROJECT_ITEM_STATUS_DESCRIPTION", "Update a project item's status to move it between columns")),
+		mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_UPDATE_PROJECT_ITEM_STATUS_USER_TITLE", "Update project item status"), ReadOnlyHint: ToBoolPtr(false)}),
+		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
+		mcp.WithString("item_id", mcp.Required(), mcp.Description("Item ID")),
+		mcp.WithString("status_option_id", mcp.Required(), mcp.Description("Status option ID (use get_project_statuses to find available options)")),
+	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		projectID, err := RequiredParam[string](req, "project_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		itemID, err := RequiredParam[string](req, "item_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		statusOptionID, err := RequiredParam[string](req, "status_option_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		client, err := getClient(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		var statusFieldQuery struct {
+			Node struct {
+				ProjectV2 struct {
+					Field struct {
+						ProjectV2SingleSelectField struct {
+							ID      githubv4.ID
+							Name    githubv4.String
+							Options []struct {
+								ID   githubv4.ID
+								Name githubv4.String
+							}
+						} `graphql:"... on ProjectV2SingleSelectField"`
+					} `graphql:"field(name: \"Status\")"`
+				} `graphql:"... on ProjectV2"`
+			} `graphql:"node(id: $projectId)"`
+		}
+
+		variables := map[string]any{
+			"projectId": githubv4.ID(projectID),
+		}
+
+		if err := client.Query(ctx, &statusFieldQuery, variables); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get Status field for project: %s", err.Error())), nil
+		}
+
+		statusField := statusFieldQuery.Node.ProjectV2.Field.ProjectV2SingleSelectField
+		if statusField.ID == "" {
+			return mcp.NewToolResultError(fmt.Sprintf("Could not find a Status field for project with ID '%s'. The project might not have a Status field configured.", projectID)), nil
+		}
+
+		// Validate that the provided status option ID exists
+		var validOption bool
+		var optionName string
+		for _, option := range statusField.Options {
+			if option.ID.(string) == statusOptionID {
+				validOption = true
+				optionName = string(option.Name)
+				break
+			}
+		}
+
+		if !validOption {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid status_option_id '%s' for project '%s'. Use get_project_statuses to see available options.", statusOptionID, projectID)), nil
+		}
+
+		val := githubv4.ProjectV2FieldValue{
+			SingleSelectOptionID: githubv4.NewString(githubv4.String(statusOptionID)),
+		}
+
+		var mut struct {
+			UpdateProjectV2ItemFieldValue struct {
+				ProjectV2Item struct {
+					ID githubv4.ID
+				} `graphql:"projectV2Item"`
+			} `graphql:"updateProjectV2ItemFieldValue(input: $input)"`
+		}
+
+		input := githubv4.UpdateProjectV2ItemFieldValueInput{
+			ProjectID: githubv4.ID(projectID),
+			ItemID:    githubv4.ID(itemID),
+			FieldID:   statusField.ID,
+			Value:     val,
+		}
+
+		if err := client.Mutate(ctx, &mut, input, nil); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to update project item status: %s", err.Error())), nil
+		}
+
+		result := map[string]interface{}{
+			"success":          true,
+			"message":          fmt.Sprintf("Successfully updated item status to '%s'", optionName),
+			"project_id":       projectID,
+			"item_id":          itemID,
+			"new_status":       optionName,
+			"status_option_id": statusOptionID,
+		}
+
+		return MarshalledTextResult(result), nil
+	}
+}
+
+
 // UpdateProjectItemField updates a field value on a project item.
 func UpdateProjectItemField(getClient GetGQLClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
-	return mcp.NewTool("update_project_item_field",
-			mcp.WithDescription(t("TOOL_UPDATE_PROJECT_ITEM_FIELD_DESCRIPTION", "Update a project item field")),
-			mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_UPDATE_PROJECT_ITEM_FIELD_USER_TITLE", "Update project item field"), ReadOnlyHint: ToBoolPtr(false)}),
-			mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
-			mcp.WithString("item_id", mcp.Required(), mcp.Description("Item ID")),
-			mcp.WithString("field_id", mcp.Required(), mcp.Description("Field ID")),
-			mcp.WithString("text_value", mcp.Description("Text value")),
-		), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			projectID, err := RequiredParam[string](req, "project_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			itemID, err := RequiredParam[string](req, "item_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			fieldID, err := RequiredParam[string](req, "field_id")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			textValue, err := OptionalParam[string](req, "text_value")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			client, err := getClient(ctx)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			val := githubv4.ProjectV2FieldValue{}
-			if textValue != "" {
-				val.Text = githubv4.NewString(githubv4.String(textValue))
-			}
-			var mut struct {
-				UpdateProjectV2ItemFieldValue struct{ Typename githubv4.String } `graphql:"updateProjectV2ItemFieldValue(input: $input)"`
-			}
-			input := githubv4.UpdateProjectV2ItemFieldValueInput{ProjectID: githubv4.ID(projectID), ItemID: githubv4.ID(itemID), FieldID: githubv4.ID(fieldID), Value: val}
-			if err := client.Mutate(ctx, &mut, input, nil); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			return MarshalledTextResult(mut), nil
-		}
+    return mcp.NewTool("update_project_item_field",
+            mcp.WithDescription(t("TOOL_UPDATE_PROJECT_ITEM_FIELD_DESCRIPTION", "Update a project item field")),
+            mcp.WithToolAnnotation(mcp.ToolAnnotation{Title: t("TOOL_UPDATE_PROJECT_ITEM_FIELD_USER_TITLE", "Update project item field"), ReadOnlyHint: ToBoolPtr(false)}),
+            mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID")),
+            mcp.WithString("item_id", mcp.Required(), mcp.Description("Item ID")),
+            mcp.WithString("field_id", mcp.Required(), mcp.Description("Field ID")),
+            mcp.WithString("text_value", mcp.Description("Text value")),
+        ), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+            projectID, err := RequiredParam[string](req, "project_id")
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            itemID, err := RequiredParam[string](req, "item_id")
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            fieldID, err := RequiredParam[string](req, "field_id")
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            textValue, err := OptionalParam[string](req, "text_value")
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            client, err := getClient(ctx)
+            if err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            val := githubv4.ProjectV2FieldValue{}
+            if textValue != "" {
+                val.Text = githubv4.NewString(githubv4.String(textValue))
+            }
+            var mut struct {
+                UpdateProjectV2ItemFieldValue struct{ Typename githubv4.String } `graphql:"updateProjectV2ItemFieldValue(input: $input)"`
+            }
+            input := githubv4.UpdateProjectV2ItemFieldValueInput{ProjectID: githubv4.ID(projectID), ItemID: githubv4.ID(itemID), FieldID: githubv4.ID(fieldID), Value: val}
+            if err := client.Mutate(ctx, &mut, input, nil); err != nil {
+                return mcp.NewToolResultError(err.Error()), nil
+            }
+            return MarshalledTextResult(mut), nil
+        }
 }
 
 // CreateDraftIssue creates a draft issue in a project.

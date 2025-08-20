@@ -115,6 +115,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(CreateProjectIssue(getGQLClient, t)),
 			toolsets.NewServerTool(AddIssueToProject(getGQLClient, t)),
 			toolsets.NewServerTool(UpdateProjectItemField(getGQLClient, t)),
+			toolsets.NewServerTool(UpdateProjectItemStatus(getGQLClient, t)),
 			toolsets.NewServerTool(CreateDraftIssue(getGQLClient, t)),
 			toolsets.NewServerTool(DeleteProjectItem(getGQLClient, t)),
 		)
