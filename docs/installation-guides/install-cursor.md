@@ -37,7 +37,7 @@ Uses GitHub's hosted server at https://api.githubcopilot.com/mcp/. Requires Curs
 
 ## Local Server Setup
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=github&config=eyJjb21tYW5kIjoiZG9ja2VyIiwiYXJncyI6WyJydW4iLCItaSIsIi0tcm0iLCItZSIsIkdJVEhVQl9QRVJTT05BTF9BQ0NFU1NfVE9LRU4iLCJnaGNyLmlvL2dpdGh1Yi9naXRodWItbWNwLXNlcnZlciJdLCJlbnYiOnsiR0lUSFVCX1BFUlNPTkFMX0FDQ0VTU19UT0tFTiI6IllPVVJfR0lUSFVCX1BHVCJ9fQ==)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=github&config=eyJjb21tYW5kIjoiZG9ja2VyIHJ1biAtaSAtLXJtIC1lIEdJVEhVQl9QRVJTT05BTF9BQ0NFU1NfVE9LRU4gZ2hjci5pby9naXRodWIvZ2l0aHViLW1jcC1zZXJ2ZXIiLCJlbnYiOnsiR0lUSFVCX1BFUlNPTkFMX0FDQ0VTU19UT0tFTiI6IllPVVJfR0lUSFVCX1BBVCJ9fQ%3D%3D)
 
 The local GitHub MCP server runs via Docker and requires Docker Desktop to be installed and running.
 
