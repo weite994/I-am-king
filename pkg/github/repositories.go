@@ -1441,7 +1441,6 @@ func GetLatestRelease(getClient GetClientFn, t translations.TranslationHelperFun
 		}
 }
 
-// GetReleaseByTag creates a tool to get a specific release by its tag name in a GitHub repository.
 func GetReleaseByTag(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_release_by_tag",
 			mcp.WithDescription(t("TOOL_GET_RELEASE_BY_TAG_DESCRIPTION", "Get a specific release by its tag name in a GitHub repository")),
