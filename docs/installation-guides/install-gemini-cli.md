@@ -273,7 +273,7 @@ gemini "Analyze the security alerts in my repositories"
 ### Configuration Issues
 - **Invalid JSON**: Validate your configuration:
   ```bash
-  cat ~/.gemini/config.json | jq .
+  cat ~/.gemini/settings.json | jq .
   ```
 - **MCP connection issues**: Check logs for connection errors:
   ```bash
