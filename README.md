@@ -36,7 +36,7 @@ Alternatively, to manually configure VS Code, choose the appropriate JSON block 
 <tr><th align=left colspan=2>VS Code (version 1.101 or greater)</th></tr>
 <tr valign=top>
 <td>
-  
+
 ```json
 {
   "servers": {
@@ -130,7 +130,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
    ```bash
    # CLI usage
    claude mcp update github -e GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PAT
-   
+
    # In config files (where supported)
    "env": {
      "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PAT"
@@ -144,6 +144,7 @@ To keep your GitHub PAT secure and reusable across different MCP hosts:
 - **Minimum scopes**: Only grant necessary permissions
   - `repo` - Repository operations
   - `read:packages` - Docker image access
+  - `read:org` - Organization team access
 - **Separate tokens**: Use different PATs for different projects/environments
 - **Regular rotation**: Update tokens periodically
 - **Never commit**: Keep tokens out of version control
@@ -240,10 +241,10 @@ For other MCP host applications, please refer to our installation guides:
 
 - **[GitHub Copilot in other IDEs](/docs/installation-guides/install-other-copilot-ides.md)** - Installation for JetBrains, Visual Studio, Eclipse, and Xcode with GitHub Copilot
 - **[Claude Code & Claude Desktop](docs/installation-guides/install-claude.md)** - Installation guide for Claude Code and Claude Desktop
-- **[Cursor](docs/installation-guides/install-cursor.md)** - Installation guide for Cursor IDE  
+- **[Cursor](docs/installation-guides/install-cursor.md)** - Installation guide for Cursor IDE
 - **[Windsurf](docs/installation-guides/install-windsurf.md)** - Installation guide for Windsurf IDE
 
-For a complete overview of all installation options, see our **[Installation Guides Index](docs/installation-guides/installation-guides.md)**.
+For a complete overview of all installation options, see our **[Installation Guides Index](docs/installation-guides)**.
 
 > **Note:** Any host application that supports local MCP servers should be able to access the local GitHub MCP server. However, the specific configuration process, syntax and stability of the integration will vary by host application. While many may follow a similar format to the examples above, this is not guaranteed. Please refer to your host application's documentation for the correct MCP configuration syntax and setup process.
 
@@ -294,6 +295,7 @@ The following sets of tools are available (all are on by default):
 | `pull_requests` | GitHub Pull Request related tools |
 | `repos` | GitHub Repository related tools |
 | `secret_protection` | Secret protection related tools, such as GitHub Secret Scanning |
+| `security_advisories` | Security advisories related tools |
 | `users` | GitHub User related tools |
 <!-- END AUTOMATED TOOLSETS -->
 
@@ -421,6 +423,13 @@ The following sets of tools are available (all are on by default):
 - **get_me** - Get my user profile
   - No parameters required
 
+- **get_team_members** - Get team members
+  - `org`: Organization login (owner) that contains the team. (string, required)
+  - `team_slug`: Team slug (string, required)
+
+- **get_teams** - Get teams
+  - `user`: Username to get teams for. If not provided, uses the authenticated user. (string, optional)
+
 </details>
 
 <details>
@@ -458,7 +467,7 @@ The following sets of tools are available (all are on by default):
 
 - **list_discussion_categories** - List discussion categories
   - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
+  - `repo`: Repository name. If not provided, discussion categories will be queried at the organisation level. (string, optional)
 
 - **list_discussions** - List discussions
   - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
@@ -525,6 +534,7 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
   - `title`: Issue title (string, required)
+  - `type`: Type of this issue (string, optional)
 
 - **get_issue** - Get issue details
   - `issue_number`: The number of the issue (number, required)
@@ -557,16 +567,19 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
+- **list_issue_types** - List available issue types
+  - `owner`: The organization owner of the repository (string, required)
+
 - **list_issues** - List issues
-  - `direction`: Sort direction (string, optional)
+  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
+  - `direction`: Order direction. If provided, the 'orderBy' also needs to be provided. (string, optional)
   - `labels`: Filter by labels (string[], optional)
+  - `orderBy`: Order issues by field. If provided, the 'direction' also needs to be provided. (string, optional)
   - `owner`: Repository owner (string, required)
-  - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `sort`: Sort order (string, optional)
-  - `state`: Filter by state (string, optional)
+  - `state`: Filter by state, by default both open and closed issues are returned when not provided (string, optional)
 
 - **list_sub_issues** - List sub-issues
   - `issue_number`: Issue number (number, required)
@@ -591,11 +604,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_issues** - Search issues
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only issues for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub issues search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only issues for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **update_issue** - Edit issue
@@ -608,6 +621,7 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `state`: New state (string, optional)
   - `title`: New title (string, optional)
+  - `type`: New issue type (string, optional)
 
 </details>
 
@@ -763,11 +777,11 @@ The following sets of tools are available (all are on by default):
 
 - **search_pull_requests** - Search pull requests
   - `order`: Sort order (string, optional)
-  - `owner`: Optional repository owner. If provided with repo, only notifications for this repository are listed. (string, optional)
+  - `owner`: Optional repository owner. If provided with repo, only pull requests for this repository are listed. (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Search query using GitHub pull request search syntax (string, required)
-  - `repo`: Optional repository name. If provided with owner, only notifications for this repository are listed. (string, optional)
+  - `repo`: Optional repository name. If provided with owner, only pull requests for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
 
 - **submit_pending_pull_request_review** - Submit the requester's latest pending pull request review
@@ -848,6 +862,15 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
+- **get_latest_release** - Get latest release
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+
+- **get_release_by_tag** - Get a release by tag name
+  - `owner`: Repository owner (string, required)
+  - `repo`: Repository name (string, required)
+  - `tag`: Tag name (e.g., 'v1.0.0') (string, required)
+
 - **get_tag** - Get tag details
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -866,6 +889,12 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch or tag name to list commits of. If not provided, uses the default branch of the repository. If a commit SHA is provided, will list commits up to that SHA. (string, optional)
+
+- **list_releases** - List releases
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
 
 - **list_tags** - List tags
   - `owner`: Repository owner (string, required)
@@ -909,6 +938,41 @@ The following sets of tools are available (all are on by default):
   - `resolution`: Filter by resolution (string, optional)
   - `secret_type`: A comma-separated list of secret types to return. All default secret patterns are returned. To return generic patterns, pass the token name(s) in the parameter. (string, optional)
   - `state`: Filter by state (string, optional)
+
+</details>
+
+<details>
+
+<summary>Security Advisories</summary>
+
+- **get_global_security_advisory** - Get a global security advisory
+  - `ghsaId`: GitHub Security Advisory ID (format: GHSA-xxxx-xxxx-xxxx). (string, required)
+
+- **list_global_security_advisories** - List global security advisories
+  - `affects`: Filter advisories by affected package or version (e.g. "package1,package2@1.0.0"). (string, optional)
+  - `cveId`: Filter by CVE ID. (string, optional)
+  - `cwes`: Filter by Common Weakness Enumeration IDs (e.g. ["79", "284", "22"]). (string[], optional)
+  - `ecosystem`: Filter by package ecosystem. (string, optional)
+  - `ghsaId`: Filter by GitHub Security Advisory ID (format: GHSA-xxxx-xxxx-xxxx). (string, optional)
+  - `isWithdrawn`: Whether to only return withdrawn advisories. (boolean, optional)
+  - `modified`: Filter by publish or update date or date range (ISO 8601 date or range). (string, optional)
+  - `published`: Filter by publish date or date range (ISO 8601 date or range). (string, optional)
+  - `severity`: Filter by severity. (string, optional)
+  - `type`: Advisory type. (string, optional)
+  - `updated`: Filter by update date or date range (ISO 8601 date or range). (string, optional)
+
+- **list_org_repository_security_advisories** - List org repository security advisories
+  - `direction`: Sort direction. (string, optional)
+  - `org`: The organization login. (string, required)
+  - `sort`: Sort field. (string, optional)
+  - `state`: Filter by advisory state. (string, optional)
+
+- **list_repository_security_advisories** - List repository security advisories
+  - `direction`: Sort direction. (string, optional)
+  - `owner`: The owner of the repository. (string, required)
+  - `repo`: The name of the repository. (string, required)
+  - `sort`: Sort field. (string, optional)
+  - `state`: Filter by advisory state. (string, optional)
 
 </details>
 
