@@ -6,7 +6,7 @@ import (
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/toolsets"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/shurcooL/githubv4"
 )
@@ -16,7 +16,7 @@ type GetGQLClientFn func(context.Context) (*githubv4.Client, error)
 
 var DefaultTools = []string{"all"}
 
-func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc) *toolsets.ToolsetGroup {
+func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc, contentWindowSize int) *toolsets.ToolsetGroup {
 	tsg := toolsets.NewToolsetGroup(readOnly)
 
 	// Define all available features with their default state (disabled)
@@ -31,6 +31,9 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ListBranches(getClient, t)),
 			toolsets.NewServerTool(ListTags(getClient, t)),
 			toolsets.NewServerTool(GetTag(getClient, t)),
+			toolsets.NewServerTool(ListReleases(getClient, t)),
+			toolsets.NewServerTool(GetLatestRelease(getClient, t)),
+			toolsets.NewServerTool(GetReleaseByTag(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
@@ -51,24 +54,37 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(GetIssue(getClient, t)),
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
-			toolsets.NewServerTool(ListIssues(getClient, t)),
+			toolsets.NewServerTool(ListIssues(getGQLClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			toolsets.NewServerTool(ListIssueTypes(getClient, t)),
+			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreateIssue(getClient, t)),
 			toolsets.NewServerTool(AddIssueComment(getClient, t)),
 			toolsets.NewServerTool(UpdateIssue(getClient, t)),
 			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
-		)
+			toolsets.NewServerTool(AddSubIssue(getClient, t)),
+			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
+			toolsets.NewServerTool(ReprioritizeSubIssue(getClient, t)),
+		).AddPrompts(
+		toolsets.NewServerPrompt(AssignCodingAgentPrompt(t)),
+		toolsets.NewServerPrompt(IssueToFixWorkflowPrompt(t)),
+	)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
 			toolsets.NewServerTool(SearchUsers(getClient, t)),
+		)
+	orgs := toolsets.NewToolset("orgs", "GitHub Organization related tools").
+		AddReadTools(
+			toolsets.NewServerTool(SearchOrgs(getClient, t)),
 		)
 	pullRequests := toolsets.NewToolset("pull_requests", "GitHub Pull Request related tools").
 		AddReadTools(
 			toolsets.NewServerTool(GetPullRequest(getClient, t)),
 			toolsets.NewServerTool(ListPullRequests(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestFiles(getClient, t)),
+			toolsets.NewServerTool(SearchPullRequests(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestStatus(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestComments(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestReviews(getClient, t)),
@@ -78,13 +94,13 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(MergePullRequest(getClient, t)),
 			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
 			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
-			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
+			toolsets.NewServerTool(UpdatePullRequest(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
 
 			// Reviews
 			toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)),
 			toolsets.NewServerTool(CreatePendingPullRequestReview(getGQLClient, t)),
-			toolsets.NewServerTool(AddPullRequestReviewCommentToPendingReview(getGQLClient, t)),
+			toolsets.NewServerTool(AddCommentToPendingReview(getGQLClient, t)),
 			toolsets.NewServerTool(SubmitPendingPullRequestReview(getGQLClient, t)),
 			toolsets.NewServerTool(DeletePendingPullRequestReview(getGQLClient, t)),
 		)
@@ -97,6 +113,11 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		AddReadTools(
 			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
 			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
+		)
+	dependabot := toolsets.NewToolset("dependabot", "Dependabot tools").
+		AddReadTools(
+			toolsets.NewServerTool(GetDependabotAlert(getClient, t)),
+			toolsets.NewServerTool(ListDependabotAlerts(getClient, t)),
 		)
 
 	notifications := toolsets.NewToolset("notifications", "GitHub Notifications related tools").
@@ -111,6 +132,14 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)),
 		)
 
+	discussions := toolsets.NewToolset("discussions", "GitHub Discussions related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListDiscussions(getGQLClient, t)),
+			toolsets.NewServerTool(GetDiscussion(getGQLClient, t)),
+			toolsets.NewServerTool(GetDiscussionComments(getGQLClient, t)),
+			toolsets.NewServerTool(ListDiscussionCategories(getGQLClient, t)),
+		)
+
 	actions := toolsets.NewToolset("actions", "GitHub Actions workflows and CI/CD operations").
 		AddReadTools(
 			toolsets.NewServerTool(ListWorkflows(getClient, t)),
@@ -118,7 +147,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetWorkflowRun(getClient, t)),
 			toolsets.NewServerTool(GetWorkflowRunLogs(getClient, t)),
 			toolsets.NewServerTool(ListWorkflowJobs(getClient, t)),
-			toolsets.NewServerTool(GetJobLogs(getClient, t)),
+			toolsets.NewServerTool(GetJobLogs(getClient, t, contentWindowSize)),
 			toolsets.NewServerTool(ListWorkflowRunArtifacts(getClient, t)),
 			toolsets.NewServerTool(DownloadWorkflowRunArtifact(getClient, t)),
 			toolsets.NewServerTool(GetWorkflowRunUsage(getClient, t)),
@@ -131,25 +160,49 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(DeleteWorkflowRunLogs(getClient, t)),
 		)
 
+	securityAdvisories := toolsets.NewToolset("security_advisories", "Security advisories related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListGlobalSecurityAdvisories(getClient, t)),
+			toolsets.NewServerTool(GetGlobalSecurityAdvisory(getClient, t)),
+			toolsets.NewServerTool(ListRepositorySecurityAdvisories(getClient, t)),
+			toolsets.NewServerTool(ListOrgRepositorySecurityAdvisories(getClient, t)),
+		)
+
 	// Keep experiments alive so the system doesn't error out when it's always enabled
 	experiments := toolsets.NewToolset("experiments", "Experimental features that are not considered stable yet")
 
 	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
 		AddReadTools(
 			toolsets.NewServerTool(GetMe(getClient, t)),
+			toolsets.NewServerTool(GetTeams(getClient, getGQLClient, t)),
+			toolsets.NewServerTool(GetTeamMembers(getGQLClient, t)),
+		)
+
+	gists := toolsets.NewToolset("gists", "GitHub Gist related tools").
+		AddReadTools(
+			toolsets.NewServerTool(ListGists(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(CreateGist(getClient, t)),
+			toolsets.NewServerTool(UpdateGist(getClient, t)),
 		)
 
 	// Add toolsets to the group
 	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
 	tsg.AddToolset(issues)
+	tsg.AddToolset(orgs)
 	tsg.AddToolset(users)
 	tsg.AddToolset(pullRequests)
 	tsg.AddToolset(actions)
 	tsg.AddToolset(codeSecurity)
 	tsg.AddToolset(secretProtection)
+	tsg.AddToolset(dependabot)
 	tsg.AddToolset(notifications)
 	tsg.AddToolset(experiments)
+	tsg.AddToolset(discussions)
+	tsg.AddToolset(gists)
+	tsg.AddToolset(securityAdvisories)
 
 	return tsg
 }
@@ -172,4 +225,13 @@ func InitDynamicToolset(s *server.MCPServer, tsg *toolsets.ToolsetGroup, t trans
 // ToBoolPtr converts a bool to a *bool pointer.
 func ToBoolPtr(b bool) *bool {
 	return &b
+}
+
+// ToStringPtr converts a string to a *string pointer.
+// Returns nil if the string is empty.
+func ToStringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

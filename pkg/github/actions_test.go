@@ -3,12 +3,19 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"runtime"
+	"runtime/debug"
+	"strings"
 	"testing"
 
+	"github.com/github/github-mcp-server/internal/profiler"
+	buffer "github.com/github/github-mcp-server/pkg/buffer"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +30,7 @@ func Test_ListWorkflows(t *testing.T) {
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
-	assert.Contains(t, tool.InputSchema.Properties, "per_page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
 
@@ -323,12 +330,14 @@ func Test_CancelWorkflowRun(t *testing.T) {
 		{
 			name: "successful workflow run cancellation",
 			mockedClient: mock.NewMockedHTTPClient(
-				mock.WithRequestMatch(
+				mock.WithRequestMatchHandler(
 					mock.EndpointPattern{
 						Pattern: "/repos/owner/repo/actions/runs/12345/cancel",
 						Method:  "POST",
 					},
-					"", // Empty response body for 202 Accepted
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusAccepted)
+					}),
 				),
 			),
 			requestArgs: map[string]any{
@@ -337,6 +346,27 @@ func Test_CancelWorkflowRun(t *testing.T) {
 				"run_id": float64(12345),
 			},
 			expectError: false,
+		},
+		{
+			name: "conflict when cancelling a workflow run",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/actions/runs/12345/cancel",
+						Method:  "POST",
+					},
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusConflict)
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"owner":  "owner",
+				"repo":   "repo",
+				"run_id": float64(12345),
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to cancel workflow run",
 		},
 		{
 			name:         "missing required parameter run_id",
@@ -369,7 +399,7 @@ func Test_CancelWorkflowRun(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			if tc.expectedErrMsg != "" {
-				assert.Equal(t, tc.expectedErrMsg, textContent.Text)
+				assert.Contains(t, textContent.Text, tc.expectedErrMsg)
 				return
 			}
 
@@ -393,7 +423,7 @@ func Test_ListWorkflowRunArtifacts(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "owner")
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "run_id")
-	assert.Contains(t, tool.InputSchema.Properties, "per_page")
+	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo", "run_id"})
 
@@ -538,7 +568,7 @@ func Test_DownloadWorkflowRunArtifact(t *testing.T) {
 						Pattern: "/repos/owner/repo/actions/artifacts/123/zip",
 						Method:  "GET",
 					},
-					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						// GitHub returns a 302 redirect to the download URL
 						w.Header().Set("Location", "https://api.github.com/repos/owner/repo/actions/artifacts/123/download")
 						w.WriteHeader(http.StatusFound)
@@ -784,7 +814,7 @@ func Test_GetWorkflowRunUsage(t *testing.T) {
 func Test_GetJobLogs(t *testing.T) {
 	// Verify tool definition once
 	mockClient := github.NewClient(nil)
-	tool, _ := GetJobLogs(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+	tool, _ := GetJobLogs(stubGetClientFn(mockClient), translations.NullTranslationHelper, 5000)
 
 	assert.Equal(t, "get_job_logs", tool.Name)
 	assert.NotEmpty(t, tool.Description)
@@ -1013,7 +1043,7 @@ func Test_GetJobLogs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
 			client := github.NewClient(tc.mockedClient)
-			_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+			_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 			// Create call request
 			request := createMCPRequest(tc.requestArgs)
@@ -1055,7 +1085,7 @@ func Test_GetJobLogs_WithContentReturn(t *testing.T) {
 	logContent := "2023-01-01T10:00:00.000Z Starting job...\n2023-01-01T10:00:01.000Z Running tests...\n2023-01-01T10:00:02.000Z Job completed successfully"
 
 	// Create a test server to serve log content
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(logContent))
 	}))
@@ -1072,7 +1102,7 @@ func Test_GetJobLogs_WithContentReturn(t *testing.T) {
 	)
 
 	client := github.NewClient(mockedClient)
-	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
 
 	request := createMCPRequest(map[string]any{
 		"owner":          "owner",
@@ -1094,4 +1124,198 @@ func Test_GetJobLogs_WithContentReturn(t *testing.T) {
 	assert.Equal(t, logContent, response["logs_content"])
 	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
 	assert.NotContains(t, response, "logs_url") // Should not have URL when returning content
+}
+
+func Test_GetJobLogs_WithContentReturnAndTailLines(t *testing.T) {
+	// Test the return_content functionality with a mock HTTP server
+	logContent := "2023-01-01T10:00:00.000Z Starting job...\n2023-01-01T10:00:01.000Z Running tests...\n2023-01-01T10:00:02.000Z Job completed successfully"
+	expectedLogContent := "2023-01-01T10:00:02.000Z Job completed successfully"
+
+	// Create a test server to serve log content
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(logContent))
+	}))
+	defer testServer.Close()
+
+	mockedClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatchHandler(
+			mock.GetReposActionsJobsLogsByOwnerByRepoByJobId,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Location", testServer.URL)
+				w.WriteHeader(http.StatusFound)
+			}),
+		),
+	)
+
+	client := github.NewClient(mockedClient)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
+
+	request := createMCPRequest(map[string]any{
+		"owner":          "owner",
+		"repo":           "repo",
+		"job_id":         float64(123),
+		"return_content": true,
+		"tail_lines":     float64(1), // Requesting last 1 line
+	})
+
+	result, err := handler(context.Background(), request)
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+
+	textContent := getTextResult(t, result)
+	var response map[string]any
+	err = json.Unmarshal([]byte(textContent.Text), &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, float64(123), response["job_id"])
+	assert.Equal(t, float64(3), response["original_length"])
+	assert.Equal(t, expectedLogContent, response["logs_content"])
+	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
+	assert.NotContains(t, response, "logs_url") // Should not have URL when returning content
+}
+
+func Test_GetJobLogs_WithContentReturnAndLargeTailLines(t *testing.T) {
+	logContent := "Line 1\nLine 2\nLine 3"
+	expectedLogContent := "Line 1\nLine 2\nLine 3"
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(logContent))
+	}))
+	defer testServer.Close()
+
+	mockedClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatchHandler(
+			mock.GetReposActionsJobsLogsByOwnerByRepoByJobId,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Location", testServer.URL)
+				w.WriteHeader(http.StatusFound)
+			}),
+		),
+	)
+
+	client := github.NewClient(mockedClient)
+	_, handler := GetJobLogs(stubGetClientFn(client), translations.NullTranslationHelper, 5000)
+
+	request := createMCPRequest(map[string]any{
+		"owner":          "owner",
+		"repo":           "repo",
+		"job_id":         float64(123),
+		"return_content": true,
+		"tail_lines":     float64(100),
+	})
+
+	result, err := handler(context.Background(), request)
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+
+	textContent := getTextResult(t, result)
+	var response map[string]any
+	err = json.Unmarshal([]byte(textContent.Text), &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, float64(123), response["job_id"])
+	assert.Equal(t, float64(3), response["original_length"])
+	assert.Equal(t, expectedLogContent, response["logs_content"])
+	assert.Equal(t, "Job logs content retrieved successfully", response["message"])
+	assert.NotContains(t, response, "logs_url")
+}
+
+func Test_MemoryUsage_SlidingWindow_vs_NoWindow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping memory profiling test in short mode")
+	}
+
+	const logLines = 100000
+	const bufferSize = 5000
+	largeLogContent := strings.Repeat("log line with some content\n", logLines-1) + "final log line"
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(largeLogContent))
+	}))
+	defer testServer.Close()
+
+	os.Setenv("GITHUB_MCP_PROFILING_ENABLED", "true")
+	defer os.Unsetenv("GITHUB_MCP_PROFILING_ENABLED")
+
+	profiler.InitFromEnv(nil)
+	ctx := context.Background()
+
+	debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(100)
+
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+	}
+
+	var baselineStats runtime.MemStats
+	runtime.ReadMemStats(&baselineStats)
+
+	profile1, err1 := profiler.ProfileFuncWithMetrics(ctx, "sliding_window", func() (int, int64, error) {
+		resp1, err := http.Get(testServer.URL)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer resp1.Body.Close()                                                                  //nolint:bodyclose
+		content, totalLines, _, err := buffer.ProcessResponseAsRingBufferToEnd(resp1, bufferSize) //nolint:bodyclose
+		return totalLines, int64(len(content)), err
+	})
+	require.NoError(t, err1)
+
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+	}
+
+	profile2, err2 := profiler.ProfileFuncWithMetrics(ctx, "no_window", func() (int, int64, error) {
+		resp2, err := http.Get(testServer.URL)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer resp2.Body.Close() //nolint:bodyclose
+
+		allContent, err := io.ReadAll(resp2.Body)
+		if err != nil {
+			return 0, 0, err
+		}
+
+		allLines := strings.Split(string(allContent), "\n")
+		var nonEmptyLines []string
+		for _, line := range allLines {
+			if line != "" {
+				nonEmptyLines = append(nonEmptyLines, line)
+			}
+		}
+		totalLines := len(nonEmptyLines)
+
+		var resultLines []string
+		if totalLines > bufferSize {
+			resultLines = nonEmptyLines[totalLines-bufferSize:]
+		} else {
+			resultLines = nonEmptyLines
+		}
+
+		result := strings.Join(resultLines, "\n")
+		return totalLines, int64(len(result)), nil
+	})
+	require.NoError(t, err2)
+
+	assert.Greater(t, profile2.MemoryDelta, profile1.MemoryDelta,
+		"Sliding window should use less memory than reading all into memory")
+
+	assert.Equal(t, profile1.LinesCount, profile2.LinesCount,
+		"Both approaches should count the same number of input lines")
+	assert.InDelta(t, profile1.BytesCount, profile2.BytesCount, 100,
+		"Both approaches should produce similar output sizes (within 100 bytes)")
+
+	memoryReduction := float64(profile2.MemoryDelta-profile1.MemoryDelta) / float64(profile2.MemoryDelta) * 100
+	t.Logf("Memory reduction: %.1f%% (%.2f MB vs %.2f MB)",
+		memoryReduction,
+		float64(profile2.MemoryDelta)/1024/1024,
+		float64(profile1.MemoryDelta)/1024/1024)
+
+	t.Logf("Baseline: %d bytes", baselineStats.Alloc)
+	t.Logf("Sliding window: %s", profile1.String())
+	t.Logf("No window: %s", profile2.String())
 }

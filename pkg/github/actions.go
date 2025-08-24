@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/github/github-mcp-server/internal/profiler"
+	buffer "github.com/github/github-mcp-server/pkg/buffer"
+	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -36,12 +38,7 @@ func ListWorkflows(getClient GetClientFn, t translations.TranslationHelperFunc) 
 				mcp.Required(),
 				mcp.Description(DescriptionRepositoryName),
 			),
-			mcp.WithNumber("per_page",
-				mcp.Description("The number of results per page (max 100)"),
-			),
-			mcp.WithNumber("page",
-				mcp.Description("The page number of the results to fetch"),
-			),
+			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -54,11 +51,7 @@ func ListWorkflows(getClient GetClientFn, t translations.TranslationHelperFunc) 
 			}
 
 			// Get optional pagination parameters
-			perPage, err := OptionalIntParam(request, "per_page")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			page, err := OptionalIntParam(request, "page")
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -70,8 +63,8 @@ func ListWorkflows(getClient GetClientFn, t translations.TranslationHelperFunc) 
 
 			// Set up list options
 			opts := &github.ListOptions{
-				PerPage: perPage,
-				Page:    page,
+				PerPage: pagination.PerPage,
+				Page:    pagination.Page,
 			}
 
 			workflows, resp, err := client.Actions.ListWorkflows(ctx, owner, repo, opts)
@@ -156,12 +149,7 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 				mcp.Description("Returns workflow runs with the check run status"),
 				mcp.Enum("queued", "in_progress", "completed", "requested", "waiting"),
 			),
-			mcp.WithNumber("per_page",
-				mcp.Description("The number of results per page (max 100)"),
-			),
-			mcp.WithNumber("page",
-				mcp.Description("The page number of the results to fetch"),
-			),
+			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -196,11 +184,7 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 			}
 
 			// Get optional pagination parameters
-			perPage, err := OptionalIntParam(request, "per_page")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			page, err := OptionalIntParam(request, "page")
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -217,8 +201,8 @@ func ListWorkflowRuns(getClient GetClientFn, t translations.TranslationHelperFun
 				Event:  event,
 				Status: status,
 				ListOptions: github.ListOptions{
-					PerPage: perPage,
-					Page:    page,
+					PerPage: pagination.PerPage,
+					Page:    pagination.Page,
 				},
 			}
 
@@ -482,12 +466,7 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 				mcp.Description("Filters jobs by their completed_at timestamp"),
 				mcp.Enum("latest", "all"),
 			),
-			mcp.WithNumber("per_page",
-				mcp.Description("The number of results per page (max 100)"),
-			),
-			mcp.WithNumber("page",
-				mcp.Description("The page number of the results to fetch"),
-			),
+			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -511,11 +490,7 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 			}
 
 			// Get optional pagination parameters
-			perPage, err := OptionalIntParam(request, "per_page")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			page, err := OptionalIntParam(request, "page")
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -529,8 +504,8 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 			opts := &github.ListWorkflowJobsOptions{
 				Filter: filter,
 				ListOptions: github.ListOptions{
-					PerPage: perPage,
-					Page:    page,
+					PerPage: pagination.PerPage,
+					Page:    pagination.Page,
 				},
 			}
 
@@ -556,7 +531,7 @@ func ListWorkflowJobs(getClient GetClientFn, t translations.TranslationHelperFun
 }
 
 // GetJobLogs creates a tool to download logs for a specific workflow job or efficiently get all failed job logs for a workflow run
-func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc, contentWindowSize int) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_job_logs",
 			mcp.WithDescription(t("TOOL_GET_JOB_LOGS_DESCRIPTION", "Download logs for a specific workflow job or efficiently get all failed job logs for a workflow run")),
 			mcp.WithToolAnnotation(mcp.ToolAnnotation{
@@ -582,6 +557,10 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			),
 			mcp.WithBoolean("return_content",
 				mcp.Description("Returns actual log content instead of URLs"),
+			),
+			mcp.WithNumber("tail_lines",
+				mcp.Description("Number of lines to return from the end of the log"),
+				mcp.DefaultNumber(500),
 			),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -611,6 +590,14 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			tailLines, err := OptionalIntParam(request, "tail_lines")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			// Default to 500 lines if not specified
+			if tailLines == 0 {
+				tailLines = 500
+			}
 
 			client, err := getClient(ctx)
 			if err != nil {
@@ -627,10 +614,10 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 
 			if failedOnly && runID > 0 {
 				// Handle failed-only mode: get logs for all failed jobs in the workflow run
-				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent)
+				return handleFailedJobLogs(ctx, client, owner, repo, int64(runID), returnContent, tailLines, contentWindowSize)
 			} else if jobID > 0 {
 				// Handle single job mode
-				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent)
+				return handleSingleJobLogs(ctx, client, owner, repo, int64(jobID), returnContent, tailLines, contentWindowSize)
 			}
 
 			return mcp.NewToolResultError("Either job_id must be provided for single job logs, or run_id with failed_only=true for failed job logs"), nil
@@ -638,13 +625,13 @@ func GetJobLogs(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 }
 
 // handleFailedJobLogs gets logs for all failed jobs in a workflow run
-func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool) (*mcp.CallToolResult, error) {
+func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo string, runID int64, returnContent bool, tailLines int, contentWindowSize int) (*mcp.CallToolResult, error) {
 	// First, get all jobs for the workflow run
 	jobs, resp, err := client.Actions.ListWorkflowJobs(ctx, owner, repo, runID, &github.ListWorkflowJobsOptions{
 		Filter: "latest",
 	})
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to list workflow jobs: %v", err)), nil
+		return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list workflow jobs", resp, err), nil
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -670,7 +657,7 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 	// Collect logs for all failed jobs
 	var logResults []map[string]any
 	for _, job := range failedJobs {
-		jobResult, err := getJobLogData(ctx, client, owner, repo, job.GetID(), job.GetName(), returnContent)
+		jobResult, resp, err := getJobLogData(ctx, client, owner, repo, job.GetID(), job.GetName(), returnContent, tailLines, contentWindowSize)
 		if err != nil {
 			// Continue with other jobs even if one fails
 			jobResult = map[string]any{
@@ -678,7 +665,10 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 				"job_name": job.GetName(),
 				"error":    err.Error(),
 			}
+			// Enable reporting of status codes and error causes
+			_, _ = ghErrors.NewGitHubAPIErrorToCtx(ctx, "failed to get job logs", resp, err) // Explicitly ignore error for graceful handling
 		}
+
 		logResults = append(logResults, jobResult)
 	}
 
@@ -700,10 +690,10 @@ func handleFailedJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // handleSingleJobLogs gets logs for a single job
-func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool) (*mcp.CallToolResult, error) {
-	jobResult, err := getJobLogData(ctx, client, owner, repo, jobID, "", returnContent)
+func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo string, jobID int64, returnContent bool, tailLines int, contentWindowSize int) (*mcp.CallToolResult, error) {
+	jobResult, resp, err := getJobLogData(ctx, client, owner, repo, jobID, "", returnContent, tailLines, contentWindowSize)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get job logs", resp, err), nil
 	}
 
 	r, err := json.Marshal(jobResult)
@@ -715,11 +705,11 @@ func handleSingleJobLogs(ctx context.Context, client *github.Client, owner, repo
 }
 
 // getJobLogData retrieves log data for a single job, either as URL or content
-func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool) (map[string]any, error) {
+func getJobLogData(ctx context.Context, client *github.Client, owner, repo string, jobID int64, jobName string, returnContent bool, tailLines int, contentWindowSize int) (map[string]any, *github.Response, error) {
 	// Get the download URL for the job logs
 	url, resp, err := client.Actions.GetWorkflowJobLogs(ctx, owner, repo, jobID, 1)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get job logs for job %d: %w", jobID, err)
+		return nil, resp, fmt.Errorf("failed to get job logs for job %d: %w", jobID, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -732,12 +722,17 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 
 	if returnContent {
 		// Download and return the actual log content
-		content, err := downloadLogContent(url.String())
+		content, originalLength, httpResp, err := downloadLogContent(ctx, url.String(), tailLines, contentWindowSize) //nolint:bodyclose // Response body is closed in downloadLogContent, but we need to return httpResp
 		if err != nil {
-			return nil, fmt.Errorf("failed to download log content for job %d: %w", jobID, err)
+			// To keep the return value consistent wrap the response as a GitHub Response
+			ghRes := &github.Response{
+				Response: httpResp,
+			}
+			return nil, ghRes, fmt.Errorf("failed to download log content for job %d: %w", jobID, err)
 		}
 		result["logs_content"] = content
 		result["message"] = "Job logs content retrieved successfully"
+		result["original_length"] = originalLength
 	} else {
 		// Return just the URL
 		result["logs_url"] = url.String()
@@ -745,29 +740,42 @@ func getJobLogData(ctx context.Context, client *github.Client, owner, repo strin
 		result["note"] = "The logs_url provides a download link for the individual job logs in plain text format. Use return_content=true to get the actual log content."
 	}
 
-	return result, nil
+	return result, resp, nil
 }
 
-// downloadLogContent downloads the actual log content from a GitHub logs URL
-func downloadLogContent(logURL string) (string, error) {
-	httpResp, err := http.Get(logURL) //nolint:gosec // URLs are provided by GitHub API and are safe
+func downloadLogContent(ctx context.Context, logURL string, tailLines int, maxLines int) (string, int, *http.Response, error) {
+	prof := profiler.New(nil, profiler.IsProfilingEnabled())
+	finish := prof.Start(ctx, "log_buffer_processing")
+
+	httpResp, err := http.Get(logURL) //nolint:gosec
 	if err != nil {
-		return "", fmt.Errorf("failed to download logs: %w", err)
+		return "", 0, httpResp, fmt.Errorf("failed to download logs: %w", err)
 	}
 	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download logs: HTTP %d", httpResp.StatusCode)
+		return "", 0, httpResp, fmt.Errorf("failed to download logs: HTTP %d", httpResp.StatusCode)
 	}
 
-	content, err := io.ReadAll(httpResp.Body)
+	bufferSize := tailLines
+	if bufferSize > maxLines {
+		bufferSize = maxLines
+	}
+
+	processedInput, totalLines, httpResp, err := buffer.ProcessResponseAsRingBufferToEnd(httpResp, bufferSize)
 	if err != nil {
-		return "", fmt.Errorf("failed to read log content: %w", err)
+		return "", 0, httpResp, fmt.Errorf("failed to process log content: %w", err)
 	}
 
-	// Clean up and format the log content for better readability
-	logContent := strings.TrimSpace(string(content))
-	return logContent, nil
+	lines := strings.Split(processedInput, "\n")
+	if len(lines) > tailLines {
+		lines = lines[len(lines)-tailLines:]
+	}
+	finalResult := strings.Join(lines, "\n")
+
+	_ = finish(len(lines), int64(len(finalResult)))
+
+	return finalResult, totalLines, httpResp, nil
 }
 
 // RerunWorkflowRun creates a tool to re-run an entire workflow run
@@ -813,7 +821,7 @@ func RerunWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFun
 
 			resp, err := client.Actions.RerunWorkflowByID(ctx, owner, repo, runID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to rerun workflow run: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to rerun workflow run", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -876,7 +884,7 @@ func RerunFailedJobs(getClient GetClientFn, t translations.TranslationHelperFunc
 
 			resp, err := client.Actions.RerunFailedJobsByID(ctx, owner, repo, runID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to rerun failed jobs: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to rerun failed jobs", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -939,7 +947,9 @@ func CancelWorkflowRun(getClient GetClientFn, t translations.TranslationHelperFu
 
 			resp, err := client.Actions.CancelWorkflowRunByID(ctx, owner, repo, runID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to cancel workflow run: %w", err)
+				if _, ok := err.(*github.AcceptedError); !ok {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to cancel workflow run", resp, err), nil
+				}
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -979,12 +989,7 @@ func ListWorkflowRunArtifacts(getClient GetClientFn, t translations.TranslationH
 				mcp.Required(),
 				mcp.Description("The unique identifier of the workflow run"),
 			),
-			mcp.WithNumber("per_page",
-				mcp.Description("The number of results per page (max 100)"),
-			),
-			mcp.WithNumber("page",
-				mcp.Description("The page number of the results to fetch"),
-			),
+			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			owner, err := RequiredParam[string](request, "owner")
@@ -1002,11 +1007,7 @@ func ListWorkflowRunArtifacts(getClient GetClientFn, t translations.TranslationH
 			runID := int64(runIDInt)
 
 			// Get optional pagination parameters
-			perPage, err := OptionalIntParam(request, "per_page")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			page, err := OptionalIntParam(request, "page")
+			pagination, err := OptionalPaginationParams(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -1018,13 +1019,13 @@ func ListWorkflowRunArtifacts(getClient GetClientFn, t translations.TranslationH
 
 			// Set up list options
 			opts := &github.ListOptions{
-				PerPage: perPage,
-				Page:    page,
+				PerPage: pagination.PerPage,
+				Page:    pagination.Page,
 			}
 
 			artifacts, resp, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, runID, opts)
 			if err != nil {
-				return nil, fmt.Errorf("failed to list workflow run artifacts: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list workflow run artifacts", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -1081,7 +1082,7 @@ func DownloadWorkflowRunArtifact(getClient GetClientFn, t translations.Translati
 			// Get the download URL for the artifact
 			url, resp, err := client.Actions.DownloadArtifact(ctx, owner, repo, artifactID, 1)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get artifact download URL: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get artifact download URL", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -1146,7 +1147,7 @@ func DeleteWorkflowRunLogs(getClient GetClientFn, t translations.TranslationHelp
 
 			resp, err := client.Actions.DeleteWorkflowRunLogs(ctx, owner, repo, runID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to delete workflow run logs: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to delete workflow run logs", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
@@ -1209,7 +1210,7 @@ func GetWorkflowRunUsage(getClient GetClientFn, t translations.TranslationHelper
 
 			usage, resp, err := client.Actions.GetWorkflowRunUsageByID(ctx, owner, repo, runID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get workflow run usage: %w", err)
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get workflow run usage", resp, err), nil
 			}
 			defer func() { _ = resp.Body.Close() }()
 
