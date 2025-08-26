@@ -533,7 +533,7 @@ The following sets of tools are available (all are on by default):
   - `milestone`: Milestone number (number, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
-  - `title`: Issue title (string, required)
+  - `title`: Issue title - must be meaningful (at least 3 characters, contain letters/numbers, not placeholder text) (string, required)
   - `type`: Type of this issue (string, optional)
 
 - **get_issue** - Get issue details
