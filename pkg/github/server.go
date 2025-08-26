@@ -139,7 +139,7 @@ func RequiredMeaningfulTitle(r mcp.CallToolRequest, p string) (string, error) {
 	
 	for _, placeholder := range placeholders {
 		if lowerTitle == placeholder {
-			return "", fmt.Errorf("title appears to be a placeholder - please provide a meaningful title")
+			return "", fmt.Errorf("title appears to be a placeholder")
 		}
 	}
 	
