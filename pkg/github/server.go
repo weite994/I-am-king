@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
 
 	"github.com/google/go-github/v74/github"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -84,6 +86,64 @@ func RequiredParam[T comparable](r mcp.CallToolRequest, p string) (T, error) {
 	}
 
 	return val, nil
+}
+
+// RequiredMeaningfulTitle validates that a title parameter is present, non-empty, and meaningful.
+// It performs additional checks beyond RequiredParam to ensure the title has substance:
+// - Must be at least 3 characters long
+// - Must contain at least one letter or number
+// - Cannot be just whitespace or common placeholder text
+func RequiredMeaningfulTitle(r mcp.CallToolRequest, p string) (string, error) {
+	title, err := RequiredParam[string](r, p)
+	if err != nil {
+		return "", err
+	}
+	
+	// Trim whitespace for validation
+	trimmed := strings.TrimSpace(title)
+	
+	// Check minimum length
+	if len(trimmed) < 3 {
+		return "", fmt.Errorf("title must be at least 3 characters long")
+	}
+	
+	// Check for at least one alphanumeric character
+	hasAlphaNum := false
+	for _, r := range trimmed {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			hasAlphaNum = true
+			break
+		}
+	}
+	if !hasAlphaNum {
+		return "", fmt.Errorf("title must contain at least one letter or number")
+	}
+	
+	// Check for common placeholder patterns (case-insensitive)
+	lowerTitle := strings.ToLower(trimmed)
+	placeholders := []string{
+		"title",
+		"add a title",
+		"enter title here",
+		"issue title",
+		"your title here",
+		"todo",
+		"tbd",
+		"to be determined",
+		"placeholder",
+		"example",
+		"test",
+		"testing",
+		"untitled",
+	}
+	
+	for _, placeholder := range placeholders {
+		if lowerTitle == placeholder {
+			return "", fmt.Errorf("title appears to be a placeholder - please provide a meaningful title")
+		}
+	}
+	
+	return title, nil
 }
 
 // RequiredInt is a helper function that can be used to fetch a requested parameter from the request.

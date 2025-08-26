@@ -681,6 +681,63 @@ func Test_CreateIssue(t *testing.T) {
 			expectError:    false,
 			expectedErrMsg: "missing required parameter: title",
 		},
+		{
+			name: "issue creation fails with too short title",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposIssuesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusUnprocessableEntity)
+						_, _ = w.Write([]byte(`{"message": "Validation failed"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"title": "Hi",
+			},
+			expectError:    false,
+			expectedErrMsg: "title must be at least 3 characters long",
+		},
+		{
+			name: "issue creation fails with placeholder title",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposIssuesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusUnprocessableEntity)
+						_, _ = w.Write([]byte(`{"message": "Validation failed"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"title": "Title",
+			},
+			expectError:    false,
+			expectedErrMsg: "title appears to be a placeholder",
+		},
+		{
+			name: "issue creation fails with non-alphanumeric title",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostReposIssuesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						w.WriteHeader(http.StatusUnprocessableEntity)
+						_, _ = w.Write([]byte(`{"message": "Validation failed"}`))
+					}),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"title": "!!!",
+			},
+			expectError:    false,
+			expectedErrMsg: "title must contain at least one letter or number",
+		},
 	}
 
 	for _, tc := range tests {

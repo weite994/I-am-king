@@ -560,3 +560,124 @@ func TestOptionalPaginationParams(t *testing.T) {
 		})
 	}
 }
+
+func Test_RequiredMeaningfulTitle(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      map[string]interface{}
+		paramName   string
+		expected    string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "valid meaningful title",
+			params:      map[string]interface{}{"title": "Fix bug in user authentication"},
+			paramName:   "title",
+			expected:    "Fix bug in user authentication",
+			expectError: false,
+		},
+		{
+			name:        "valid short meaningful title",
+			params:      map[string]interface{}{"title": "Bug"},
+			paramName:   "title",
+			expected:    "Bug",
+			expectError: false,
+		},
+		{
+			name:        "missing parameter",
+			params:      map[string]interface{}{},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "missing required parameter: title",
+		},
+		{
+			name:        "empty string",
+			params:      map[string]interface{}{"title": ""},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "missing required parameter: title",
+		},
+		{
+			name:        "too short",
+			params:      map[string]interface{}{"title": "Hi"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title must be at least 3 characters long",
+		},
+		{
+			name:        "only whitespace",
+			params:      map[string]interface{}{"title": "   "},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title must be at least 3 characters long",
+		},
+		{
+			name:        "only special characters",
+			params:      map[string]interface{}{"title": "!!!"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title must contain at least one letter or number",
+		},
+		{
+			name:        "placeholder title",
+			params:      map[string]interface{}{"title": "Title"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title appears to be a placeholder",
+		},
+		{
+			name:        "placeholder with different case",
+			params:      map[string]interface{}{"title": "TITLE"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title appears to be a placeholder",
+		},
+		{
+			name:        "todo placeholder",
+			params:      map[string]interface{}{"title": "TODO"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title appears to be a placeholder",
+		},
+		{
+			name:        "test placeholder",
+			params:      map[string]interface{}{"title": "test"},
+			paramName:   "title",
+			expected:    "",
+			expectError: true,
+			errorMsg:    "title appears to be a placeholder",
+		},
+		{
+			name:        "valid title with spaces",
+			params:      map[string]interface{}{"title": "  Fix authentication bug  "},
+			paramName:   "title",
+			expected:    "  Fix authentication bug  ",
+			expectError: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			request := createMCPRequest(tc.params)
+			result, err := RequiredMeaningfulTitle(request, tc.paramName)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorMsg)
+				assert.Equal(t, tc.expected, result)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expected, result)
+			}
+		})
+	}
+}

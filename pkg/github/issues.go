@@ -801,7 +801,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			title, err := RequiredParam[string](request, "title")
+			title, err := RequiredMeaningfulTitle(request, "title")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
