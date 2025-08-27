@@ -213,9 +213,6 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithString("author",
 				mcp.Description("Author username or email address to filter commits by"),
 			),
-			mcp.WithBoolean("include_diffs",
-				mcp.Description("Whether to include file diffs and stats in the response. Default is false for faster responses."),
-			),
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -232,10 +229,6 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			author, err := OptionalParam[string](request, "author")
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			includeDiffs, err := OptionalParam[bool](request, "include_diffs")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -282,7 +275,7 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			// Convert to minimal commits
 			minimalCommits := make([]MinimalCommit, 0, len(commits))
 			for _, commit := range commits {
-				minimalCommits = append(minimalCommits, convertToMinimalCommit(commit, includeDiffs))
+				minimalCommits = append(minimalCommits, convertToMinimalCommit(commit, false))
 			}
 
 			r, err := json.Marshal(minimalCommits)

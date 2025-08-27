@@ -720,7 +720,6 @@ func Test_ListCommits(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "repo")
 	assert.Contains(t, tool.InputSchema.Properties, "sha")
 	assert.Contains(t, tool.InputSchema.Properties, "author")
-	assert.Contains(t, tool.InputSchema.Properties, "include_diffs")
 	assert.Contains(t, tool.InputSchema.Properties, "page")
 	assert.Contains(t, tool.InputSchema.Properties, "perPage")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"owner", "repo"})
@@ -931,25 +930,9 @@ func Test_ListCommits(t *testing.T) {
 					assert.Equal(t, tc.expectedCommits[i].Author.GetLogin(), commit.Author.Login)
 				}
 
-				// Check if diffs are included based on include_diffs parameter
-				includeDiffs, exists := tc.requestArgs["include_diffs"]
-				if exists && includeDiffs == true {
-					// When include_diffs=true, files and stats should be present
-					if len(tc.expectedCommits[i].Files) > 0 {
-						assert.NotNil(t, commit.Files)
-						assert.Len(t, commit.Files, len(tc.expectedCommits[i].Files))
-					}
-					if tc.expectedCommits[i].Stats != nil {
-						assert.NotNil(t, commit.Stats)
-						assert.Equal(t, tc.expectedCommits[i].Stats.GetAdditions(), commit.Stats.Additions)
-						assert.Equal(t, tc.expectedCommits[i].Stats.GetDeletions(), commit.Stats.Deletions)
-						assert.Equal(t, tc.expectedCommits[i].Stats.GetTotal(), commit.Stats.Total)
-					}
-				} else {
-					// When include_diffs=false or not specified (default is false for performance), files and stats should not be present
-					assert.Nil(t, commit.Files)
-					assert.Nil(t, commit.Stats)
-				}
+				// Files and stats are never included in list_commits (only available in individual commit queries)
+				assert.Nil(t, commit.Files)
+				assert.Nil(t, commit.Stats)
 			}
 		})
 	}
