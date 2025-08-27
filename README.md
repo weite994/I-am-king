@@ -866,7 +866,6 @@ The following sets of tools are available (all are on by default):
 
 - **list_commits** - List commits
   - `author`: Author username or email address to filter commits by (string, optional)
-  - `include_diffs`: Whether to include file diffs and stats in the response. Default is false for faster responses. (boolean, optional)
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
