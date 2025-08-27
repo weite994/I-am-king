@@ -166,9 +166,6 @@ func Test_SearchRepositories(t *testing.T) {
 }
 
 func Test_SearchRepositories_FullOutput(t *testing.T) {
-	// Test the minimal_output=false functionality
-
-	// Setup mock search results
 	mockSearchResult := &github.RepositoriesSearchResult{
 		Total:             github.Ptr(1),
 		IncompleteResults: github.Ptr(false),
@@ -197,17 +194,14 @@ func Test_SearchRepositories_FullOutput(t *testing.T) {
 		),
 	)
 
-	// Setup client with mock
 	client := github.NewClient(mockedClient)
 	_, handlerTest := SearchRepositories(stubGetClientFn(client), translations.NullTranslationHelper)
 
-	// Create call request
 	request := createMCPRequest(map[string]interface{}{
 		"query":          "golang test",
 		"minimal_output": false,
 	})
 
-	// Call handler
 	result, err := handlerTest(context.Background(), request)
 
 	require.NoError(t, err)
