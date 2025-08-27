@@ -165,7 +165,14 @@ func CreateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create gist: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(createdGist)
+			minimalResponse := MinimalGistResponse{
+				URL:         createdGist.GetHTMLURL(),
+				ID:          createdGist.GetID(),
+				Description: createdGist.GetDescription(),
+				Public:      createdGist.GetPublic(),
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -249,7 +256,13 @@ func UpdateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(fmt.Sprintf("failed to update gist: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(updatedGist)
+			minimalResponse := MinimalUpdateResponse{
+				URL:     updatedGist.GetHTMLURL(),
+				Updated: true,
+				Message: "Gist updated successfully",
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}

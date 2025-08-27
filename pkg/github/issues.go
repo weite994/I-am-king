@@ -872,7 +872,15 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create issue: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(issue)
+			// Return minimal response with just essential information
+			minimalResponse := MinimalIssueResponse{
+				URL:    issue.GetHTMLURL(),
+				Number: issue.GetNumber(),
+				State:  issue.GetState(),
+				Title:  issue.GetTitle(),
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -1242,7 +1250,14 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return mcp.NewToolResultError(fmt.Sprintf("failed to update issue: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(updatedIssue)
+			// Return minimal response with just essential information
+			minimalResponse := MinimalUpdateResponse{
+				URL:     updatedIssue.GetHTMLURL(),
+				Updated: true,
+				Message: "Issue updated successfully",
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}

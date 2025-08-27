@@ -381,47 +381,12 @@ func Test_UpdatePullRequest(t *testing.T) {
 			// Parse the result and get the text content
 			textContent := getTextResult(t, result)
 
-			// Unmarshal and verify the successful result
-			var returnedPR github.PullRequest
-			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
+			// Unmarshal and verify the minimal result
+			var updateResp MinimalUpdateResponse
+			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
-			assert.Equal(t, *tc.expectedPR.Number, *returnedPR.Number)
-			if tc.expectedPR.Title != nil {
-				assert.Equal(t, *tc.expectedPR.Title, *returnedPR.Title)
-			}
-			if tc.expectedPR.Body != nil {
-				assert.Equal(t, *tc.expectedPR.Body, *returnedPR.Body)
-			}
-			if tc.expectedPR.State != nil {
-				assert.Equal(t, *tc.expectedPR.State, *returnedPR.State)
-			}
-			if tc.expectedPR.Base != nil && tc.expectedPR.Base.Ref != nil {
-				assert.NotNil(t, returnedPR.Base)
-				assert.Equal(t, *tc.expectedPR.Base.Ref, *returnedPR.Base.Ref)
-			}
-			if tc.expectedPR.MaintainerCanModify != nil {
-				assert.Equal(t, *tc.expectedPR.MaintainerCanModify, *returnedPR.MaintainerCanModify)
-			}
-
-			// Check reviewers if they exist in the expected PR
-			if len(tc.expectedPR.RequestedReviewers) > 0 {
-				assert.NotNil(t, returnedPR.RequestedReviewers)
-				assert.Equal(t, len(tc.expectedPR.RequestedReviewers), len(returnedPR.RequestedReviewers))
-
-				// Create maps of reviewer logins for easy comparison
-				expectedReviewers := make(map[string]bool)
-				for _, reviewer := range tc.expectedPR.RequestedReviewers {
-					expectedReviewers[*reviewer.Login] = true
-				}
-
-				actualReviewers := make(map[string]bool)
-				for _, reviewer := range returnedPR.RequestedReviewers {
-					actualReviewers[*reviewer.Login] = true
-				}
-
-				// Compare the maps
-				assert.Equal(t, expectedReviewers, actualReviewers)
-			}
+			assert.Equal(t, tc.expectedPR.GetHTMLURL(), updateResp.URL)
+			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }
@@ -599,11 +564,12 @@ func Test_UpdatePullRequest_Draft(t *testing.T) {
 
 			textContent := getTextResult(t, result)
 
-			// Unmarshal and verify the successful result
-			var returnedPR github.PullRequest
-			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
+			// Unmarshal and verify the minimal result
+			var updateResp MinimalUpdateResponse
+			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
-			assert.Equal(t, *tc.expectedPR.Number, *returnedPR.Number)
+			assert.Equal(t, tc.expectedPR.GetHTMLURL(), updateResp.URL)
+			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }
@@ -1988,18 +1954,14 @@ func Test_CreatePullRequest(t *testing.T) {
 			// Parse the result and get the text content if no error
 			textContent := getTextResult(t, result)
 
-			// Unmarshal and verify the result
-			var returnedPR github.PullRequest
+			// Unmarshal and verify the minimal result
+			var returnedPR MinimalPullRequestResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
 			require.NoError(t, err)
-			assert.Equal(t, *tc.expectedPR.Number, *returnedPR.Number)
-			assert.Equal(t, *tc.expectedPR.Title, *returnedPR.Title)
-			assert.Equal(t, *tc.expectedPR.State, *returnedPR.State)
-			assert.Equal(t, *tc.expectedPR.HTMLURL, *returnedPR.HTMLURL)
-			assert.Equal(t, *tc.expectedPR.Head.SHA, *returnedPR.Head.SHA)
-			assert.Equal(t, *tc.expectedPR.Base.Ref, *returnedPR.Base.Ref)
-			assert.Equal(t, *tc.expectedPR.Body, *returnedPR.Body)
-			assert.Equal(t, *tc.expectedPR.User.Login, *returnedPR.User.Login)
+			assert.Equal(t, tc.expectedPR.GetNumber(), returnedPR.Number)
+			assert.Equal(t, tc.expectedPR.GetTitle(), returnedPR.Title)
+			assert.Equal(t, tc.expectedPR.GetState(), returnedPR.State)
+			assert.Equal(t, tc.expectedPR.GetHTMLURL(), returnedPR.URL)
 		})
 	}
 }

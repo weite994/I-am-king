@@ -18,6 +18,94 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// convertToMinimalCommit converts a GitHub API RepositoryCommit to MinimalCommit
+func convertToMinimalCommit(commit *github.RepositoryCommit, includeDiffs bool) MinimalCommit {
+	minimalCommit := MinimalCommit{
+		SHA:     commit.GetSHA(),
+		HTMLURL: commit.GetHTMLURL(),
+	}
+
+	if commit.Commit != nil {
+		minimalCommit.Commit = &MinimalCommitInfo{
+			Message: commit.Commit.GetMessage(),
+		}
+
+		if commit.Commit.Author != nil {
+			minimalCommit.Commit.Author = &MinimalCommitAuthor{
+				Name:  commit.Commit.Author.GetName(),
+				Email: commit.Commit.Author.GetEmail(),
+			}
+			if commit.Commit.Author.Date != nil {
+				minimalCommit.Commit.Author.Date = commit.Commit.Author.Date.Format("2006-01-02T15:04:05Z")
+			}
+		}
+
+		if commit.Commit.Committer != nil {
+			minimalCommit.Commit.Committer = &MinimalCommitAuthor{
+				Name:  commit.Commit.Committer.GetName(),
+				Email: commit.Commit.Committer.GetEmail(),
+			}
+			if commit.Commit.Committer.Date != nil {
+				minimalCommit.Commit.Committer.Date = commit.Commit.Committer.Date.Format("2006-01-02T15:04:05Z")
+			}
+		}
+	}
+
+	if commit.Author != nil {
+		minimalCommit.Author = &MinimalUser{
+			Login:      commit.Author.GetLogin(),
+			ID:         commit.Author.GetID(),
+			ProfileURL: commit.Author.GetHTMLURL(),
+			AvatarURL:  commit.Author.GetAvatarURL(),
+		}
+	}
+
+	if commit.Committer != nil {
+		minimalCommit.Committer = &MinimalUser{
+			Login:      commit.Committer.GetLogin(),
+			ID:         commit.Committer.GetID(),
+			ProfileURL: commit.Committer.GetHTMLURL(),
+			AvatarURL:  commit.Committer.GetAvatarURL(),
+		}
+	}
+
+	// Only include stats and files if includeDiffs is true
+	if includeDiffs {
+		if commit.Stats != nil {
+			minimalCommit.Stats = &MinimalCommitStats{
+				Additions: commit.Stats.GetAdditions(),
+				Deletions: commit.Stats.GetDeletions(),
+				Total:     commit.Stats.GetTotal(),
+			}
+		}
+
+		if len(commit.Files) > 0 {
+			minimalCommit.Files = make([]MinimalCommitFile, 0, len(commit.Files))
+			for _, file := range commit.Files {
+				minimalFile := MinimalCommitFile{
+					Filename:  file.GetFilename(),
+					Status:    file.GetStatus(),
+					Additions: file.GetAdditions(),
+					Deletions: file.GetDeletions(),
+					Changes:   file.GetChanges(),
+				}
+				minimalCommit.Files = append(minimalCommit.Files, minimalFile)
+			}
+		}
+	}
+
+	return minimalCommit
+}
+
+// convertToMinimalBranch converts a GitHub API Branch to MinimalBranch
+func convertToMinimalBranch(branch *github.Branch) MinimalBranch {
+	return MinimalBranch{
+		Name:      branch.GetName(),
+		SHA:       branch.GetCommit().GetSHA(),
+		Protected: branch.GetProtected(),
+	}
+}
+
 func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_commit",
 			mcp.WithDescription(t("TOOL_GET_COMMITS_DESCRIPTION", "Get details for a commit from a GitHub repository")),
@@ -37,6 +125,9 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 				mcp.Required(),
 				mcp.Description("Commit SHA, branch name, or tag name"),
 			),
+			mcp.WithBoolean("include_diff",
+				mcp.Description("Whether to include file diffs and stats in the response. Default is true for single commit queries."),
+			),
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -49,6 +140,10 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			sha, err := RequiredParam[string](request, "sha")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			includeDiff, err := OptionalParam[bool](request, "include_diff")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -84,7 +179,10 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 				return mcp.NewToolResultError(fmt.Sprintf("failed to get commit: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(commit)
+			// Convert to minimal commit
+			minimalCommit := convertToMinimalCommit(commit, includeDiff)
+
+			r, err := json.Marshal(minimalCommit)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -115,6 +213,9 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			mcp.WithString("author",
 				mcp.Description("Author username or email address to filter commits by"),
 			),
+			mcp.WithBoolean("include_diffs",
+				mcp.Description("Whether to include file diffs and stats in the response. Default is false for faster responses."),
+			),
 			WithPagination(),
 		),
 		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -131,6 +232,10 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			author, err := OptionalParam[string](request, "author")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			includeDiffs, err := OptionalParam[bool](request, "include_diffs")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -174,7 +279,13 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 				return mcp.NewToolResultError(fmt.Sprintf("failed to list commits: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(commits)
+			// Convert to minimal commits
+			minimalCommits := make([]MinimalCommit, 0, len(commits))
+			for _, commit := range commits {
+				minimalCommits = append(minimalCommits, convertToMinimalCommit(commit, includeDiffs))
+			}
+
+			r, err := json.Marshal(minimalCommits)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -245,7 +356,13 @@ func ListBranches(getClient GetClientFn, t translations.TranslationHelperFunc) (
 				return mcp.NewToolResultError(fmt.Sprintf("failed to list branches: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(branches)
+			// Convert to minimal branches
+			minimalBranches := make([]MinimalBranch, 0, len(branches))
+			for _, branch := range branches {
+				minimalBranches = append(minimalBranches, convertToMinimalBranch(branch))
+			}
+
+			r, err := json.Marshal(minimalBranches)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -436,7 +553,15 @@ func CreateRepository(getClient GetClientFn, t translations.TranslationHelperFun
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create repository: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(createdRepo)
+			// Return minimal response with just essential information
+			minimalResponse := MinimalRepositoryResponse{
+				URL:      createdRepo.GetHTMLURL(),
+				CloneURL: createdRepo.GetCloneURL(),
+				Name:     createdRepo.GetName(),
+				FullName: createdRepo.GetFullName(),
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
@@ -707,7 +832,15 @@ func ForkRepository(getClient GetClientFn, t translations.TranslationHelperFunc)
 				return mcp.NewToolResultError(fmt.Sprintf("failed to fork repository: %s", string(body))), nil
 			}
 
-			r, err := json.Marshal(forkedRepo)
+			// Return minimal response with just essential information
+			minimalResponse := MinimalRepositoryResponse{
+				URL:      forkedRepo.GetHTMLURL(),
+				CloneURL: forkedRepo.GetCloneURL(),
+				Name:     forkedRepo.GetName(),
+				FullName: forkedRepo.GetFullName(),
+			}
+
+			r, err := json.Marshal(minimalResponse)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal response: %w", err)
 			}
