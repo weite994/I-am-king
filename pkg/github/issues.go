@@ -18,6 +18,494 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
+// ManageIssue creates a consolidated tool to perform CRUD operations on issues
+func ManageIssue(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("manage_issue",
+			mcp.WithDescription(t("TOOL_MANAGE_ISSUE_DESCRIPTION", "Manage issues with various operations: list, get, create, update, add_comment")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_MANAGE_ISSUE", "Manage Issue"),
+				ReadOnlyHint: ToBoolPtr(false),
+			}),
+			mcp.WithString("operation",
+				mcp.Required(),
+				mcp.Description("Operation to perform: 'list', 'get', 'create', 'update', 'add_comment'"),
+				mcp.Enum("list", "get", "create", "update", "add_comment"),
+			),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			// Parameters for get, update, add_comment operations
+			mcp.WithNumber("issue_number",
+				mcp.Description("Issue number (required for 'get', 'update', 'add_comment' operations)"),
+			),
+			// Parameters for create operation
+			mcp.WithString("title",
+				mcp.Description("Issue title (required for 'create' operation)"),
+			),
+			mcp.WithString("body",
+				mcp.Description("Issue body content (used for 'create', 'update', 'add_comment' operations)"),
+			),
+			mcp.WithArray("assignees",
+				mcp.Description("Usernames to assign to this issue (used for 'create', 'update' operations)"),
+				mcp.Items(
+					map[string]any{
+						"type": "string",
+					},
+				),
+			),
+			mcp.WithArray("labels",
+				mcp.Description("Labels to apply to this issue (used for 'create', 'update' operations)"),
+				mcp.Items(
+					map[string]any{
+						"type": "string",
+					},
+				),
+			),
+			mcp.WithNumber("milestone",
+				mcp.Description("Milestone number (used for 'create', 'update' operations)"),
+			),
+			mcp.WithString("type",
+				mcp.Description("Type of this issue (used for 'create' operation)"),
+			),
+			mcp.WithString("state",
+				mcp.Description("Issue state (used for 'update' operation): 'open' or 'closed'"),
+				mcp.Enum("open", "closed"),
+			),
+			// Parameters for list operation
+			mcp.WithString("since",
+				mcp.Description("Filter by date (ISO 8601 timestamp, used for 'list' operation)"),
+			),
+			mcp.WithString("list_state",
+				mcp.Description("Filter by state for list operation: 'OPEN', 'CLOSED'"),
+				mcp.Enum("OPEN", "CLOSED"),
+			),
+			mcp.WithArray("list_labels",
+				mcp.Description("Filter by labels for list operation"),
+				mcp.Items(
+					map[string]any{
+						"type": "string",
+					},
+				),
+			),
+			mcp.WithString("direction",
+				mcp.Description("Order direction for list operation: 'ASC', 'DESC'"),
+				mcp.Enum("ASC", "DESC"),
+			),
+			mcp.WithString("orderBy",
+				mcp.Description("Order issues by field for list operation: 'CREATED_AT', 'UPDATED_AT', 'COMMENTS'"),
+				mcp.Enum("CREATED_AT", "UPDATED_AT", "COMMENTS"),
+			),
+			WithPagination(),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			operation, err := RequiredParam[string](request, "operation")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			switch operation {
+			case "list":
+				return handleListIssues(ctx, getGQLClient, request)
+			case "get":
+				return handleGetIssue(ctx, getClient, request)
+			case "create":
+				return handleCreateIssue(ctx, getClient, request)
+			case "update":
+				return handleUpdateIssue(ctx, getClient, request)
+			case "add_comment":
+				return handleAddIssueComment(ctx, getClient, request)
+			default:
+				return mcp.NewToolResultError(fmt.Sprintf("unsupported operation: %s", operation)), nil
+			}
+		}
+}
+
+func handleListIssues(ctx context.Context, getGQLClient GetGQLClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	since, err := OptionalParam[string](request, "since")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	state, err := OptionalParam[string](request, "list_state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	labels, err := OptionalStringArrayParam(request, "list_labels")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	direction, err := OptionalParam[string](request, "direction")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	orderBy, err := OptionalParam[string](request, "orderBy")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	pagination, err := OptionalPaginationParams(request)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getGQLClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub GraphQL client: %w", err)
+	}
+
+	// Set defaults
+	first := 30
+	if pagination.PerPage > 0 {
+		first = pagination.PerPage
+	}
+
+	// Set up variables for GraphQL query
+	variables := map[string]interface{}{
+		"owner": githubv4.String(owner),
+		"repo":  githubv4.String(repo),
+		"first": githubv4.Int(first),
+	}
+
+	// Handle pagination cursor
+	if pagination.After != "" {
+		variables["after"] = githubv4.String(pagination.After)
+	}
+
+	// Handle state filtering
+	if state != "" {
+		variables["states"] = []githubv4.IssueState{githubv4.IssueState(state)}
+	}
+
+	// Handle ordering
+	if direction != "" && orderBy != "" {
+		variables["direction"] = githubv4.OrderDirection(direction)
+		variables["orderBy"] = githubv4.IssueOrderField(orderBy)
+	}
+
+	// Handle since filtering
+	var sinceTime *githubv4.DateTime
+	if since != "" {
+		parsedTime, err := parseISOTimestamp(since)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid since timestamp: %v", err)), nil
+		}
+		dt := githubv4.DateTime{Time: parsedTime}
+		sinceTime = &dt
+		variables["since"] = dt
+	}
+
+	// Choose the right query based on whether we have labels and/or since filtering
+	hasLabels := len(labels) > 0
+	hasSince := sinceTime != nil
+
+	if hasLabels {
+		variables["labels"] = labels
+	}
+
+	// Execute the appropriate query
+	var result IssueQueryResult
+	switch {
+	case hasLabels && hasSince:
+		result = &ListIssuesQueryTypeWithLabelsWithSince{}
+	case hasLabels && !hasSince:
+		result = &ListIssuesQueryTypeWithLabels{}
+	case !hasLabels && hasSince:
+		result = &ListIssuesQueryWithSince{}
+	default:
+		result = &ListIssuesQuery{}
+	}
+
+	err = client.Query(ctx, result, variables)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query issues: %w", err)
+	}
+
+	fragment := result.GetIssueFragment()
+	
+	// Convert GraphQL fragments to GitHub issue structs
+	issues := make([]*github.Issue, len(fragment.Nodes))
+	for i, node := range fragment.Nodes {
+		issues[i] = fragmentToIssue(node)
+	}
+
+	// Prepare response with pagination info
+	response := map[string]interface{}{
+		"issues": issues,
+		"pageInfo": map[string]interface{}{
+			"hasNextPage":     bool(fragment.PageInfo.HasNextPage),
+			"hasPreviousPage": bool(fragment.PageInfo.HasPreviousPage),
+			"startCursor":     string(fragment.PageInfo.StartCursor),
+			"endCursor":       string(fragment.PageInfo.EndCursor),
+		},
+		"totalCount": fragment.TotalCount,
+	}
+
+	r, err := json.Marshal(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleGetIssue(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	issueNumber, err := RequiredInt(request, "issue_number")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	issue, resp, err := client.Issues.Get(ctx, owner, repo, issueNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issue: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(issue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleCreateIssue(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	title, err := RequiredParam[string](request, "title")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Optional parameters
+	body, err := OptionalParam[string](request, "body")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	assignees, err := OptionalStringArrayParam(request, "assignees")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	labels, err := OptionalStringArrayParam(request, "labels")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	milestone, err := OptionalIntParam(request, "milestone")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	var milestoneNum *int
+	if milestone != 0 {
+		milestoneNum = &milestone
+	}
+
+	issueType, err := OptionalParam[string](request, "type")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Create the issue request
+	issueRequest := &github.IssueRequest{
+		Title:     github.Ptr(title),
+		Body:      github.Ptr(body),
+		Assignees: &assignees,
+		Labels:    &labels,
+		Milestone: milestoneNum,
+	}
+
+	// Add custom type field if specified
+	if issueType != "" {
+		if issueRequest.Body == nil {
+			issueRequest.Body = github.Ptr("")
+		}
+		*issueRequest.Body = fmt.Sprintf("<!-- issue_type: %s -->\n%s", issueType, *issueRequest.Body)
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	issue, resp, err := client.Issues.Create(ctx, owner, repo, issueRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create issue: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(issue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleUpdateIssue(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	issueNumber, err := RequiredInt(request, "issue_number")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Optional parameters
+	title, err := OptionalParam[string](request, "title")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	body, err := OptionalParam[string](request, "body")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	state, err := OptionalParam[string](request, "state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	assignees, err := OptionalStringArrayParam(request, "assignees")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	labels, err := OptionalStringArrayParam(request, "labels")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	milestone, err := OptionalIntParam(request, "milestone")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Create the issue request
+	issueRequest := &github.IssueRequest{}
+
+	if title != "" {
+		issueRequest.Title = github.Ptr(title)
+	}
+	if body != "" {
+		issueRequest.Body = github.Ptr(body)
+	}
+	if state != "" {
+		issueRequest.State = github.Ptr(state)
+	}
+	if len(assignees) > 0 {
+		issueRequest.Assignees = &assignees
+	}
+	if len(labels) > 0 {
+		issueRequest.Labels = &labels
+	}
+	if milestone != 0 {
+		issueRequest.Milestone = &milestone
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	issue, resp, err := client.Issues.Edit(ctx, owner, repo, issueNumber, issueRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update issue: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(issue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleAddIssueComment(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	issueNumber, err := RequiredInt(request, "issue_number")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	body, err := RequiredParam[string](request, "body")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	comment := &github.IssueComment{
+		Body: github.Ptr(body),
+	}
+
+	createdComment, resp, err := client.Issues.CreateComment(ctx, owner, repo, issueNumber, comment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add comment: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(createdComment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
 // IssueFragment represents a fragment of an issue node in the GraphQL API.
 type IssueFragment struct {
 	Number     githubv4.Int

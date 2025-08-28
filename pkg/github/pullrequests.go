@@ -17,6 +17,437 @@ import (
 	"github.com/github/github-mcp-server/pkg/translations"
 )
 
+// ManagePullRequest creates a consolidated tool to perform CRUD operations on pull requests
+func ManagePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("manage_pull_request",
+			mcp.WithDescription(t("TOOL_MANAGE_PULL_REQUEST_DESCRIPTION", "Manage pull requests with various operations: list, get, create, update, merge")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_MANAGE_PULL_REQUEST", "Manage Pull Request"),
+				ReadOnlyHint: ToBoolPtr(false),
+			}),
+			mcp.WithString("operation",
+				mcp.Required(),
+				mcp.Description("Operation to perform: 'list', 'get', 'create', 'update', 'merge'"),
+				mcp.Enum("list", "get", "create", "update", "merge"),
+			),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("Repository owner"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("Repository name"),
+			),
+			// Parameters for get, update, merge operations
+			mcp.WithNumber("pullNumber",
+				mcp.Description("Pull request number (required for 'get', 'update', 'merge' operations)"),
+			),
+			// Parameters for create operation
+			mcp.WithString("title",
+				mcp.Description("Pull request title (required for 'create' operation)"),
+			),
+			mcp.WithString("body",
+				mcp.Description("Pull request body content (used for 'create', 'update' operations)"),
+			),
+			mcp.WithString("head",
+				mcp.Description("The name of the branch where your changes are implemented (required for 'create' operation)"),
+			),
+			mcp.WithString("base",
+				mcp.Description("The name of the branch you want the changes pulled into (required for 'create' operation)"),
+			),
+			mcp.WithBoolean("draft",
+				mcp.Description("Whether to create as draft (used for 'create' operation)"),
+				mcp.DefaultBool(false),
+			),
+			mcp.WithBoolean("maintainer_can_modify",
+				mcp.Description("Whether maintainers can modify the pull request (used for 'create' operation)"),
+				mcp.DefaultBool(true),
+			),
+			// Parameters for update operation
+			mcp.WithString("state",
+				mcp.Description("State of the pull request (used for 'update' operation): 'open' or 'closed'"),
+				mcp.Enum("open", "closed"),
+			),
+			// Parameters for merge operation
+			mcp.WithString("commit_title",
+				mcp.Description("Title for the merge commit (used for 'merge' operation)"),
+			),
+			mcp.WithString("commit_message",
+				mcp.Description("Extra detail to append to merge commit message (used for 'merge' operation)"),
+			),
+			mcp.WithString("merge_method",
+				mcp.Description("Merge method to use (used for 'merge' operation): 'merge', 'squash', 'rebase'"),
+				mcp.Enum("merge", "squash", "rebase"),
+				mcp.DefaultString("merge"),
+			),
+			// Parameters for list operation
+			mcp.WithString("list_state",
+				mcp.Description("Filter by state for list operation: 'open', 'closed', 'all'"),
+				mcp.Enum("open", "closed", "all"),
+				mcp.DefaultString("open"),
+			),
+			mcp.WithString("list_head",
+				mcp.Description("Filter by head user/org and branch for list operation"),
+			),
+			mcp.WithString("list_base",
+				mcp.Description("Filter by base branch for list operation"),
+			),
+			mcp.WithString("sort",
+				mcp.Description("Sort by for list operation: 'created', 'updated', 'popularity', 'long-running'"),
+				mcp.Enum("created", "updated", "popularity", "long-running"),
+				mcp.DefaultString("created"),
+			),
+			mcp.WithString("direction",
+				mcp.Description("Sort direction for list operation: 'asc', 'desc'"),
+				mcp.Enum("asc", "desc"),
+				mcp.DefaultString("desc"),
+			),
+			WithPagination(),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			operation, err := RequiredParam[string](request, "operation")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			switch operation {
+			case "list":
+				return handleListPullRequests(ctx, getClient, request)
+			case "get":
+				return handleGetPullRequest(ctx, getClient, request)
+			case "create":
+				return handleCreatePullRequest(ctx, getClient, request)
+			case "update":
+				return handleUpdatePullRequest(ctx, getClient, getGQLClient, request)
+			case "merge":
+				return handleMergePullRequest(ctx, getClient, request)
+			default:
+				return mcp.NewToolResultError(fmt.Sprintf("unsupported operation: %s", operation)), nil
+			}
+		}
+}
+
+func handleListPullRequests(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	state, err := OptionalParam[string](request, "list_state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if state == "" {
+		state = "open"
+	}
+
+	head, err := OptionalParam[string](request, "list_head")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	base, err := OptionalParam[string](request, "list_base")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	sort, err := OptionalParam[string](request, "sort")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if sort == "" {
+		sort = "created"
+	}
+
+	direction, err := OptionalParam[string](request, "direction")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if direction == "" {
+		direction = "desc"
+	}
+
+	pagination, err := OptionalPaginationParams(request)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	opts := &github.PullRequestListOptions{
+		State:     state,
+		Head:      head,
+		Base:      base,
+		Sort:      sort,
+		Direction: direction,
+		ListOptions: github.ListOptions{
+			Page:    pagination.Page,
+			PerPage: pagination.PerPage,
+		},
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	prs, resp, err := client.PullRequests.List(ctx, owner, repo, opts)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to list pull requests",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(prs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleGetPullRequest(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	pullNumber, err := RequiredInt(request, "pullNumber")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+	pr, resp, err := client.PullRequests.Get(ctx, owner, repo, pullNumber)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to get pull request",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get pull request: %s", string(body))), nil
+	}
+
+	r, err := json.Marshal(pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleCreatePullRequest(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	title, err := RequiredParam[string](request, "title")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	head, err := RequiredParam[string](request, "head")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	base, err := RequiredParam[string](request, "base")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	body, err := OptionalParam[string](request, "body")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	draft, err := OptionalParam[bool](request, "draft")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	maintainerCanModify, err := OptionalParam[bool](request, "maintainer_can_modify")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Create the pull request
+	newPR := &github.NewPullRequest{
+		Title:               github.Ptr(title),
+		Head:                github.Ptr(head),
+		Base:                github.Ptr(base),
+		Body:                github.Ptr(body),
+		Draft:               github.Ptr(draft),
+		MaintainerCanModify: github.Ptr(maintainerCanModify),
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	pr, resp, err := client.PullRequests.Create(ctx, owner, repo, newPR)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to create pull request",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleUpdatePullRequest(ctx context.Context, getClient GetClientFn, getGQLClient GetGQLClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	pullNumber, err := RequiredInt(request, "pullNumber")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	title, err := OptionalParam[string](request, "title")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	body, err := OptionalParam[string](request, "body")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	state, err := OptionalParam[string](request, "state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	pull := &github.PullRequest{}
+	if title != "" {
+		pull.Title = github.Ptr(title)
+	}
+	if body != "" {
+		pull.Body = github.Ptr(body)
+	}
+	if state != "" {
+		pull.State = github.Ptr(state)
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	updatedPR, resp, err := client.PullRequests.Edit(ctx, owner, repo, pullNumber, pull)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to update pull request",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(updatedPR)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleMergePullRequest(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	pullNumber, err := RequiredInt(request, "pullNumber")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	commitTitle, err := OptionalParam[string](request, "commit_title")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	commitMessage, err := OptionalParam[string](request, "commit_message")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	mergeMethod, err := OptionalParam[string](request, "merge_method")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if mergeMethod == "" {
+		mergeMethod = "merge"
+	}
+
+	options := &github.PullRequestOptions{
+		CommitTitle: commitTitle,
+		MergeMethod: mergeMethod,
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	result, resp, err := client.PullRequests.Merge(ctx, owner, repo, pullNumber, commitMessage, options)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to merge pull request",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
 // GetPullRequest creates a tool to get details of a specific pull request.
 func GetPullRequest(getClient GetClientFn, t translations.TranslationHelperFunc) (mcp.Tool, server.ToolHandlerFunc) {
 	return mcp.NewTool("get_pull_request",

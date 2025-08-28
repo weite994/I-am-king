@@ -14,6 +14,166 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// ManageCodeScanningAlerts creates a consolidated tool to perform operations on code scanning alerts
+func ManageCodeScanningAlerts(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("manage_code_scanning_alerts",
+			mcp.WithDescription(t("TOOL_MANAGE_CODE_SCANNING_ALERTS_DESCRIPTION", "Manage code scanning alerts with various operations: list, get")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_MANAGE_CODE_SCANNING_ALERTS", "Manage Code Scanning Alerts"),
+				ReadOnlyHint: ToBoolPtr(true),
+			}),
+			mcp.WithString("operation",
+				mcp.Required(),
+				mcp.Description("Operation to perform: 'list', 'get'"),
+				mcp.Enum("list", "get"),
+			),
+			mcp.WithString("owner",
+				mcp.Required(),
+				mcp.Description("The owner of the repository"),
+			),
+			mcp.WithString("repo",
+				mcp.Required(),
+				mcp.Description("The name of the repository"),
+			),
+			// Parameters for get operation
+			mcp.WithNumber("alertNumber",
+				mcp.Description("The number of the alert (required for 'get' operation)"),
+			),
+			// Parameters for list operation
+			mcp.WithString("state",
+				mcp.Description("Filter code scanning alerts by state (used for 'list' operation)"),
+				mcp.DefaultString("open"),
+				mcp.Enum("open", "closed", "dismissed", "fixed"),
+			),
+			mcp.WithString("ref",
+				mcp.Description("The Git reference for the results you want to list (used for 'list' operation)"),
+			),
+			mcp.WithString("severity",
+				mcp.Description("Filter code scanning alerts by severity (used for 'list' operation)"),
+				mcp.Enum("critical", "high", "medium", "low", "warning", "note", "error"),
+			),
+			mcp.WithString("tool_name",
+				mcp.Description("The name of the tool used for code scanning (used for 'list' operation)"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			operation, err := RequiredParam[string](request, "operation")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			switch operation {
+			case "list":
+				return handleListCodeScanningAlerts(ctx, getClient, request)
+			case "get":
+				return handleGetCodeScanningAlert(ctx, getClient, request)
+			default:
+				return mcp.NewToolResultError(fmt.Sprintf("unsupported operation: %s", operation)), nil
+			}
+		}
+}
+
+func handleGetCodeScanningAlert(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	alertNumber, err := RequiredInt(request, "alertNumber")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	alert, resp, err := client.CodeScanning.GetAlert(ctx, owner, repo, int64(alertNumber))
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to get alert",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get alert: %s", string(body))), nil
+	}
+
+	r, err := json.Marshal(alert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal alert: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleListCodeScanningAlerts(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	ref, err := OptionalParam[string](request, "ref")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	state, err := OptionalParam[string](request, "state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	severity, err := OptionalParam[string](request, "severity")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	toolName, err := OptionalParam[string](request, "tool_name")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+	alerts, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, owner, repo, &github.AlertListOptions{Ref: ref, State: state, Severity: severity, ToolName: toolName})
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to list alerts",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("failed to list alerts: %s", string(body))), nil
+	}
+
+	r, err := json.Marshal(alerts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal alerts: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
 func GetCodeScanningAlert(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_code_scanning_alert",
 			mcp.WithDescription(t("TOOL_GET_CODE_SCANNING_ALERT_DESCRIPTION", "Get details of a specific code scanning alert in a GitHub repository.")),

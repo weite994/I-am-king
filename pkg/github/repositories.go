@@ -18,6 +18,299 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// ManageRepository creates a consolidated tool to perform operations on repositories
+func ManageRepository(getClient GetClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("manage_repository",
+			mcp.WithDescription(t("TOOL_MANAGE_REPOSITORY_DESCRIPTION", "Manage repositories with various operations: create, fork, get_file_contents")),
+			mcp.WithToolAnnotation(mcp.ToolAnnotation{
+				Title:        t("TOOL_MANAGE_REPOSITORY", "Manage Repository"),
+				ReadOnlyHint: ToBoolPtr(false),
+			}),
+			mcp.WithString("operation",
+				mcp.Required(),
+				mcp.Description("Operation to perform: 'create', 'fork', 'get_file_contents'"),
+				mcp.Enum("create", "fork", "get_file_contents"),
+			),
+			// Parameters for create operation
+			mcp.WithString("name",
+				mcp.Description("Repository name (required for 'create' operation)"),
+			),
+			mcp.WithString("description",
+				mcp.Description("Repository description (used for 'create' operation)"),
+			),
+			mcp.WithBoolean("private",
+				mcp.Description("Whether repo should be private (used for 'create' operation)"),
+			),
+			mcp.WithBoolean("autoInit",
+				mcp.Description("Initialize with README (used for 'create' operation)"),
+			),
+			// Parameters for fork operation
+			mcp.WithString("owner",
+				mcp.Description("Repository owner (required for 'fork', 'get_file_contents' operations)"),
+			),
+			mcp.WithString("repo",
+				mcp.Description("Repository name (required for 'fork', 'get_file_contents' operations)"),
+			),
+			mcp.WithString("organization",
+				mcp.Description("Organization to fork to (used for 'fork' operation)"),
+			),
+			mcp.WithString("default_branch_only",
+				mcp.Description("Fork only default branch (used for 'fork' operation)"),
+			),
+			// Parameters for get_file_contents operation
+			mcp.WithString("path",
+				mcp.Description("Path to file/directory (required for 'get_file_contents' operation)"),
+				mcp.DefaultString("/"),
+			),
+			mcp.WithString("ref",
+				mcp.Description("Git reference such as branch, tag, or commit SHA (used for 'get_file_contents' operation)"),
+			),
+			mcp.WithString("sha",
+				mcp.Description("Commit SHA (used for 'get_file_contents' operation)"),
+			),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			operation, err := RequiredParam[string](request, "operation")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			switch operation {
+			case "create":
+				return handleCreateRepository(ctx, getClient, request)
+			case "fork":
+				return handleForkRepository(ctx, getClient, request)
+			case "get_file_contents":
+				return handleGetFileContents(ctx, getClient, getRawClient, request)
+			default:
+				return mcp.NewToolResultError(fmt.Sprintf("unsupported operation: %s", operation)), nil
+			}
+		}
+}
+
+func handleCreateRepository(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	name, err := RequiredParam[string](request, "name")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	description, err := OptionalParam[string](request, "description")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	private, err := OptionalParam[bool](request, "private")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	autoInit, err := OptionalParam[bool](request, "autoInit")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	repo := &github.Repository{
+		Name:        github.Ptr(name),
+		Description: github.Ptr(description),
+		Private:     github.Ptr(private),
+		AutoInit:    github.Ptr(autoInit),
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+	createdRepo, resp, err := client.Repositories.Create(ctx, "", repo)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to create repository",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(createdRepo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleForkRepository(ctx context.Context, getClient GetClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	organization, err := OptionalParam[string](request, "organization")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	defaultBranchOnly, err := OptionalParam[bool](request, "default_branch_only")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	opts := &github.RepositoryCreateForkOptions{
+		Organization:       organization,
+		DefaultBranchOnly:  defaultBranchOnly,
+	}
+
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	fork, resp, err := client.Repositories.CreateFork(ctx, owner, repo, opts)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to fork repository",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	r, err := json.Marshal(fork)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+func handleGetFileContents(ctx context.Context, getClient GetClientFn, getRawClient raw.GetRawClientFn, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := RequiredParam[string](request, "owner")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	repo, err := RequiredParam[string](request, "repo")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	path, err := OptionalParam[string](request, "path")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if path == "" {
+		path = "/"
+	}
+	ref, err := OptionalParam[string](request, "ref")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	sha, err := OptionalParam[string](request, "sha")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Use the existing GetFileContents logic
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub client: %w", err)
+	}
+
+	opts := &github.RepositoryContentGetOptions{}
+	if ref != "" {
+		opts.Ref = ref
+	}
+	if sha != "" {
+		opts.Ref = sha
+	}
+
+	// Handle directory listing
+	if strings.HasSuffix(path, "/") {
+		_, dirContent, resp, err := client.Repositories.GetContents(ctx, owner, repo, strings.TrimSuffix(path, "/"), opts)
+		if err != nil {
+			return ghErrors.NewGitHubAPIErrorResponse(ctx,
+				"failed to get directory contents",
+				resp,
+				err,
+			), nil
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		r, err := json.Marshal(dirContent)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal response: %w", err)
+		}
+
+		return mcp.NewToolResultText(string(r)), nil
+	}
+
+	// Handle file content
+	fileContent, _, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opts)
+	if err != nil {
+		return ghErrors.NewGitHubAPIErrorResponse(ctx,
+			"failed to get file contents",
+			resp,
+			err,
+		), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if fileContent == nil {
+		return mcp.NewToolResultError("file not found"), nil
+	}
+
+	// For non-text files, return metadata only
+	if fileContent.Encoding != nil && *fileContent.Encoding == "base64" {
+		// Try to decode and check if it's text
+		if fileContent.Content != nil {
+			decoded, err := base64.StdEncoding.DecodeString(*fileContent.Content)
+			if err == nil && isTextFile(decoded) {
+				response := map[string]interface{}{
+					"name":     fileContent.GetName(),
+					"path":     fileContent.GetPath(),
+					"sha":      fileContent.GetSHA(),
+					"size":     fileContent.GetSize(),
+					"url":      fileContent.GetURL(),
+					"html_url": fileContent.GetHTMLURL(),
+					"type":     fileContent.GetType(),
+					"content":  string(decoded),
+					"encoding": "text",
+				}
+
+				r, err := json.Marshal(response)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal response: %w", err)
+				}
+				return mcp.NewToolResultText(string(r)), nil
+			}
+		}
+	}
+
+	// Return metadata for binary files or when content can't be decoded
+	r, err := json.Marshal(fileContent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(r)), nil
+}
+
+// isTextFile checks if the content is likely to be text
+func isTextFile(content []byte) bool {
+	// Check for null bytes which indicate binary content
+	for _, b := range content[:min(len(content), 1024)] {
+		if b == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_commit",
 			mcp.WithDescription(t("TOOL_GET_COMMITS_DESCRIPTION", "Get details for a commit from a GitHub repository")),

@@ -247,3 +247,70 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 		})
 	}
 }
+
+func Test_ManageCodeScanningAlerts(t *testing.T) {
+// Verify tool definition
+mockClient := github.NewClient(nil)
+tool, _ := ManageCodeScanningAlerts(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+assert.Equal(t, "manage_code_scanning_alerts", tool.Name)
+assert.NotEmpty(t, tool.Description)
+assert.Contains(t, tool.InputSchema.Properties, "operation")
+assert.Contains(t, tool.InputSchema.Required, "operation")
+
+t.Run("list operation", func(t *testing.T) {
+// Setup mock alerts for success case
+mockAlerts := []*github.Alert{
+{
+Number: github.Ptr(1),
+Rule: &github.Rule{
+ID:          github.Ptr("rule1"),
+Severity:    github.Ptr("error"),
+Description: github.Ptr("Test rule"),
+},
+State: github.Ptr("open"),
+},
+}
+
+mockedHTTPClient := mock.NewMockedHTTPClient(
+mock.WithRequestMatch(mock.GetReposCodeScanningAlertsByOwnerByRepo, mockAlerts),
+)
+client := github.NewClient(mockedHTTPClient)
+_, handler := ManageCodeScanningAlerts(stubGetClientFn(client), translations.NullTranslationHelper)
+
+request := createMCPRequest(map[string]interface{}{
+"operation": "list",
+"owner":     "testowner",
+"repo":      "testrepo",
+})
+
+result, err := handler(context.Background(), request)
+require.NoError(t, err)
+assert.False(t, result.IsError)
+
+var alerts []*github.Alert
+textContent := getTextResult(t, result)
+err = json.Unmarshal([]byte(textContent.Text), &alerts)
+require.NoError(t, err)
+assert.Len(t, alerts, 1)
+assert.Equal(t, 1, *alerts[0].Number)
+})
+
+t.Run("unsupported operation", func(t *testing.T) {
+mockedHTTPClient := mock.NewMockedHTTPClient()
+client := github.NewClient(mockedHTTPClient)
+_, handler := ManageCodeScanningAlerts(stubGetClientFn(client), translations.NullTranslationHelper)
+
+request := createMCPRequest(map[string]interface{}{
+"operation": "delete",
+"owner":     "testowner",
+"repo":      "testrepo",
+})
+
+result, err := handler(context.Background(), request)
+require.NoError(t, err)
+assert.True(t, result.IsError)
+textContent := getTextResult(t, result)
+assert.Contains(t, textContent.Text, "unsupported operation: delete")
+})
+}

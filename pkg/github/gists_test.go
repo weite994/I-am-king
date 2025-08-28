@@ -505,3 +505,71 @@ func Test_UpdateGist(t *testing.T) {
 		})
 	}
 }
+
+func Test_ManageGist(t *testing.T) {
+// Verify tool definition
+mockClient := github.NewClient(nil)
+tool, _ := ManageGist(stubGetClientFn(mockClient), translations.NullTranslationHelper)
+
+assert.Equal(t, "manage_gist", tool.Name)
+assert.NotEmpty(t, tool.Description)
+assert.Contains(t, tool.InputSchema.Properties, "operation")
+assert.Contains(t, tool.InputSchema.Required, "operation")
+
+t.Run("list operation", func(t *testing.T) {
+// Setup mock gists for success case
+mockGists := []*github.Gist{
+{
+ID:          github.Ptr("gist1"),
+Description: github.Ptr("First Gist"),
+HTMLURL:     github.Ptr("https://gist.github.com/user/gist1"),
+Public:      github.Ptr(true),
+CreatedAt:   &github.Timestamp{Time: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)},
+Owner:       &github.User{Login: github.Ptr("user")},
+Files: map[github.GistFilename]github.GistFile{
+"file1.txt": {
+Filename: github.Ptr("file1.txt"),
+Content:  github.Ptr("content of file 1"),
+},
+},
+},
+}
+
+mockedHTTPClient := mock.NewMockedHTTPClient(
+mock.WithRequestMatchPages(mock.GetGists, mockGists, 1),
+)
+client := github.NewClient(mockedHTTPClient)
+_, handler := ManageGist(stubGetClientFn(client), translations.NullTranslationHelper)
+
+request := createMCPRequest(map[string]interface{}{
+"operation": "list",
+})
+
+result, err := handler(context.Background(), request)
+require.NoError(t, err)
+assert.False(t, result.IsError)
+
+var gists []*github.Gist
+textContent := getTextResult(t, result)
+err = json.Unmarshal([]byte(textContent.Text), &gists)
+require.NoError(t, err)
+assert.Len(t, gists, 1)
+assert.Equal(t, "gist1", *gists[0].ID)
+})
+
+t.Run("unsupported operation", func(t *testing.T) {
+mockedHTTPClient := mock.NewMockedHTTPClient()
+client := github.NewClient(mockedHTTPClient)
+_, handler := ManageGist(stubGetClientFn(client), translations.NullTranslationHelper)
+
+request := createMCPRequest(map[string]interface{}{
+"operation": "delete",
+})
+
+result, err := handler(context.Background(), request)
+require.NoError(t, err)
+assert.True(t, result.IsError)
+textContent := getTextResult(t, result)
+assert.Contains(t, textContent.Text, "unsupported operation: delete")
+})
+}
