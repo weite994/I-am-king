@@ -18,94 +18,6 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// convertToMinimalCommit converts a GitHub API RepositoryCommit to MinimalCommit
-func convertToMinimalCommit(commit *github.RepositoryCommit, includeDiffs bool) MinimalCommit {
-	minimalCommit := MinimalCommit{
-		SHA:     commit.GetSHA(),
-		HTMLURL: commit.GetHTMLURL(),
-	}
-
-	if commit.Commit != nil {
-		minimalCommit.Commit = &MinimalCommitInfo{
-			Message: commit.Commit.GetMessage(),
-		}
-
-		if commit.Commit.Author != nil {
-			minimalCommit.Commit.Author = &MinimalCommitAuthor{
-				Name:  commit.Commit.Author.GetName(),
-				Email: commit.Commit.Author.GetEmail(),
-			}
-			if commit.Commit.Author.Date != nil {
-				minimalCommit.Commit.Author.Date = commit.Commit.Author.Date.Format("2006-01-02T15:04:05Z")
-			}
-		}
-
-		if commit.Commit.Committer != nil {
-			minimalCommit.Commit.Committer = &MinimalCommitAuthor{
-				Name:  commit.Commit.Committer.GetName(),
-				Email: commit.Commit.Committer.GetEmail(),
-			}
-			if commit.Commit.Committer.Date != nil {
-				minimalCommit.Commit.Committer.Date = commit.Commit.Committer.Date.Format("2006-01-02T15:04:05Z")
-			}
-		}
-	}
-
-	if commit.Author != nil {
-		minimalCommit.Author = &MinimalUser{
-			Login:      commit.Author.GetLogin(),
-			ID:         commit.Author.GetID(),
-			ProfileURL: commit.Author.GetHTMLURL(),
-			AvatarURL:  commit.Author.GetAvatarURL(),
-		}
-	}
-
-	if commit.Committer != nil {
-		minimalCommit.Committer = &MinimalUser{
-			Login:      commit.Committer.GetLogin(),
-			ID:         commit.Committer.GetID(),
-			ProfileURL: commit.Committer.GetHTMLURL(),
-			AvatarURL:  commit.Committer.GetAvatarURL(),
-		}
-	}
-
-	// Only include stats and files if includeDiffs is true
-	if includeDiffs {
-		if commit.Stats != nil {
-			minimalCommit.Stats = &MinimalCommitStats{
-				Additions: commit.Stats.GetAdditions(),
-				Deletions: commit.Stats.GetDeletions(),
-				Total:     commit.Stats.GetTotal(),
-			}
-		}
-
-		if len(commit.Files) > 0 {
-			minimalCommit.Files = make([]MinimalCommitFile, 0, len(commit.Files))
-			for _, file := range commit.Files {
-				minimalFile := MinimalCommitFile{
-					Filename:  file.GetFilename(),
-					Status:    file.GetStatus(),
-					Additions: file.GetAdditions(),
-					Deletions: file.GetDeletions(),
-					Changes:   file.GetChanges(),
-				}
-				minimalCommit.Files = append(minimalCommit.Files, minimalFile)
-			}
-		}
-	}
-
-	return minimalCommit
-}
-
-// convertToMinimalBranch converts a GitHub API Branch to MinimalBranch
-func convertToMinimalBranch(branch *github.Branch) MinimalBranch {
-	return MinimalBranch{
-		Name:      branch.GetName(),
-		SHA:       branch.GetCommit().GetSHA(),
-		Protected: branch.GetProtected(),
-	}
-}
-
 func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("get_commit",
 			mcp.WithDescription(t("TOOL_GET_COMMITS_DESCRIPTION", "Get details for a commit from a GitHub repository")),
@@ -274,9 +186,9 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 
 			// Convert to minimal commits
 			minimalCommits := make([]MinimalCommit, len(commits))
-            for i, commit := range commits {
-                minimalCommits[i] = convertToMinimalCommit(commit, false)
-            }
+			for i, commit := range commits {
+				minimalCommits[i] = convertToMinimalCommit(commit, false)
+			}
 
 			r, err := json.Marshal(minimalCommits)
 			if err != nil {
