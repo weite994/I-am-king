@@ -23,7 +23,6 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	// Create toolsets
 	repos := toolsets.NewToolset("repos", "GitHub Repository related tools").
 		AddReadTools(
-			toolsets.NewServerTool(ManageRepository(getClient, getRawClient, t)),
 			toolsets.NewServerTool(SearchRepositories(getClient, t)),
 			toolsets.NewServerTool(ListCommits(getClient, t)),
 			toolsets.NewServerTool(SearchCode(getClient, t)),
@@ -36,6 +35,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetReleaseByTag(getClient, t)),
 		).
 		AddWriteTools(
+			toolsets.NewServerTool(ManageRepository(getClient, getRawClient, t)),
 			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
 			toolsets.NewServerTool(CreateBranch(getClient, t)),
 			toolsets.NewServerTool(PushFiles(getClient, t)),
@@ -50,13 +50,13 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		)
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(
-			toolsets.NewServerTool(ManageIssue(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(SearchIssues(getClient, t)),
 			toolsets.NewServerTool(GetIssueComments(getClient, t)),
 			toolsets.NewServerTool(ListIssueTypes(getClient, t)),
 			toolsets.NewServerTool(ListSubIssues(getClient, t)),
 		).
 		AddWriteTools(
+			toolsets.NewServerTool(ManageIssue(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
 			toolsets.NewServerTool(AddSubIssue(getClient, t)),
 			toolsets.NewServerTool(RemoveSubIssue(getClient, t)),
@@ -75,7 +75,6 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		)
 	pullRequests := toolsets.NewToolset("pull_requests", "GitHub Pull Request related tools").
 		AddReadTools(
-			toolsets.NewServerTool(ManagePullRequest(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(GetPullRequestFiles(getClient, t)),
 			toolsets.NewServerTool(SearchPullRequests(getClient, t)),
 			toolsets.NewServerTool(GetPullRequestStatus(getClient, t)),
@@ -84,6 +83,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(GetPullRequestDiff(getClient, t)),
 		).
 		AddWriteTools(
+			toolsets.NewServerTool(ManagePullRequest(getClient, getGQLClient, t)),
 			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
 			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
 

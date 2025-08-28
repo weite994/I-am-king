@@ -401,18 +401,15 @@ The following sets of tools are available (all are on by default):
 
 <summary>Code Security</summary>
 
-- **get_code_scanning_alert** - Get code scanning alert
-  - `alertNumber`: The number of the alert. (number, required)
-  - `owner`: The owner of the repository. (string, required)
-  - `repo`: The name of the repository. (string, required)
-
-- **list_code_scanning_alerts** - List code scanning alerts
-  - `owner`: The owner of the repository. (string, required)
-  - `ref`: The Git reference for the results you want to list. (string, optional)
-  - `repo`: The name of the repository. (string, required)
-  - `severity`: Filter code scanning alerts by severity (string, optional)
-  - `state`: Filter code scanning alerts by state. Defaults to open (string, optional)
-  - `tool_name`: The name of the tool used for code scanning. (string, optional)
+- **manage_code_scanning_alerts** - Manage Code Scanning Alerts
+  - `alertNumber`: The number of the alert (required for 'get' operation) (number, optional)
+  - `operation`: Operation to perform: 'list', 'get' (string, required)
+  - `owner`: The owner of the repository (string, required)
+  - `ref`: The Git reference for the results you want to list (used for 'list' operation) (string, optional)
+  - `repo`: The name of the repository (string, required)
+  - `severity`: Filter code scanning alerts by severity (used for 'list' operation) (string, optional)
+  - `state`: Filter code scanning alerts by state (used for 'list' operation) (string, optional)
+  - `tool_name`: The name of the tool used for code scanning (used for 'list' operation) (string, optional)
 
 </details>
 
@@ -484,35 +481,23 @@ The following sets of tools are available (all are on by default):
 
 <summary>Gists</summary>
 
-- **create_gist** - Create Gist
-  - `content`: Content for simple single-file gist creation (string, required)
-  - `description`: Description of the gist (string, optional)
-  - `filename`: Filename for simple single-file gist creation (string, required)
-  - `public`: Whether the gist is public (boolean, optional)
-
-- **list_gists** - List Gists
+- **manage_gist** - Manage Gist
+  - `content`: Content for gist file (required for 'create' and 'update' operations) (string, optional)
+  - `description`: Description of the gist (used for 'create' and 'update' operations) (string, optional)
+  - `filename`: Filename for gist file (required for 'create' and 'update' operations) (string, optional)
+  - `gist_id`: ID of the gist (required for 'update' and 'get' operations) (string, optional)
+  - `operation`: Operation to perform: 'list', 'create', 'update', 'get' (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `since`: Only gists updated after this time (ISO 8601 timestamp) (string, optional)
-  - `username`: GitHub username (omit for authenticated user's gists) (string, optional)
-
-- **update_gist** - Update Gist
-  - `content`: Content for the file (string, required)
-  - `description`: Updated description of the gist (string, optional)
-  - `filename`: Filename to update or create (string, required)
-  - `gist_id`: ID of the gist to update (string, required)
+  - `public`: Whether the gist is public (used for 'create' operation) (boolean, optional)
+  - `since`: Only gists updated after this time (ISO 8601 timestamp, used for 'list' operation) (string, optional)
+  - `username`: GitHub username (omit for authenticated user's gists, used for 'list' and 'get' operations) (string, optional)
 
 </details>
 
 <details>
 
 <summary>Issues</summary>
-
-- **add_issue_comment** - Add comment to issue
-  - `body`: Comment content (string, required)
-  - `issue_number`: Issue number to comment on (number, required)
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
 
 - **add_sub_issue** - Add sub-issue
   - `issue_number`: The number of the parent issue (number, required)
@@ -526,21 +511,6 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
-- **create_issue** - Open new issue
-  - `assignees`: Usernames to assign to this issue (string[], optional)
-  - `body`: Issue body content (string, optional)
-  - `labels`: Labels to apply to this issue (string[], optional)
-  - `milestone`: Milestone number (number, optional)
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `title`: Issue title (string, required)
-  - `type`: Type of this issue (string, optional)
-
-- **get_issue** - Get issue details
-  - `issue_number`: The number of the issue (number, required)
-  - `owner`: The owner of the repository (string, required)
-  - `repo`: The name of the repository (string, required)
-
 - **get_issue_comments** - Get issue comments
   - `issue_number`: Issue number (number, required)
   - `owner`: Repository owner (string, required)
@@ -551,23 +521,32 @@ The following sets of tools are available (all are on by default):
 - **list_issue_types** - List available issue types
   - `owner`: The organization owner of the repository (string, required)
 
-- **list_issues** - List issues
-  - `after`: Cursor for pagination. Use the endCursor from the previous page's PageInfo for GraphQL APIs. (string, optional)
-  - `direction`: Order direction. If provided, the 'orderBy' also needs to be provided. (string, optional)
-  - `labels`: Filter by labels (string[], optional)
-  - `orderBy`: Order issues by field. If provided, the 'direction' also needs to be provided. (string, optional)
-  - `owner`: Repository owner (string, required)
-  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `repo`: Repository name (string, required)
-  - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
-  - `state`: Filter by state, by default both open and closed issues are returned when not provided (string, optional)
-
 - **list_sub_issues** - List sub-issues
   - `issue_number`: Issue number (number, required)
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (default: 1) (number, optional)
   - `per_page`: Number of results per page (max 100, default: 30) (number, optional)
   - `repo`: Repository name (string, required)
+
+- **manage_issue** - Manage Issue
+  - `assignees`: Usernames to assign to this issue (used for 'create', 'update' operations) (string[], optional)
+  - `body`: Issue body content (used for 'create', 'update', 'add_comment' operations) (string, optional)
+  - `direction`: Order direction for list operation: 'ASC', 'DESC' (string, optional)
+  - `issue_number`: Issue number (required for 'get', 'update', 'add_comment' operations) (number, optional)
+  - `labels`: Labels to apply to this issue (used for 'create', 'update' operations) (string[], optional)
+  - `list_labels`: Filter by labels for list operation (string[], optional)
+  - `list_state`: Filter by state for list operation: 'OPEN', 'CLOSED' (string, optional)
+  - `milestone`: Milestone number (used for 'create', 'update' operations) (number, optional)
+  - `operation`: Operation to perform: 'list', 'get', 'create', 'update', 'add_comment' (string, required)
+  - `orderBy`: Order issues by field for list operation: 'CREATED_AT', 'UPDATED_AT', 'COMMENTS' (string, optional)
+  - `owner`: Repository owner (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+  - `since`: Filter by date (ISO 8601 timestamp, used for 'list' operation) (string, optional)
+  - `state`: Issue state (used for 'update' operation): 'open' or 'closed' (string, optional)
+  - `title`: Issue title (required for 'create' operation) (string, optional)
+  - `type`: Type of this issue (used for 'create' operation) (string, optional)
 
 - **remove_sub_issue** - Remove sub-issue
   - `issue_number`: The number of the parent issue (number, required)
@@ -591,18 +570,6 @@ The following sets of tools are available (all are on by default):
   - `query`: Search query using GitHub issues search syntax (string, required)
   - `repo`: Optional repository name. If provided with owner, only issues for this repository are listed. (string, optional)
   - `sort`: Sort field by number of matches of categories, defaults to best match (string, optional)
-
-- **update_issue** - Edit issue
-  - `assignees`: New assignees (string[], optional)
-  - `body`: New description (string, optional)
-  - `issue_number`: Issue number to update (number, required)
-  - `labels`: New labels (string[], optional)
-  - `milestone`: New milestone number (number, optional)
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `state`: New state (string, optional)
-  - `title`: New title (string, optional)
-  - `type`: New issue type (string, optional)
 
 </details>
 
@@ -685,22 +652,7 @@ The following sets of tools are available (all are on by default):
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
 
-- **create_pull_request** - Open new pull request
-  - `base`: Branch to merge into (string, required)
-  - `body`: PR description (string, optional)
-  - `draft`: Create as draft PR (boolean, optional)
-  - `head`: Branch containing changes (string, required)
-  - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
-  - `owner`: Repository owner (string, required)
-  - `repo`: Repository name (string, required)
-  - `title`: PR title (string, required)
-
 - **delete_pending_pull_request_review** - Delete the requester's latest pending pull request review
-  - `owner`: Repository owner (string, required)
-  - `pullNumber`: Pull request number (number, required)
-  - `repo`: Repository name (string, required)
-
-- **get_pull_request** - Get pull request details
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
@@ -732,24 +684,28 @@ The following sets of tools are available (all are on by default):
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
 
-- **list_pull_requests** - List pull requests
-  - `base`: Filter by base branch (string, optional)
-  - `direction`: Sort direction (string, optional)
-  - `head`: Filter by head user/org and branch (string, optional)
+- **manage_pull_request** - Manage Pull Request
+  - `base`: The name of the branch you want the changes pulled into (required for 'create' operation) (string, optional)
+  - `body`: Pull request body content (used for 'create', 'update' operations) (string, optional)
+  - `commit_message`: Extra detail to append to merge commit message (used for 'merge' operation) (string, optional)
+  - `commit_title`: Title for the merge commit (used for 'merge' operation) (string, optional)
+  - `direction`: Sort direction for list operation: 'asc', 'desc' (string, optional)
+  - `draft`: Whether to create as draft (used for 'create' operation) (boolean, optional)
+  - `head`: The name of the branch where your changes are implemented (required for 'create' operation) (string, optional)
+  - `list_base`: Filter by base branch for list operation (string, optional)
+  - `list_head`: Filter by head user/org and branch for list operation (string, optional)
+  - `list_state`: Filter by state for list operation: 'open', 'closed', 'all' (string, optional)
+  - `maintainer_can_modify`: Whether maintainers can modify the pull request (used for 'create' operation) (boolean, optional)
+  - `merge_method`: Merge method to use (used for 'merge' operation): 'merge', 'squash', 'rebase' (string, optional)
+  - `operation`: Operation to perform: 'list', 'get', 'create', 'update', 'merge' (string, required)
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `pullNumber`: Pull request number (required for 'get', 'update', 'merge' operations) (number, optional)
   - `repo`: Repository name (string, required)
-  - `sort`: Sort by (string, optional)
-  - `state`: Filter by state (string, optional)
-
-- **merge_pull_request** - Merge pull request
-  - `commit_message`: Extra detail for merge commit (string, optional)
-  - `commit_title`: Title for merge commit (string, optional)
-  - `merge_method`: Merge method (string, optional)
-  - `owner`: Repository owner (string, required)
-  - `pullNumber`: Pull request number (number, required)
-  - `repo`: Repository name (string, required)
+  - `sort`: Sort by for list operation: 'created', 'updated', 'popularity', 'long-running' (string, optional)
+  - `state`: State of the pull request (used for 'update' operation): 'open' or 'closed' (string, optional)
+  - `title`: Pull request title (required for 'create' operation) (string, optional)
 
 - **request_copilot_review** - Request Copilot review
   - `owner`: Repository owner (string, required)
@@ -771,18 +727,6 @@ The following sets of tools are available (all are on by default):
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
-
-- **update_pull_request** - Edit pull request
-  - `base`: New base branch name (string, optional)
-  - `body`: New description (string, optional)
-  - `draft`: Mark pull request as draft (true) or ready for review (false) (boolean, optional)
-  - `maintainer_can_modify`: Allow maintainer edits (boolean, optional)
-  - `owner`: Repository owner (string, required)
-  - `pullNumber`: Pull request number to update (number, required)
-  - `repo`: Repository name (string, required)
-  - `reviewers`: GitHub usernames to request reviews from (string[], optional)
-  - `state`: New state (string, optional)
-  - `title`: New title (string, optional)
 
 - **update_pull_request_branch** - Update pull request branch
   - `expectedHeadSha`: The expected SHA of the pull request's HEAD ref (string, optional)
@@ -811,22 +755,11 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
   - `sha`: Required if updating an existing file. The blob SHA of the file being replaced. (string, optional)
 
-- **create_repository** - Create repository
-  - `autoInit`: Initialize with README (boolean, optional)
-  - `description`: Repository description (string, optional)
-  - `name`: Repository name (string, required)
-  - `private`: Whether repo should be private (boolean, optional)
-
 - **delete_file** - Delete file
   - `branch`: Branch to delete the file from (string, required)
   - `message`: Commit message (string, required)
   - `owner`: Repository owner (username or organization) (string, required)
   - `path`: Path to the file to delete (string, required)
-  - `repo`: Repository name (string, required)
-
-- **fork_repository** - Fork repository
-  - `organization`: Organization to fork to (string, optional)
-  - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
 - **get_commit** - Get commit details
@@ -835,13 +768,6 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `sha`: Commit SHA, branch name, or tag name (string, required)
-
-- **get_file_contents** - Get file or directory contents
-  - `owner`: Repository owner (username or organization) (string, required)
-  - `path`: Path to file/directory (directories must end with a slash '/') (string, optional)
-  - `ref`: Accepts optional git refs such as `refs/tags/{tag}`, `refs/heads/{branch}` or `refs/pull/{pr_number}/head` (string, optional)
-  - `repo`: Repository name (string, required)
-  - `sha`: Accepts optional commit SHA. If specified, it will be used instead of ref (string, optional)
 
 - **get_latest_release** - Get latest release
   - `owner`: Repository owner (string, required)
@@ -883,6 +809,20 @@ The following sets of tools are available (all are on by default):
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
 
+- **manage_repository** - Manage Repository
+  - `autoInit`: Initialize with README (used for 'create' operation) (boolean, optional)
+  - `default_branch_only`: Fork only default branch (used for 'fork' operation) (string, optional)
+  - `description`: Repository description (used for 'create' operation) (string, optional)
+  - `name`: Repository name (required for 'create' operation) (string, optional)
+  - `operation`: Operation to perform: 'create', 'fork', 'get_file_contents' (string, required)
+  - `organization`: Organization to fork to (used for 'fork' operation) (string, optional)
+  - `owner`: Repository owner (required for 'fork', 'get_file_contents' operations) (string, optional)
+  - `path`: Path to file/directory (required for 'get_file_contents' operation) (string, optional)
+  - `private`: Whether repo should be private (used for 'create' operation) (boolean, optional)
+  - `ref`: Git reference such as branch, tag, or commit SHA (used for 'get_file_contents' operation) (string, optional)
+  - `repo`: Repository name (required for 'fork', 'get_file_contents' operations) (string, optional)
+  - `sha`: Commit SHA (used for 'get_file_contents' operation) (string, optional)
+
 - **push_files** - Push files to repository
   - `branch`: Branch to push to (string, required)
   - `files`: Array of file objects to push, each object with path (string) and content (string) (object[], required)
@@ -908,17 +848,14 @@ The following sets of tools are available (all are on by default):
 
 <summary>Secret Protection</summary>
 
-- **get_secret_scanning_alert** - Get secret scanning alert
-  - `alertNumber`: The number of the alert. (number, required)
-  - `owner`: The owner of the repository. (string, required)
-  - `repo`: The name of the repository. (string, required)
-
-- **list_secret_scanning_alerts** - List secret scanning alerts
-  - `owner`: The owner of the repository. (string, required)
-  - `repo`: The name of the repository. (string, required)
-  - `resolution`: Filter by resolution (string, optional)
-  - `secret_type`: A comma-separated list of secret types to return. All default secret patterns are returned. To return generic patterns, pass the token name(s) in the parameter. (string, optional)
-  - `state`: Filter by state (string, optional)
+- **manage_secret_scanning_alerts** - Manage Secret Scanning Alerts
+  - `alertNumber`: The number of the alert (required for 'get' operation) (number, optional)
+  - `operation`: Operation to perform: 'list', 'get' (string, required)
+  - `owner`: The owner of the repository (string, required)
+  - `repo`: The name of the repository (string, required)
+  - `resolution`: Filter by resolution (used for 'list' operation) (string, optional)
+  - `secret_type`: A comma-separated list of secret types to return (used for 'list' operation) (string, optional)
+  - `state`: Filter by state (used for 'list' operation) (string, optional)
 
 </details>
 
