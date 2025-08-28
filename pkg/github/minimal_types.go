@@ -105,8 +105,6 @@ type MinimalBranch struct {
 	Protected bool   `json:"protected"`
 }
 
-// Minimal response types for create/edit operations
-
 // MinimalCreateResponse represents a minimal response for resource creation operations.
 type MinimalCreateResponse struct {
 	URL    string `json:"url"`
