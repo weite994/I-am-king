@@ -273,10 +273,10 @@ func ListCommits(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			// Convert to minimal commits
-			minimalCommits := make([]MinimalCommit, 0, len(commits))
-			for _, commit := range commits {
-				minimalCommits = append(minimalCommits, convertToMinimalCommit(commit, false))
-			}
+			minimalCommits := make([]MinimalCommit, len(commits))
+            for i, commit := range commits {
+                minimalCommits[i] = convertToMinimalCommit(commit, false)
+            }
 
 			r, err := json.Marshal(minimalCommits)
 			if err != nil {
