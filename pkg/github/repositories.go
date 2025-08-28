@@ -126,7 +126,7 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 				mcp.Description("Commit SHA, branch name, or tag name"),
 			),
 			mcp.WithBoolean("include_diff",
-				mcp.Description("Whether to include file diffs and stats in the response. Default is true for single commit queries."),
+				mcp.Description("Whether to include file diffs and stats in the response. Default is true."),
 			),
 			WithPagination(),
 		),
