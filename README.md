@@ -830,7 +830,7 @@ The following sets of tools are available (all are on by default):
   - `repo`: Repository name (string, required)
 
 - **get_commit** - Get commit details
-  - `include_diff`: Whether to include file diffs and stats in the response. Default is true for single commit queries. (boolean, optional)
+  - `include_diff`: Whether to include file diffs and stats in the response. Default is true. (boolean, optional)
   - `owner`: Repository owner (string, required)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)

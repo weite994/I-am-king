@@ -7,7 +7,7 @@
   "inputSchema": {
     "properties": {
       "include_diff": {
-        "description": "Whether to include file diffs and stats in the response. Default is true for single commit queries.",
+        "description": "Whether to include file diffs and stats in the response. Default is true.",
         "type": "boolean"
       },
       "owner": {
