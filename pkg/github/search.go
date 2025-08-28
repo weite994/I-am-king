@@ -41,12 +41,9 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			minimalOutput, err := OptionalParam[bool](request, "minimal_output")
+			minimalOutput, err := OptionalBoolParamWithDefault(request, "minimal_output", true)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if _, ok := request.GetArguments()["minimal_output"]; !ok {
-				minimalOutput = true
 			}
 			opts := &github.SearchOptions{
 				ListOptions: github.ListOptions{
