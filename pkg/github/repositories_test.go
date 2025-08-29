@@ -1125,7 +1125,6 @@ func Test_CreateRepository(t *testing.T) {
 		Description: github.Ptr("Test repository"),
 		Private:     github.Ptr(true),
 		HTMLURL:     github.Ptr("https://github.com/testuser/test-repo"),
-		CloneURL:    github.Ptr("https://github.com/testuser/test-repo.git"),
 		CreatedAt:   &github.Timestamp{Time: time.Now()},
 		Owner: &github.User{
 			Login: github.Ptr("testuser"),

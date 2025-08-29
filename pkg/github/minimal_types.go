@@ -25,7 +25,6 @@ type MinimalRepository struct {
 	FullName      string   `json:"full_name"`
 	Description   string   `json:"description,omitempty"`
 	HTMLURL       string   `json:"html_url"`
-	CloneURL      string   `json:"clone_url,omitempty"`
 	Language      string   `json:"language,omitempty"`
 	Stars         int      `json:"stargazers_count"`
 	Forks         int      `json:"forks_count"`

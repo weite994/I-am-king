@@ -85,7 +85,6 @@ func SearchRepositories(getClient GetClientFn, t translations.TranslationHelperF
 						FullName:      repo.GetFullName(),
 						Description:   repo.GetDescription(),
 						HTMLURL:       repo.GetHTMLURL(),
-						CloneURL:      repo.GetCloneURL(),
 						Language:      repo.GetLanguage(),
 						Stars:         repo.GetStargazersCount(),
 						Forks:         repo.GetForksCount(),
