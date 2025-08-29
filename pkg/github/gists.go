@@ -259,7 +259,6 @@ func UpdateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 			minimalResponse := MinimalUpdateResponse{
 				URL:     updatedGist.GetHTMLURL(),
 				Updated: true,
-				Message: "Gist updated successfully",
 			}
 
 			r, err := json.Marshal(minimalResponse)

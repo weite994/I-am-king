@@ -1955,7 +1955,7 @@ func Test_CreatePullRequest(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var returnedPR MinimalPullRequestResponse
+			var returnedPR MinimalResourceResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedPR.GetNumber(), returnedPR.Number)

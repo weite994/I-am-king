@@ -107,17 +107,8 @@ type MinimalBranch struct {
 	Protected bool   `json:"protected"`
 }
 
-// MinimalCreateResponse represents a minimal response for resource creation operations.
-type MinimalCreateResponse struct {
-	URL    string `json:"url"`
-	ID     int64  `json:"id,omitempty"`
-	Number int    `json:"number,omitempty"`
-	Name   string `json:"name,omitempty"`
-	State  string `json:"state,omitempty"`
-}
-
-// MinimalPullRequestResponse represents a minimal response for pull request operations.
-type MinimalPullRequestResponse struct {
+// MinimalResourceResponse represents a minimal response for numbered resource operations (issues, pull requests).
+type MinimalResourceResponse struct {
 	URL    string `json:"url"`
 	Number int    `json:"number"`
 	State  string `json:"state"`
@@ -132,19 +123,10 @@ type MinimalRepositoryResponse struct {
 	FullName string `json:"full_name"`
 }
 
-// MinimalIssueResponse represents a minimal response for issue operations.
-type MinimalIssueResponse struct {
-	URL    string `json:"url"`
-	Number int    `json:"number"`
-	State  string `json:"state"`
-	Title  string `json:"title,omitempty"`
-}
-
 // MinimalUpdateResponse represents a minimal response for update operations.
 type MinimalUpdateResponse struct {
 	URL     string `json:"url"`
 	Updated bool   `json:"updated"`
-	Message string `json:"message,omitempty"`
 }
 
 // MinimalGistResponse represents a minimal response for gist operations.

@@ -713,7 +713,7 @@ func Test_CreateIssue(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var returnedIssue MinimalIssueResponse
+			var returnedIssue MinimalResourceResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedIssue)
 			require.NoError(t, err)
 

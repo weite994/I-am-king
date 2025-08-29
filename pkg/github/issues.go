@@ -873,7 +873,7 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalIssueResponse{
+			minimalResponse := MinimalResourceResponse{
 				URL:    issue.GetHTMLURL(),
 				Number: issue.GetNumber(),
 				State:  issue.GetState(),
@@ -1254,7 +1254,6 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			minimalResponse := MinimalUpdateResponse{
 				URL:     updatedIssue.GetHTMLURL(),
 				Updated: true,
-				Message: "Issue updated successfully",
 			}
 
 			r, err := json.Marshal(minimalResponse)
