@@ -147,11 +147,13 @@ func OptionalIntParamWithDefault(r mcp.CallToolRequest, p string, d int) (int, e
 // OptionalBoolParamWithDefault is a helper function that can be used to fetch a requested parameter from the request
 // similar to optionalBoolParam, but it also takes a default value.
 func OptionalBoolParamWithDefault(r mcp.CallToolRequest, p string, d bool) (bool, error) {
+	args := r.GetArguments()
+	_, ok := args[p]
 	v, err := OptionalParam[bool](r, p)
 	if err != nil {
 		return false, err
 	}
-	if !v {
+	if !ok {
 		return d, nil
 	}
 	return v, nil
