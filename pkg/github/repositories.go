@@ -55,7 +55,7 @@ func GetCommit(getClient GetClientFn, t translations.TranslationHelperFunc) (too
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			includeDiff, err := mcp.OptionalBoolParamWithDefault(request, "include_diff", true)
+			includeDiff, err := OptionalBoolParamWithDefault(request, "include_diff", true)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
