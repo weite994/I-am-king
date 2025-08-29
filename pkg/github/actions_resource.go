@@ -45,12 +45,12 @@ func WorkflowRunLogsResourceHandler(getClient GetClientFn) func(ctx context.Cont
 			return nil, errors.New("repo is required")
 		}
 
-		runIdStr, ok := request.Params.Arguments["runId"].([]string)
-		if !ok || len(runIdStr) == 0 {
+		runIDStr, ok := request.Params.Arguments["runId"].([]string)
+		if !ok || len(runIDStr) == 0 {
 			return nil, errors.New("runId is required")
 		}
 
-		runId, err := strconv.ParseInt(runIdStr[0], 10, 64)
+		runID, err := strconv.ParseInt(runIDStr[0], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid runId: %w", err)
 		}
@@ -61,7 +61,7 @@ func WorkflowRunLogsResourceHandler(getClient GetClientFn) func(ctx context.Cont
 		}
 
 		// Get the JIT URL for workflow run logs
-		url, resp, err := client.Actions.GetWorkflowRunLogs(ctx, owner[0], repo[0], runId, 1)
+		url, resp, err := client.Actions.GetWorkflowRunLogs(ctx, owner[0], repo[0], runID, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get workflow run logs URL: %w", err)
 		}
@@ -77,7 +77,7 @@ func WorkflowRunLogsResourceHandler(getClient GetClientFn) func(ctx context.Cont
 			mcp.TextResourceContents{
 				URI:      request.Params.URI,
 				MIMEType: "application/zip",
-				Text:     fmt.Sprintf("Workflow run logs for run %d (ZIP archive)\n\nNote: This is a ZIP archive containing all job logs. Download URL was: %s\n\nContent length: %d bytes", runId, url.String(), len(content)),
+				Text:     fmt.Sprintf("Workflow run logs for run %d (ZIP archive)\n\nNote: This is a ZIP archive containing all job logs. Download URL was: %s\n\nContent length: %d bytes", runID, url.String(), len(content)),
 			},
 		}, nil
 	}
@@ -97,12 +97,12 @@ func JobLogsResourceHandler(getClient GetClientFn) func(ctx context.Context, req
 			return nil, errors.New("repo is required")
 		}
 
-		jobIdStr, ok := request.Params.Arguments["jobId"].([]string)
-		if !ok || len(jobIdStr) == 0 {
+		jobIDStr, ok := request.Params.Arguments["jobId"].([]string)
+		if !ok || len(jobIDStr) == 0 {
 			return nil, errors.New("jobId is required")
 		}
 
-		jobId, err := strconv.ParseInt(jobIdStr[0], 10, 64)
+		jobID, err := strconv.ParseInt(jobIDStr[0], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid jobId: %w", err)
 		}
@@ -113,7 +113,7 @@ func JobLogsResourceHandler(getClient GetClientFn) func(ctx context.Context, req
 		}
 
 		// Get the JIT URL for job logs
-		url, resp, err := client.Actions.GetWorkflowJobLogs(ctx, owner[0], repo[0], jobId, 1)
+		url, resp, err := client.Actions.GetWorkflowJobLogs(ctx, owner[0], repo[0], jobID, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job logs URL: %w", err)
 		}

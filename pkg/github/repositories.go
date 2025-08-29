@@ -1671,20 +1671,21 @@ func handleFileContentsResourceLink(owner, repo, path, ref, sha string) (*mcp.Ca
 		description = fmt.Sprintf("File content for %s at commit %s in %s/%s", path, sha[:8], owner, repo)
 	case ref != "":
 		// Handle different ref types
-		if strings.HasPrefix(ref, "refs/heads/") {
+		switch {
+		case strings.HasPrefix(ref, "refs/heads/"):
 			branch := strings.TrimPrefix(ref, "refs/heads/")
 			resourceURI = fmt.Sprintf("repo://%s/%s/refs/heads/%s/contents%s", owner, repo, branch, path)
 			description = fmt.Sprintf("File content for %s on branch %s in %s/%s", path, branch, owner, repo)
-		} else if strings.HasPrefix(ref, "refs/tags/") {
+		case strings.HasPrefix(ref, "refs/tags/"):
 			tag := strings.TrimPrefix(ref, "refs/tags/")
 			resourceURI = fmt.Sprintf("repo://%s/%s/refs/tags/%s/contents%s", owner, repo, tag, path)
 			description = fmt.Sprintf("File content for %s at tag %s in %s/%s", path, tag, owner, repo)
-		} else if strings.HasPrefix(ref, "refs/pull/") && strings.HasSuffix(ref, "/head") {
+		case strings.HasPrefix(ref, "refs/pull/") && strings.HasSuffix(ref, "/head"):
 			// Extract PR number from refs/pull/{number}/head
 			prNumber := strings.TrimSuffix(strings.TrimPrefix(ref, "refs/pull/"), "/head")
 			resourceURI = fmt.Sprintf("repo://%s/%s/pulls/%s/contents%s", owner, repo, prNumber, path)
 			description = fmt.Sprintf("File content for %s in PR #%s in %s/%s", path, prNumber, owner, repo)
-		} else {
+		default:
 			// Generic ref handling - try to clean it up
 			cleanRef := strings.TrimPrefix(ref, "refs/")
 			resourceURI = fmt.Sprintf("repo://%s/%s/refs/%s/contents%s", owner, repo, cleanRef, path)
