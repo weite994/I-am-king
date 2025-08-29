@@ -713,13 +713,10 @@ func Test_CreateIssue(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var returnedIssue MinimalResourceResponse
+			var returnedIssue MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedIssue)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.expectedIssue.GetNumber(), returnedIssue.Number)
-			assert.Equal(t, tc.expectedIssue.GetTitle(), returnedIssue.Title)
-			assert.Equal(t, tc.expectedIssue.GetState(), returnedIssue.State)
 			assert.Equal(t, tc.expectedIssue.GetHTMLURL(), returnedIssue.URL)
 		})
 	}
@@ -1210,12 +1207,11 @@ func Test_UpdateIssue(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var updateResp MinimalUpdateResponse
+			var updateResp MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedIssue.GetHTMLURL(), updateResp.URL)
-			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }

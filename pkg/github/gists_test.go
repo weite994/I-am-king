@@ -322,11 +322,10 @@ func Test_CreateGist(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var gist MinimalGistResponse
+			var gist MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &gist)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.expectedGist.GetID(), gist.ID)
 			assert.Equal(t, tc.expectedGist.GetHTMLURL(), gist.URL)
 		})
 	}
@@ -477,12 +476,11 @@ func Test_UpdateGist(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var updateResp MinimalUpdateResponse
+			var updateResp MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedGist.GetHTMLURL(), updateResp.URL)
-			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }

@@ -1241,15 +1241,12 @@ func Test_CreateRepository(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var returnedRepo MinimalRepositoryResponse
+			var returnedRepo MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedRepo)
 			assert.NoError(t, err)
 
 			// Verify repository details
-			assert.Equal(t, tc.expectedRepo.GetName(), returnedRepo.Name)
 			assert.Equal(t, tc.expectedRepo.GetHTMLURL(), returnedRepo.URL)
-			assert.Equal(t, tc.expectedRepo.GetCloneURL(), returnedRepo.CloneURL)
-			assert.Equal(t, tc.expectedRepo.GetFullName(), returnedRepo.FullName)
 		})
 	}
 }

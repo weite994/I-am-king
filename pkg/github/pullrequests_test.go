@@ -382,11 +382,10 @@ func Test_UpdatePullRequest(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var updateResp MinimalUpdateResponse
+			var updateResp MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedPR.GetHTMLURL(), updateResp.URL)
-			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }
@@ -565,11 +564,10 @@ func Test_UpdatePullRequest_Draft(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var updateResp MinimalUpdateResponse
+			var updateResp MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &updateResp)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedPR.GetHTMLURL(), updateResp.URL)
-			assert.Equal(t, true, updateResp.Updated)
 		})
 	}
 }
@@ -1955,12 +1953,9 @@ func Test_CreatePullRequest(t *testing.T) {
 			textContent := getTextResult(t, result)
 
 			// Unmarshal and verify the minimal result
-			var returnedPR MinimalResourceResponse
+			var returnedPR MinimalResponse
 			err = json.Unmarshal([]byte(textContent.Text), &returnedPR)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedPR.GetNumber(), returnedPR.Number)
-			assert.Equal(t, tc.expectedPR.GetTitle(), returnedPR.Title)
-			assert.Equal(t, tc.expectedPR.GetState(), returnedPR.State)
 			assert.Equal(t, tc.expectedPR.GetHTMLURL(), returnedPR.URL)
 		})
 	}

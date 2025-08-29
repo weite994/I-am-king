@@ -194,11 +194,8 @@ func CreatePullRequest(getClient GetClientFn, t translations.TranslationHelperFu
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalResourceResponse{
-				URL:    pr.GetHTMLURL(),
-				Number: pr.GetNumber(),
-				State:  pr.GetState(),
-				Title:  pr.GetTitle(),
+			minimalResponse := MinimalResponse{
+				URL: pr.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)
@@ -473,9 +470,8 @@ func UpdatePullRequest(getClient GetClientFn, getGQLClient GetGQLClientFn, t tra
 			}()
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalUpdateResponse{
-				URL:     finalPR.GetHTMLURL(),
-				Updated: true,
+			minimalResponse := MinimalResponse{
+				URL: finalPR.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)

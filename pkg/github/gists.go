@@ -165,11 +165,8 @@ func CreateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create gist: %s", string(body))), nil
 			}
 
-			minimalResponse := MinimalGistResponse{
-				URL:         createdGist.GetHTMLURL(),
-				ID:          createdGist.GetID(),
-				Description: createdGist.GetDescription(),
-				Public:      createdGist.GetPublic(),
+			minimalResponse := MinimalResponse{
+				URL: createdGist.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)
@@ -256,9 +253,8 @@ func UpdateGist(getClient GetClientFn, t translations.TranslationHelperFunc) (to
 				return mcp.NewToolResultError(fmt.Sprintf("failed to update gist: %s", string(body))), nil
 			}
 
-			minimalResponse := MinimalUpdateResponse{
-				URL:     updatedGist.GetHTMLURL(),
-				Updated: true,
+			minimalResponse := MinimalResponse{
+				URL: updatedGist.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)

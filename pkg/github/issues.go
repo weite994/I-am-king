@@ -873,11 +873,8 @@ func CreateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalResourceResponse{
-				URL:    issue.GetHTMLURL(),
-				Number: issue.GetNumber(),
-				State:  issue.GetState(),
-				Title:  issue.GetTitle(),
+			minimalResponse := MinimalResponse{
+				URL: issue.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)
@@ -1251,9 +1248,8 @@ func UpdateIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (t
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalUpdateResponse{
-				URL:     updatedIssue.GetHTMLURL(),
-				Updated: true,
+			minimalResponse := MinimalResponse{
+				URL: updatedIssue.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)

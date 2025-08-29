@@ -459,11 +459,8 @@ func CreateRepository(getClient GetClientFn, t translations.TranslationHelperFun
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalRepositoryResponse{
-				URL:      createdRepo.GetHTMLURL(),
-				CloneURL: createdRepo.GetCloneURL(),
-				Name:     createdRepo.GetName(),
-				FullName: createdRepo.GetFullName(),
+			minimalResponse := MinimalResponse{
+				URL: createdRepo.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)
@@ -738,11 +735,8 @@ func ForkRepository(getClient GetClientFn, t translations.TranslationHelperFunc)
 			}
 
 			// Return minimal response with just essential information
-			minimalResponse := MinimalRepositoryResponse{
-				URL:      forkedRepo.GetHTMLURL(),
-				CloneURL: forkedRepo.GetCloneURL(),
-				Name:     forkedRepo.GetName(),
-				FullName: forkedRepo.GetFullName(),
+			minimalResponse := MinimalResponse{
+				URL: forkedRepo.GetHTMLURL(),
 			}
 
 			r, err := json.Marshal(minimalResponse)
