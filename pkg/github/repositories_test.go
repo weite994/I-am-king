@@ -930,7 +930,7 @@ func Test_ListCommits(t *testing.T) {
 					assert.Equal(t, tc.expectedCommits[i].Author.GetLogin(), commit.Author.Login)
 				}
 
-				// Files and stats are never included in list_commits (only available in individual commit queries)
+				// Files and stats are never included in list_commits
 				assert.Nil(t, commit.Files)
 				assert.Nil(t, commit.Stats)
 			}
