@@ -116,16 +116,15 @@ func CreateRelease(getClient GetClientFn, t translations.TranslationHelperFunc) 
 					err,
 				), nil
 			}
+			defer func() { _ = resp.Body.Close() }()
 			
 			if resp.StatusCode != http.StatusCreated {
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read response body: %w", err)
 				}
-				defer func() { _ = resp.Body.Close() }()
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create release: %s", string(body))), nil
 			}
-			defer func() { _ = resp.Body.Close() }()
 
 			r, err := json.Marshal(release)
 			if err != nil {
